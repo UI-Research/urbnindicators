@@ -32,9 +32,9 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'    a series of derived variables, such as percentages, and the year of the data.
 #'    Returned data are formatted wide.
 #' @examples
-#' variables = list_acs_variables(year = "2022")
+#' acs_variables = list_acs_variables(year = "2022")
 #' compile_acs_data(
-#'   variables = variables,
+#'   variables = acs_variables,
 #'   years = c(2021, 2022),
 #'   geography = "county",
 #'   states = "NJ",
