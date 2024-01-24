@@ -21,4 +21,6 @@ Imports:
     purrr,
     stringr,
     magrittr
-RoxygenNote: 7.3.0
+Suggests:
+    ggplot2
+RoxygenNote: 7.3.1

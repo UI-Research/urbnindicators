@@ -54,7 +54,7 @@ warning(
 "Variable names and geographies for ACS data products can change between years.
 Changes to geographies are particularly significant across decades (e.g., from 2019 to 2020), but these changes can occur in any year.
 Users should ensure that the logic embedded in this function--which was developed around five-year ACS estimates for 2017-2021--remains accurate for their use cases.
-Evaluation of measures and geographies over time should be thoroughly quality checked./n")
+Evaluation of measures and geographies over time should be thoroughly quality checked.\n")
 
   ## default values for the variables and states arguments.
   if (length(variables) == 0) { variables = list_acs_variables(year = years[1]) }
