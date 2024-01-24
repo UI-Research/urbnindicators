@@ -47,6 +47,17 @@
 
       <dl><dt>
           
+          <code><a href="calculate_segregation_metrics.html">calculate_segregation_metrics()</a></code> 
+        </dt>
+        <dd>Calculates two levels of segregation: a multi-group segregation metric
+for each larger geographic unit supplied, as well as a decomposed version of the
+same metric for each smaller geographic unit. Only geographies that are perfectly
+nested within one another, e.g., tracts within counties, are supported. Note
+that all segregation calculations rely on `segregation` and users should refer
+to that package at https://github.com/elbersb/segregation for further implementation
+details.</dd>
+      </dl><dl><dt>
+          
           <code><a href="compile_acs_data.html">compile_acs_data()</a></code> 
         </dt>
         <dd>Calculate constructs frequently used in social sciences research while leveraging

@@ -106,9 +106,9 @@ or omit them?</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">variables</span> <span class="op">=</span> <span class="fu"><a href="list_acs_variables.html">list_acs_variables</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"2022"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">acs_variables</span> <span class="op">=</span> <span class="fu"><a href="list_acs_variables.html">list_acs_variables</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"2022"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">compile_acs_data</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  variables <span class="op">=</span> <span class="va">variables</span>,</span></span>
+<span class="r-in"><span>  variables <span class="op">=</span> <span class="va">acs_variables</span>,</span></span>
 <span class="r-in"><span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2021</span>, <span class="fl">2022</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span></span>
 <span class="r-in"><span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span></span>
@@ -119,12 +119,6 @@ or omit them?</p></dd>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Users should ensure that the logic embedded in this function--which was developed around five-year ACS estimates for 2017-2021--remains accurate for their use cases.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Evaluation of measures and geographies over time should be thoroughly quality checked.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Getting data from the 2017-2021 5-year ACS</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span><span style="color: #00BBBB;">•</span> You have not set a Census API key. Users without a key are limited to 500</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> queries per day and may experience performance limitations.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> For best results, get a Census API key at</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> http://api.census.gov/data/key_signup.html and then supply the key to the</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> `census_api_key()` function to use it throughout your tidycensus session.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #555555;">This warning is displayed once per session.</span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Getting data from the 2018-2022 5-year ACS</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 42 × 1,326</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    GEOID NAME                      total_population_uni…¹ public_assistance_un…²</span>

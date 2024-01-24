@@ -76,9 +76,9 @@ to `match_string`.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">codebook</span> <span class="op">=</span> <span class="fu">tidycensus</span><span class="fu">::</span><span class="fu"><a href="https://walker-data.com/tidycensus/reference/load_variables.html" class="external-link">load_variables</a></span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"acs5"</span>, year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">variables</span> <span class="op">=</span> <span class="fu"><a href="select_variables_by_name.html">select_variables_by_name</a></span><span class="op">(</span><span class="st">"B16005_"</span>, census_codebook <span class="op">=</span> <span class="va">codebook</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">selected_variables</span> <span class="op">=</span> <span class="fu"><a href="select_variables_by_name.html">select_variables_by_name</a></span><span class="op">(</span><span class="st">"B16005_"</span>, census_codebook <span class="op">=</span> <span class="va">codebook</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">filter_variables</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  variable_vector <span class="op">=</span> <span class="va">variables</span>,</span></span>
+<span class="r-in"><span>  variable_vector <span class="op">=</span> <span class="va">selected_variables</span>,</span></span>
 <span class="r-in"><span>  match_string <span class="op">=</span> <span class="st">"universe_$|native_$|foreign_born_$|only|very_well"</span>,</span></span>
 <span class="r-in"><span>  match_type <span class="op">=</span> <span class="st">"positive"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                                                  nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe_ </span>
