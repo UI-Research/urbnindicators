@@ -44,9 +44,9 @@ Calculate constructs frequently used in social sciences research while leveragin
 [tidycensus::get_acs()] to acquire raw estimates from the Census Bureau API.
 }
 \examples{
-variables = list_acs_variables(year = "2022")
+acs_variables = list_acs_variables(year = "2022")
 compile_acs_data(
-  variables = variables,
+  variables = acs_variables,
   years = c(2021, 2022),
   geography = "county",
   states = "NJ",

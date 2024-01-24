@@ -335,7 +335,6 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
     { if (retain_moes == TRUE) dplyr::left_join(., moes, by = c("GEOID", "data_source_year")) else . }
 }
 
-
 utils::globalVariables(c(
   "state", "GEOID", "data_source_year", "snap_received", "snap_universe",
   "public_assistance_received", "public_assistance_universe", ".",

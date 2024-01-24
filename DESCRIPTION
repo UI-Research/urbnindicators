@@ -16,11 +16,13 @@ Encoding: UTF-8
 LazyData: true
 Imports: 
     dplyr,
-    tidycensus,
-    tigris,
+    magrittr,
     purrr,
+    segregation,
     stringr,
-    magrittr
+    tidycensus,
+    tidyr,
+    tigris
 Suggests:
     ggplot2
 RoxygenNote: 7.3.1
