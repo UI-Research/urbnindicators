@@ -2,8 +2,7 @@
 % Please edit documentation in R/compile_acs_data.R
 \name{safe_divide}
 \alias{safe_divide}
-\title{A modified division operation that returns zero when the denominator is zero
-rather than returning NA. Otherwise returns the dividend.}
+\title{Division without `NA`s}
 \usage{
 safe_divide(x, y)
 }
@@ -17,8 +16,11 @@ The traditional dividend in all cases except where `y` == 0, in which
    case it returns 0.
 }
 \description{
-A modified division operation that returns zero when the denominator is zero
-rather than returning NA. Otherwise returns the dividend.
+`safe_divide()` returns 0 when the divisor is 0.
+}
+\details{
+A modified division operation that returns zero when the divisor is zero
+   rather than returning NA. Otherwise returns the quotient.
 }
 \examples{
 safe_divide(1, 2) ## .5

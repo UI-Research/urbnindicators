@@ -1,11 +1,11 @@
-#' Calculates two levels of segregation: a multi-group segregation metric
-#' for each larger geographic unit supplied, as well as a decomposed version of the
-#' same metric for each smaller geographic unit. Only geographies that are perfectly
-#' nested within one another, e.g., tracts within counties, are supported. Note
-#' that all segregation calculations rely on `segregation` and users should refer
-#' to that package at https://github.com/elbersb/segregation for further implementation
-#' details.
-#'
+#' @title Calculate segregation at multiple geographies
+#' @description Calculate multi-group segregation metrics using the Mutual Information Index (M)
+#' @details Given data at a smaller geography (e.g., tract), `calculate_segregation_metrics()`
+#'    returns Mutual Information Index (M) values and associated p-values for a perfectly
+#'    nested larger geography (e.g., a county or state) as well as decomposed values for the
+#'    smaller geography (e.g., tract). Notethat all segregation calculations rely on `segregation`
+#'    and users should refer to that package at https://github.com/elbersb/segregation for
+#'    further implementation details.
 #' @param data A dataframe containing a `GEOID` column and the required input measures,
 #'    e.g., of race or income, at a single geography (e.g., tract), formatted wide.
 #'    the GEOID column must be a character column, and each GEOID must be unique.
@@ -20,9 +20,7 @@
 #'    for tracts (relative to other tracts within the same county).
 #' @seealso Functions used for underlying segregation calculations are from the `segregation` package.
 #' @returns A dataframe comprising segregation estimates and associated p-values at both
-#'    geographic levels. Segregation is measured using the Mutual Information Index
-#'    (M) at the larger geography and a decomposed version thereof at the smaller
-#'    geography level.
+#'    geographic levels.
 #' @examples
 #' variables = c(
 #'   race_nonhispanic_white_alone_ = "B03002_003",
@@ -30,13 +28,15 @@
 #'   race_nonhispanic_native_alone_ = "B03002_005",
 #'   race_nonhispanic_asian_alone_ = "B03002_006",
 #'   race_nonhispanic_nhpi_alone_ = "B03002_007")
+#'
 #' test_data = tidycensus::get_acs(
 #'   geography = "tract",
-#'   state = "CT",
+#'   state = "SC",
 #'   variables = variables,
 #'   output = "wide") %>%
-#'   ## can only include a dataframe with a GEOID column and segregation-related measures
-#'    dplyr::select(-NAME)
+#'   # can only include a GEOID column and segregation-related measures
+#'   dplyr::select(-c(NAME, matches("_M$")))
+#'
 #' calculate_segregation_metrics(data = test_data, nesting_geography_geoid_length = 5)
 #' @export
 #' @importFrom magrittr %>%
@@ -72,12 +72,12 @@ calculate_segregation_metrics = function(data, nesting_geography_geoid_length) {
     dplyr::mutate(nesting_geography_geoid = stringr::str_sub(GEOID, 1, nesting_geography_geoid_length))
 
   segregation_larger = segregation::mutual_within(
-    data = df_segregation,
-    group = "variable",
-    unit = "GEOID",
-    weight = "estimate",
-    within = "nesting_geography_geoid",
-    wide = T) %>%
+      data = df_segregation,
+      group = "variable",
+      unit = "GEOID",
+      weight = "estimate",
+      within = "nesting_geography_geoid",
+      wide = T) %>%
     dplyr::as_tibble() %>%
     dplyr::select(nesting_geography_geoid, segregation_large_geography = H, p_large_geography = p)
 
@@ -92,11 +92,11 @@ calculate_segregation_metrics = function(data, nesting_geography_geoid_length) {
   segregation_smaller = purrr::map_dfr(
     df_segregation$nesting_geography_geoid %>% unique,
     ~ possible_mutual_local(
-      data = df_segregation %>% dplyr::filter(nesting_geography_geoid == .x),
-      group = "variable",
-      unit = "GEOID",
-      weight = "estimate",
-      wide = T) %>%
+        data = df_segregation %>% dplyr::filter(nesting_geography_geoid == .x),
+        group = "variable",
+        unit = "GEOID",
+        weight = "estimate",
+        wide = T) %>%
       dplyr::as_tibble() %>%
       dplyr::select(GEOID, segregation_small_geography = ls, p_small_geography = p))
 
@@ -109,11 +109,17 @@ calculate_segregation_metrics = function(data, nesting_geography_geoid_length) {
     nrow
 
   if (number_error_geographies > 0) {
-    warning(paste0("Segregation results are missing for ", number_error_geographies, " geographies.
-      This is likely because there was only a single smaller geography within the larger
-      geography (e.g., a county comprising a single tract).")) }
+    input_data_missingness = data %>%
+      dplyr::filter(dplyr::if_any(.cols = -GEOID, ~is.na(.x))) %>%
+      nrow()
 
-  segregation_results = segregation_smaller %>%
+    warning(paste0("Segregation results are missing for ", number_error_geographies, " geographies.
+The input data contained missing values for, ", input_data_missingness, " observations.
+The remaining ", number_error_geographies - input_data_missingness, " observations may be missing because there was only
+a single smaller geography within the larger geography (e.g., a
+county comprising a single tract).")) }
+
+  segregation_results = small_segregation_results %>%
     dplyr::mutate(GEOID_larger = stringr::str_sub(GEOID, 1, nesting_geography_geoid_length)) %>%
     dplyr::left_join(segregation_larger, by = c("GEOID_larger" = "nesting_geography_geoid")) %>%
     dplyr::select(-GEOID_larger)

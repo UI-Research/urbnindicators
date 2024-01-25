@@ -2,13 +2,7 @@
 % Please edit documentation in R/calculate_segregation_metrics.R
 \name{calculate_segregation_metrics}
 \alias{calculate_segregation_metrics}
-\title{Calculates two levels of segregation: a multi-group segregation metric
-for each larger geographic unit supplied, as well as a decomposed version of the
-same metric for each smaller geographic unit. Only geographies that are perfectly
-nested within one another, e.g., tracts within counties, are supported. Note
-that all segregation calculations rely on `segregation` and users should refer
-to that package at https://github.com/elbersb/segregation for further implementation
-details.}
+\title{Calculate segregation at multiple geographies}
 \usage{
 calculate_segregation_metrics(data, nesting_geography_geoid_length)
 }
@@ -29,18 +23,18 @@ for tracts (relative to other tracts within the same county).}
 }
 \value{
 A dataframe comprising segregation estimates and associated p-values at both
-   geographic levels. Segregation is measured using the Mutual Information Index
-   (M) at the larger geography and a decomposed version thereof at the smaller
-   geography level.
+   geographic levels.
 }
 \description{
-Calculates two levels of segregation: a multi-group segregation metric
-for each larger geographic unit supplied, as well as a decomposed version of the
-same metric for each smaller geographic unit. Only geographies that are perfectly
-nested within one another, e.g., tracts within counties, are supported. Note
-that all segregation calculations rely on `segregation` and users should refer
-to that package at https://github.com/elbersb/segregation for further implementation
-details.
+Calculate multi-group segregation metrics using the Mutual Information Index (M)
+}
+\details{
+Given data at a smaller geography (e.g., tract), `calculate_segregation_metrics()`
+   returns Mutual Information Index (M) values and associated p-values for a perfectly
+   nested larger geography (e.g., a county or state) as well as decomposed values for the
+   smaller geography (e.g., tract). Notethat all segregation calculations rely on `segregation`
+   and users should refer to that package at https://github.com/elbersb/segregation for
+   further implementation details.
 }
 \examples{
 variables = c(
@@ -49,13 +43,15 @@ variables = c(
   race_nonhispanic_native_alone_ = "B03002_005",
   race_nonhispanic_asian_alone_ = "B03002_006",
   race_nonhispanic_nhpi_alone_ = "B03002_007")
+
 test_data = tidycensus::get_acs(
   geography = "tract",
-  state = "CT",
+  state = "SC",
   variables = variables,
   output = "wide") \%>\%
-  ## can only include a dataframe with a GEOID column and segregation-related measures
-   dplyr::select(-NAME)
+  # can only include a GEOID column and segregation-related measures
+  dplyr::select(-c(NAME, matches("_M$")))
+
 calculate_segregation_metrics(data = test_data, nesting_geography_geoid_length = 5)
 }
 \seealso{

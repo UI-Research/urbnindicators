@@ -2,8 +2,7 @@
 % Please edit documentation in R/compile_acs_data.R
 \name{compile_acs_data}
 \alias{compile_acs_data}
-\title{Calculate constructs frequently used in social sciences research while leveraging
-[tidycensus::get_acs()] to acquire raw estimates from the Census Bureau API.}
+\title{Analysis-ready social science measures}
 \usage{
 compile_acs_data(
   variables = NULL,
@@ -40,8 +39,9 @@ A dataframe containing the requested `variables`, their MOEs (optionally),
    Returned data are formatted wide.
 }
 \description{
-Calculate constructs frequently used in social sciences research while leveraging
-[tidycensus::get_acs()] to acquire raw estimates from the Census Bureau API.
+`compile_acs_data()` constructs frequently used in social sciences
+   research while leveraging [tidycensus::get_acs()] to acquire raw estimates from
+   the Census Bureau API.
 }
 \examples{
 acs_variables = list_acs_variables(year = "2022")

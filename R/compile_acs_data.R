@@ -1,5 +1,7 @@
-#' A modified division operation that returns zero when the denominator is zero
-#' rather than returning NA. Otherwise returns the dividend.
+#' @title Division without `NA`s
+#' @description `safe_divide()` returns 0 when the divisor is 0.
+#' @details A modified division operation that returns zero when the divisor is zero
+#'    rather than returning NA. Otherwise returns the quotient.
 #'
 #' @param x A numeric scalar.
 #' @param y A numeric scalar.
@@ -11,9 +13,10 @@
 #' @export
 safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 
-#' Calculate constructs frequently used in social sciences research while leveraging
-#' [tidycensus::get_acs()] to acquire raw estimates from the Census Bureau API.
-#'
+#' @title Analysis-ready social science measures
+#' @description `compile_acs_data()` constructs frequently used in social sciences
+#'    research while leveraging [tidycensus::get_acs()] to acquire raw estimates from
+#'    the Census Bureau API.
 #' @param variables A named vector of ACS variables such as that returned from
 #'    [urbnindicators::list_acs_variables()].
 #' @param years A character vector (or coercible to the same) comprising one or more
