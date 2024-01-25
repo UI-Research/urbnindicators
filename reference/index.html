@@ -49,19 +49,12 @@
           
           <code><a href="calculate_segregation_metrics.html">calculate_segregation_metrics()</a></code> 
         </dt>
-        <dd>Calculates two levels of segregation: a multi-group segregation metric
-for each larger geographic unit supplied, as well as a decomposed version of the
-same metric for each smaller geographic unit. Only geographies that are perfectly
-nested within one another, e.g., tracts within counties, are supported. Note
-that all segregation calculations rely on `segregation` and users should refer
-to that package at https://github.com/elbersb/segregation for further implementation
-details.</dd>
+        <dd>Calculate segregation at multiple geographies</dd>
       </dl><dl><dt>
           
           <code><a href="compile_acs_data.html">compile_acs_data()</a></code> 
         </dt>
-        <dd>Calculate constructs frequently used in social sciences research while leveraging
-[tidycensus::get_acs()] to acquire raw estimates from the Census Bureau API.</dd>
+        <dd>Analysis-ready social science measures</dd>
       </dl><dl><dt>
           
           <code><a href="filter_variables.html">filter_variables()</a></code> 
@@ -77,8 +70,7 @@ to `match_string`.</dd>
           
           <code><a href="safe_divide.html">safe_divide()</a></code> 
         </dt>
-        <dd>A modified division operation that returns zero when the denominator is zero
-rather than returning NA. Otherwise returns the dividend.</dd>
+        <dd>Division without `NA`s</dd>
       </dl><dl><dt>
           
           <code><a href="select_variables_by_name.html">select_variables_by_name()</a></code> 
