@@ -18,7 +18,10 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="active nav-item">
+      <ul class="navbar-nav me-auto"><li class="nav-item">
+  <a class="nav-link" href="../articles/urbnindicators.html">Get started</a>
+</li>
+<li class="active nav-item">
   <a class="nav-link" href="../reference/index.html">Reference</a>
 </li>
       </ul><form class="form-inline my-2 my-lg-0" role="search">
@@ -102,7 +105,7 @@ for tracts (relative to other tracts within the same county).</p></dd>
 <span class="r-in"><span>  output <span class="op">=</span> <span class="st">"wide"</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
 <span class="r-in"><span>  <span class="co"># can only include a GEOID column and segregation-related measures</span></span></span>
 <span class="r-in"><span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">NAME</span>, <span class="fu">matches</span><span class="op">(</span><span class="st">"_M$"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Getting data from the 2017-2021 5-year ACS</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> Getting data from the 2018-2022 5-year ACS</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span><span style="color: #00BBBB;">•</span> You have not set a Census API key. Users without a key are limited to 500</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> queries per day and may experience performance limitations.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> For best results, get a Census API key at</span>
@@ -112,24 +115,24 @@ for tracts (relative to other tracts within the same county).</p></dd>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">calculate_segregation_metrics</span><span class="op">(</span>data <span class="op">=</span> <span class="va">test_data</span>, nesting_geography_geoid_length <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Joining with `by = join_by(GEOID)`</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Segregation results are missing for 11 geographies.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Segregation results are missing for 10 geographies.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> The input data contained missing values for, 0 observations.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> The remaining 11 observations may be missing because there was only</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> The remaining 10 observations may be missing because there was only</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> a single smaller geography within the larger geography (e.g., a</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> county comprising a single tract).</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1,323 × 5</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    GEOID       segregation_small_geog…¹ p_small_geography segregation_large_ge…²</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> 45001950100                  0.061<span style="text-decoration: underline;">6</span>             0.120                   0.136</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> 45001950200                  0.009<span style="text-decoration: underline;">85</span>            0.175                   0.136</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> 45001950300                  0.257              0.142                   0.136</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> 45001950401                  0.015<span style="text-decoration: underline;">1</span>             0.151                   0.136</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> 45001950402                  0.051<span style="text-decoration: underline;">0</span>             0.092<span style="text-decoration: underline;">9</span>                  0.136</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> 45001950500                  0.071<span style="text-decoration: underline;">2</span>             0.198                   0.136</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> 45001950600                  0.151              0.120                   0.136</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> 45003020100                  0.041<span style="text-decoration: underline;">2</span>             0.029<span style="text-decoration: underline;">4</span>                  0.119</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> 45003020200                  0.017<span style="text-decoration: underline;">2</span>             0.038<span style="text-decoration: underline;">0</span>                  0.119</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> 45003020301                  0.147              0.012<span style="text-decoration: underline;">4</span>                  0.119</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> 45001950100                   0.076<span style="text-decoration: underline;">1</span>            0.124                   0.149</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> 45001950200                   0.010<span style="text-decoration: underline;">3</span>            0.174                   0.149</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> 45001950300                   0.232             0.155                   0.149</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> 45001950401                   0.013<span style="text-decoration: underline;">9</span>            0.150                   0.149</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> 45001950402                   0.046<span style="text-decoration: underline;">4</span>            0.094<span style="text-decoration: underline;">4</span>                  0.149</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> 45001950500                   0.105             0.188                   0.149</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> 45001950600                   0.158             0.113                   0.149</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> 45003020100                   0.053<span style="text-decoration: underline;">3</span>            0.029<span style="text-decoration: underline;">5</span>                  0.111</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> 45003020200                   0.015<span style="text-decoration: underline;">0</span>            0.036<span style="text-decoration: underline;">4</span>                  0.111</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> 45003020301                   0.123             0.012<span style="text-decoration: underline;">1</span>                  0.111</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1,313 more rows</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ abbreviated names: ¹​segregation_small_geography,</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   ²​segregation_large_geography</span></span>
