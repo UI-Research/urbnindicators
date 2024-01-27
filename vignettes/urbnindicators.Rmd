@@ -1,0 +1,253 @@
+---
+title: "urbnindicators"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{urbnindicators}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(urbnindicators)
+library(tidycensus)
+library(dplyr)
+library(stringr)
+```
+
+Welcome to `urbnindicators`. The goal of this package is to streamline
+the process of obtaining an analysis-ready dataset, with a focus on use
+cases in the social sciences world.
+
+This vignette is organized into three parts:
+
+1.  We first illustrate a common workflow for obtaining American
+    Community Survey (ACS) data from the Census Bureau (arguably the
+    premier source of social sciences information about people and
+    places in the U.S).
+
+2.  Second, we walk through how `urbnindicators` can produce similar
+    outputs (but much more quickly) as compared to the workflow in (1).
+
+3.  Lastly, we touch on why and how `urbnindicators` provides a more
+    robust and accurate set of data products than might be obtained
+    through the workflow in (1).
+
+## The Existing `tidycensus` Workflow
+
+[`tidycensus`](https://walker-data.com/tidycensus/index.html) provides a
+suite of functions for working with select datasets available via the
+Census Bureau's API (application programming interface) and is the
+backbone for all of the data produced by `urbnindicators`. While the
+`tidycensus` API is versatile and allows users to access many more
+datasets (and variables within those datasets) than does
+`urbnindicators`, it can require a significant amount of knowledge and
+effort to use `tidycensus` to support a robust analysis process, and
+many users may fall into common pitfalls without realizing they've made
+an error(s).
+
+First, we need to identify the names of the variables we're interested
+in. We want to look at the share of the population with a disability, at
+the county level, in New Jersey. So we load the variable index for the
+corresponding data year and look for variables with "Disability" in the
+`concept` field:
+
+```{r}
+acs_codebook = load_variables(dataset = "acs5", year = 2022)
+# acs_codebook %>% View() # not run
+acs_codebook %>% nrow
+acs_codebook %>%
+  filter(stringr::str_detect(concept, "Disability")) %>%
+  nrow 
+```
+
+If you're working in RStudio, you can filter the codebook via the
+point-and-click interface, and if not, you can do so programatically,
+subsetting the \~28,000 available variables down to the \~500 that match
+the term "Disability". However, 500 variables is a few orders of
+magnitude greater than than the number of variables we actually want
+(2): the number of people with a disability and the number of all
+people.
+
+So which variable(s) do we select? There's not a clear answer. All
+variables relating to disability reflect disability and at least one
+other characteristic (e.g., "sex by age by disability status"). If we
+want to calculate the percent of all individuals with a disability, we
+want to do so using the most robust available variables (i.e., those
+that reflect all individuals who reported their disability status),
+whereas some variables that reflect disability may have smaller counts
+because the other characteristics combined with disability status (e.g.,
+health insurance coverage status, as is the case for "Age by Disability
+Status by Health Insurance Coverage Status") may be available only for a
+subset of the individuals for whom disability status is available.
+
+Putting these challenges aside, let's imagine we select the table of
+variables prefixed "B18101", for "Sex by Age by Disability". We think
+that most respondents who are asked about their disability status will
+also have been asked about their sex and age. We then pass this to
+`tidycensus` as:
+
+```{r}
+df_disability = get_acs(
+  geography = "county",
+  state = "NJ", 
+  year = 2022,
+  output = "wide",
+  survey = "acs5",
+  table = "B18101")
+
+df_disability %>% dim()
+
+df_disability %>% head()
+```
+
+This returns us 21 observations (one for each county in NJ) along with
+an intimidating 80 columns. Now we would need to figure out how to
+aggregate the needed variables for both the denominator and numerator in
+order to calculate a valid "% Disabled" measure, a task that is feasible
+but time-intensive and error-prone (in no small part because each
+variable is named with an alphanumeric code rather than a meaningful and
+descriptive name). For an analysis that leverages more than a single
+measure, and especially when measures are required from distinct tables,
+this workflow is burdensome and exposes significant surface area for
+undetected errors.
+
+At the same time, many analysts will be overwhelmed by and unsure how to
+incorporate the margins of error that are returned by `tidycensus`,
+opting simply to drop this critical information from their analysis.
+(See `vignette("coefficients-of-variation")` for more on how
+`urbnindicators` provides analysts with quick and actionable
+characterizations of margins of error.)
+
+## Enter `urbnindicators`
+
+`urbnindicators` abstracts the workflow above behind the scenes. In lieu
+of a call to `tidycensus::get_acs()`, a call to
+`urbnindicators::compile_acs_data()` returns a comprehensive dataframe
+of both raw ACS measures and derived estimates (such as the share of all
+individuals who are disabled).
+
+```{r}
+df_urbnindicators = urbnindicators::compile_acs_data(
+  variables = NULL,
+  years = 2022,
+  geography = "county",
+  states = "NJ",
+  retain_moes = T)
+
+df_urbnindicators %>% dim()
+```
+
+While this call returns us the same 21 observations (one per county in
+NJ), it returns us some 1,300 columns. Woah. Even when we subset to
+those matching "disability", we still have 79 columns (the same columns
+available from our `tidycensus::get_acs()` call, plus one).
+
+```{r}
+df_urbnindicators %>%
+  select(matches("disability")) %>% 
+  colnames %>% 
+  length() ## 79
+```
+
+This is because `urbnindicators` makes the same `tidycensus::get_acs()`
+query as illustrated above. Indeed, if the 80 columns returned via our
+workflow above were intimidating, 1,300 columns is likely... more
+intimidating. This reflects a design choice underlying
+`urbnindicators`--the package returns very large datasets, but it
+structures them such that analysts can use simple and familiar
+approaches to navigating the data, while benefiting from having a
+diverse array of measures in a single dataset.
+
+The primary differences between `urbnindicators` and `tidycensus`
+outputs are that returned columns have descriptive names (e.g.,
+`sex_by_age_by_disability_status_female_75_years_over_with_a_disability`),
+and--importantly--that derived variables are included:
+
+```{r}
+df_urbnindicators %>%
+  select(GEOID, matches("disability.*percent"))
+```
+
+Indeed, the string-matching approach used above, with the pattern
+`select(matches("variable_of_interest.*percent$"))`, is key to
+navigating the 1,300 variables returned by
+`urbnindicators::compile_acs_data()`. Because variables are named
+semantically (i.e., their names have meaning and are not simply the
+default alphanumeric variable codes), and because derived percent
+variables always end in `percent`, this flexible pattern can identify
+standardized measures that are ready for analysis. (As a reminder:
+`".*"` matches an unlimited number of characters, while `"$"` matches
+the end of a string. `select(matches("variable_of_interest.*percent$"))`
+says: match columns with names containing "variable_of_interest",
+followed by any number of characters, and that end in "percent").
+
+For a look at all derived percent variables:
+
+```{r}
+df_urbnindicators %>%
+  select(matches("percent$")) %>%
+  colnames() %>% # 230+
+  sort() %>%
+  head(10) # but we'll just take a look at a few for now
+```
+
+`urbnindicators::compile_acs_data()` also returns a codebook as an
+attribute of the returned dataframe. Want to know more about how
+`cost_burdened_30percentormore_incomeslessthan35000_percent` was
+calculated, or what the universe for that measure is? No problem:
+
+```{r}
+## NOTE: this functionality is not (yet) incorporated into the package!
+# df_urbnindicators %>%
+#   attr("codebook")
+```
+
+## So Why `urbnindicators`?
+
+Good question. Hopefully the process above has illustrated some of the
+advantages, but to recap, we see two sets of advantages.
+
+1.  **`urbnindicators` saves time** by:
+
+    1.  Making sensible decisions about variable and table selection;
+        and
+
+    2.  Calculating common measures (typically percentages) behind the
+        scenes.
+
+    3.  While not illustrated here, `urbnindicators` also allows for
+        multi-year and multi-geography queries by default, whereas
+        `tidycensus` does not support these approaches (there is support
+        for multi-geography queries at some geographic levels in
+        `tidycensus`; `urbnindicators` extends this to all geographies),
+        and instead users have to loop over desired years and
+        geographies.
+
+2.  **`urbnindicators` improves the reliability of the data query and
+    measure creation process** by:
+
+    1.  Replacing alphanumeric variable codes (e.g., `B18101_001` with
+        meaningful variable names (e.g., `disability_percent`);
+
+    2.  Returning a codebook attached to the primary dataframe that
+        documents how variables were created and what they represent;
+
+    3.  Running default data quality checks on generated measures (plus
+        lots of baked-in quality checks as the underlying package code
+        has been developed and tested); and
+
+    4.  Producing out-of-the-box summaries of measure reliability via
+        `urbnindicators::calculate_coefficient_of_variation()`, which
+        leverages the margins of error associated with each measure to
+        assess the quality of estimates across all queried geographies.
+        (See `vignette("coefficients-of-variation")` for more.)
