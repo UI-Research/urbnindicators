@@ -48,6 +48,9 @@ This package is under active development with frequent updates--install an up-to
 
 ```{r example}
 library(urbnindicators)
+library(ggplot2)
+library(urbnthemes)
+urbnthemes::set_urbn_defaults(style = "print")
 
 acs_df = compile_acs_data(
   variables = NULL,

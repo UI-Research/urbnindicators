@@ -17,11 +17,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
+```{r setup, message = F}
 library(urbnindicators)
 library(tidycensus)
 library(dplyr)
 library(stringr)
+library(ggplot2)
+library(urbnthemes)
+set_urbn_defaults(style = "print")
 ```
 
 Welcome to `urbnindicators`. The goal of this package is to streamline
@@ -64,10 +67,10 @@ corresponding data year and look for variables with "Disability" in the
 ```{r}
 acs_codebook = load_variables(dataset = "acs5", year = 2022)
 # acs_codebook %>% View() # not run
-acs_codebook %>% nrow
+acs_codebook %>% nrow()
 acs_codebook %>%
-  filter(stringr::str_detect(concept, "Disability")) %>%
-  nrow 
+  dplyr::filter(stringr::str_detect(concept, "Disability")) %>%
+  nrow() 
 ```
 
 If you're working in RStudio, you can filter the codebook via the
@@ -154,8 +157,8 @@ available from our `tidycensus::get_acs()` call, plus one).
 
 ```{r}
 df_urbnindicators %>%
-  select(matches("disability")) %>% 
-  colnames %>% 
+  dplyr::select(dplyr::matches("disability")) %>% 
+  colnames() %>% 
   length() ## 79
 ```
 
@@ -175,7 +178,7 @@ and--importantly--that derived variables are included:
 
 ```{r}
 df_urbnindicators %>%
-  select(GEOID, matches("disability.*percent"))
+  dplyr::select(GEOID, matches("disability.*percent"))
 ```
 
 Indeed, the string-matching approach used above, with the pattern
@@ -195,7 +198,7 @@ For a look at all derived percent variables:
 
 ```{r}
 df_urbnindicators %>%
-  select(matches("percent$")) %>%
+  dplyr::select(dplyr::matches("percent$")) %>%
   colnames() %>% # 230+
   sort() %>%
   head(10) # but we'll just take a look at a few for now

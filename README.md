@@ -43,6 +43,18 @@ an up-to-date version frequently!
 
 ``` r
 library(urbnindicators)
+library(ggplot2)
+library(urbnthemes)
+#> Setting Mac/Linux options...
+#> 
+#> Attaching package: 'urbnthemes'
+#> The following objects are masked from 'package:ggplot2':
+#> 
+#>     geom_bar, geom_col, scale_color_discrete, scale_color_gradientn,
+#>     scale_color_ordinal, scale_colour_discrete, scale_colour_gradientn,
+#>     scale_colour_ordinal, scale_fill_discrete, scale_fill_gradientn,
+#>     scale_fill_ordinal
+urbnthemes::set_urbn_defaults(style = "print")
 
 acs_df = compile_acs_data(
   variables = NULL,
@@ -56,6 +68,12 @@ acs_df = compile_acs_data(
 #> Users should ensure that the logic embedded in this function--which was developed around five-year ACS estimates for 2017-2021--remains accurate for their use cases.
 #> Evaluation of measures and geographies over time should be thoroughly quality checked.
 #> Getting data from the 2017-2021 5-year ACS
+#> Warning: • You have not set a Census API key. Users without a key are limited to 500
+#> queries per day and may experience performance limitations.
+#> ℹ For best results, get a Census API key at
+#> http://api.census.gov/data/key_signup.html and then supply the key to the
+#> `census_api_key()` function to use it throughout your tidycensus session.
+#> This warning is displayed once per session.
 #> Getting data from the 2018-2022 5-year ACS
 
 acs_df %>% 

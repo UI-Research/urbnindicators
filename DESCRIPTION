@@ -25,6 +25,7 @@ Imports:
     tigris
 Suggests:
     ggplot2,
+    urbnthemes,
     knitr,
     rmarkdown
 RoxygenNote: 7.3.1
