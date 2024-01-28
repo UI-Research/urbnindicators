@@ -25,9 +25,10 @@ Imports:
     tigris
 Suggests:
     ggplot2,
-    urbnthemes,
     knitr,
     rmarkdown
+Remotes: 
+    UrbanInstitute/urbnthemes
 RoxygenNote: 7.3.1
 URL: https://ui-research.github.io/urbnindicators/
 VignetteBuilder: knitr

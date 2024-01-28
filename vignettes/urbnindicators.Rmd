@@ -24,7 +24,7 @@ library(dplyr)
 library(stringr)
 library(ggplot2)
 library(urbnthemes)
-set_urbn_defaults(style = "print")
+urbnthemes::set_urbn_defaults(style = "print")
 ```
 
 Welcome to `urbnindicators`. The goal of this package is to streamline
