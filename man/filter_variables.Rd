@@ -2,18 +2,17 @@
 % Please edit documentation in R/list_acs_variables.R
 \name{filter_variables}
 \alias{filter_variables}
-\title{Filter the the results of [select_variables()] based on their `match_type` relative
-to `match_string`.}
+\title{A utility for filtering select ACS variables}
 \usage{
 filter_variables(variable_vector, match_string, match_type = "positive")
 }
 \arguments{
 \item{variable_vector}{A named vector (intended for use with named ACS variables).}
 
-\item{match_string}{a string on which to filter (or not filter) elements in `variable_vector`.}
+\item{match_string}{A string on which to filter (or not filter) elements in `variable_vector`.}
 
-\item{match_type}{whether to include (`match_type = "positive"`) or exclude
-(`match_type = "negative"`) matching elements}
+\item{match_type}{Whether to include (`match_type = "positive"`) or exclude
+(`match_type = "negative"`) matching elements.}
 }
 \value{
 The elements from `variable_vector` that do/don't match `match_string`.

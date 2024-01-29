@@ -14,7 +14,7 @@
 safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 
 #' @title Analysis-ready social science measures
-#' @description `compile_acs_data()` constructs frequently used in social sciences
+#' @description `compile_acs_data()` constructs measures frequently used in social sciences
 #'    research while leveraging [tidycensus::get_acs()] to acquire raw estimates from
 #'    the Census Bureau API.
 #' @param variables A named vector of ACS variables such as that returned from
@@ -33,10 +33,11 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' @seealso [tidycensus::get_acs()], which this function wraps.
 #' @returns A dataframe containing the requested `variables`, their MOEs (optionally),
 #'    a series of derived variables, such as percentages, and the year of the data.
-#'    Returned data are formatted wide.
+#'    Returned data are formatted wide. A codebook generated with `generate_codebook()`
+#'    is attached and can be accessed via `compile_acs_data() %>% attr("codebook")`.
 #' @examples
 #' acs_variables = list_acs_variables(year = "2022")
-#' compile_acs_data(
+#' df = compile_acs_data(
 #'   variables = acs_variables,
 #'   years = c(2021, 2022),
 #'   geography = "county",
@@ -51,7 +52,7 @@ compile_acs_data = function(
     geography = "county",
     states = NULL,
     counties = NULL,
-    retain_moes = FALSE) {
+    retain_moes = TRUE) {
 
 warning(
 "Variable names and geographies for ACS data products can change between years.
@@ -69,7 +70,7 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
 
   ## some geographies are not available by state and can only be returned nationally
   if (geography %in% super_state_geographies) {
-    df = purrr::map_dfr(
+    df_raw_estimates = purrr::map_dfr(
       ## when year is a vector with length > 1 (i.e., there are multiple years)
       ## loop over each iterm in the vector (and this approach also works for a single year)
       years,
@@ -84,7 +85,7 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
     ## for those geographies that can (or must) be returned by state:
     ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for data from each state
     ## and then combine the resulting dataframes together into a single dataframe
-    df = purrr::map_dfr(
+    df_raw_estimates = purrr::map_dfr(
       states,
       function (state) {
         purrr::map_dfr(
@@ -101,9 +102,9 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
               output = "wide") %>%
             dplyr::mutate(data_source_year = .x))})}
 
-  if (retain_moes == TRUE) { moes = df %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$")) }
+  if (retain_moes == TRUE) { moes = df_raw_estimates %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$")) }
 
-  df %>%
+  df_calculated_estimates = df_raw_estimates %>%
     ## drop margin of error variables for calculations since these only relate to raw
     ## variables. these are joined back to the dataframe at the end of this process
     ## if retain_moes == T
@@ -336,6 +337,13 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
 
     ## add back MOEs if retain_moes == T
     { if (retain_moes == TRUE) dplyr::left_join(., moes, by = c("GEOID", "data_source_year")) else . }
+
+  ## attach the codebook as an attribute named "codebook" to the returned dataset
+  attr(df_calculated_estimates, "codebook") = generate_codebook(
+    variables = colnames(df_calculated_estimates),
+    years = years)
+
+  return(df_calculated_estimates)
 }
 
 utils::globalVariables(c(

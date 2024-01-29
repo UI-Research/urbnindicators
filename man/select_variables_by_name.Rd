@@ -2,8 +2,7 @@
 % Please edit documentation in R/list_acs_variables.R
 \name{select_variables_by_name}
 \alias{select_variables_by_name}
-\title{Given the name of an ACS variable (or a string that matches one or more such variables),
-generate a named character vector of original variable names and more meaningful names.}
+\title{A utility for selecting ACS variables}
 \usage{
 select_variables_by_name(variable_name, census_codebook)
 }

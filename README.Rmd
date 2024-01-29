@@ -49,8 +49,6 @@ This package is under active development with frequent updates--install an up-to
 ```{r example}
 library(urbnindicators)
 library(ggplot2)
-library(urbnthemes)
-urbnthemes::set_urbn_defaults(style = "print")
 
 acs_df = compile_acs_data(
   variables = NULL,
@@ -73,12 +71,20 @@ acs_df %>%
       color = factor(data_source_year))) +
   ggplot2::geom_point() +
   ggplot2::labs(
-    title = "Change in NJ Counties' Populations of Color",
+    title = "Change in NJ Counties' Populations of Color, 2021 to 2022",
     x = "County", 
     y = "Share of population who are people of color",
     color = "Year") +
   ggplot2::scale_y_continuous(
     breaks = c(0, .25, .50, .75, 1.0),
     labels = scales::percent) +
-  ggplot2::coord_flip()
+  ggplot2::coord_flip() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    axis.title = ggplot2::element_text(size = 9, face = "italic"),
+    plot.title = ggplot2::element_text(size = 11, face = "bold"),
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    legend.title = ggplot2::element_text(size = 9, face = "bold"),
+    legend.text = ggplot2::element_text(size = 8))
 ```

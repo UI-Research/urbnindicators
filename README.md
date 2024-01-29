@@ -44,17 +44,6 @@ an up-to-date version frequently!
 ``` r
 library(urbnindicators)
 library(ggplot2)
-library(urbnthemes)
-#> Setting Mac/Linux options...
-#> 
-#> Attaching package: 'urbnthemes'
-#> The following objects are masked from 'package:ggplot2':
-#> 
-#>     geom_bar, geom_col, scale_color_discrete, scale_color_gradientn,
-#>     scale_color_ordinal, scale_colour_discrete, scale_colour_gradientn,
-#>     scale_colour_ordinal, scale_fill_discrete, scale_fill_gradientn,
-#>     scale_fill_ordinal
-urbnthemes::set_urbn_defaults(style = "print")
 
 acs_df = compile_acs_data(
   variables = NULL,
@@ -89,14 +78,22 @@ acs_df %>%
       color = factor(data_source_year))) +
   ggplot2::geom_point() +
   ggplot2::labs(
-    title = "Change in NJ Counties' Populations of Color",
+    title = "Change in NJ Counties' Populations of Color, 2021 to 2022",
     x = "County", 
     y = "Share of population who are people of color",
     color = "Year") +
   ggplot2::scale_y_continuous(
     breaks = c(0, .25, .50, .75, 1.0),
     labels = scales::percent) +
-  ggplot2::coord_flip()
+  ggplot2::coord_flip() +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    axis.title = ggplot2::element_text(size = 9, face = "italic"),
+    plot.title = ggplot2::element_text(size = 11, face = "bold"),
+    panel.grid.minor = ggplot2::element_blank(),
+    panel.grid.major.x = ggplot2::element_blank(),
+    legend.title = ggplot2::element_text(size = 9, face = "bold"),
+    legend.text = ggplot2::element_text(size = 8))
 ```
 
 <img src="man/figures/README-example-1.png" width="100%" />

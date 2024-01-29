@@ -10,7 +10,7 @@ compile_acs_data(
   geography = "county",
   states = NULL,
   counties = NULL,
-  retain_moes = FALSE
+  retain_moes = TRUE
 )
 }
 \arguments{
@@ -36,22 +36,25 @@ or omit them?}
 \value{
 A dataframe containing the requested `variables`, their MOEs (optionally),
    a series of derived variables, such as percentages, and the year of the data.
-   Returned data are formatted wide.
+   Returned data are formatted wide. A codebook generated with `generate_codebook()`
+   is attached and can be accessed via `compile_acs_data() %>% attr("codebook")`.
 }
 \description{
-`compile_acs_data()` constructs frequently used in social sciences
+`compile_acs_data()` constructs measures frequently used in social sciences
    research while leveraging [tidycensus::get_acs()] to acquire raw estimates from
    the Census Bureau API.
 }
 \examples{
 acs_variables = list_acs_variables(year = "2022")
-compile_acs_data(
+df = compile_acs_data(
   variables = acs_variables,
   years = c(2021, 2022),
   geography = "county",
   states = "NJ",
   counties = NULL,
   retain_moes = TRUE)
+codebook = df \%>\%
+  attr("codebook")
 }
 \seealso{
 [tidycensus::get_acs()], which this function wraps.

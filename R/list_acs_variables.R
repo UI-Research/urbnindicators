@@ -1,6 +1,6 @@
-#' Given the name of an ACS variable (or a string that matches one or more such variables),
+#' @title A utility for selecting ACS variables
+#' @description Given the name of an ACS variable (or a string that matches one or more such variables),
 #' generate a named character vector of original variable names and more meaningful names.
-#'
 #' @param variable_name A named vector (intended for use with named ACS variables).
 #' @param census_codebook An object returned from [tidycensus::load_variables()].
 #' @returns A named character vector containing the variables that matched
@@ -59,13 +59,13 @@ select_variables_by_name = function(variable_name, census_codebook) {
   return(selected_variables)
 }
 
-#' Filter the the results of [select_variables()] based on their `match_type` relative
+#' @title A utility for filtering select ACS variables
+#' @description Filter the the results of [select_variables()] based on their `match_type` relative
 #' to `match_string`.
-#'
 #' @param variable_vector A named vector (intended for use with named ACS variables).
-#' @param match_string a string on which to filter (or not filter) elements in `variable_vector`.
-#' @param match_type whether to include (`match_type = "positive"`) or exclude
-#'    (`match_type = "negative"`) matching elements
+#' @param match_string A string on which to filter (or not filter) elements in `variable_vector`.
+#' @param match_type Whether to include (`match_type = "positive"`) or exclude
+#'    (`match_type = "negative"`) matching elements.
 #' @returns The elements from `variable_vector` that do/don't match `match_string`.
 #' @examples
 #' codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
@@ -82,8 +82,10 @@ filter_variables = function(variable_vector, match_string, match_type = "positiv
     variable_vector[!stringr::str_detect(names(variable_vector), match_string)] }
 }
 
-#' Return a named character vector of ACS variables.
-#'
+#' @title Return a named character vector of useful ACS variables
+#' @description Generate meaningful names for ACS variable codes based on their metadata
+#'    and return these as a vector, along with their semantic names. Intended for
+#'    use with `compile_acs_data()`.
 #' @param year The year for which variable names should be selected.
 #' @returns A named vector of variable codes (as specified in the Census Bureau's API)
 #'    with semantically-meaningful names (e.g., "race_black_alone_nonhispanic").
