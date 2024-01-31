@@ -10,7 +10,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.0.001</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9001</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -45,25 +45,36 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calculate_segregation_metrics</span><span class="op">(</span><span class="va">data</span>, <span class="va">nesting_geography_geoid_length</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calculate_segregation_metrics</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  <span class="va">data_format</span>,</span>
+<span>  <span class="va">nesting_geography_geoid_length</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>data</dt>
 <dd><p>A dataframe containing a `GEOID` column and the required input measures,
-e.g., of race or income, at a single geography (e.g., tract), formatted wide.
-the GEOID column must be a character column, and each GEOID must be unique.
-inputted data cannot contain other measures. for example: tibble::tribble(
+e.g., of race or income, at a single geography (e.g., tract). The `GEOID` column must
+be a character column, and each `GEOID` must be unique. If data are formatted wide, there must be
+at least two columns in addition to `GEOID`. If data are formatted long, there must be a single
+columd in addition to `GEOID`. inputted data cannot contain other measures.For example:
+tibble::tribble(
     ~GEOID, ~race_nonhispanic_white_alone, ~race_nonhispanic_black_alone,
     "37001020100", 2835, 1035,
     "37001020200", 1205, 1321)</p></dd>
 
 
+<dt>data_format</dt>
+<dd><p>Describe the structure of the inputted data. One of "wide" or "long". Data are
+returned in the same format in which they are passed to the function.</p></dd>
+
+
 <dt>nesting_geography_geoid_length</dt>
-<dd><p>The length of the GEOID that identifies nesting
+<dd><p>The length of the `GEOID` that identifies nesting
 geographies. For example, if smaller_geography_data is defined at the tract
-level (with a GEOID of length 11), then nesting_geography_geoid_length = 5 would
+level (with a GEOID of length 11), then `nesting_geography_geoid_length = 5` would
 return segregation metrics for counties (which have a GEOID of length 5) and
 for tracts (relative to other tracts within the same county).</p></dd>
 
@@ -80,7 +91,7 @@ for tracts (relative to other tracts within the same county).</p></dd>
     <p>Given data at a smaller geography (e.g., tract), `calculate_segregation_metrics()`
    returns Mutual Information Index (M) values and associated p-values for a perfectly
    nested larger geography (e.g., a county or state) as well as decomposed values for the
-   smaller geography (e.g., tract). Notethat all segregation calculations rely on `segregation`
+   smaller geography (e.g., tract). Note that all segregation calculations rely on `segregation`
    and users should refer to that package at https://github.com/elbersb/segregation for
    further implementation details.</p>
     </div>
@@ -97,12 +108,11 @@ for tracts (relative to other tracts within the same county).</p></dd>
 <span class="r-in"><span>  race_nonhispanic_native_alone_ <span class="op">=</span> <span class="st">"B03002_005"</span>,</span></span>
 <span class="r-in"><span>  race_nonhispanic_asian_alone_ <span class="op">=</span> <span class="st">"B03002_006"</span>,</span></span>
 <span class="r-in"><span>  race_nonhispanic_nhpi_alone_ <span class="op">=</span> <span class="st">"B03002_007"</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">test_data</span> <span class="op">=</span> <span class="fu">tidycensus</span><span class="fu">::</span><span class="fu"><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">df_long</span> <span class="op">=</span> <span class="fu">tidycensus</span><span class="fu">::</span><span class="fu"><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  geography <span class="op">=</span> <span class="st">"tract"</span>,</span></span>
 <span class="r-in"><span>  state <span class="op">=</span> <span class="st">"SC"</span>,</span></span>
 <span class="r-in"><span>  variables <span class="op">=</span> <span class="va">variables</span>,</span></span>
-<span class="r-in"><span>  output <span class="op">=</span> <span class="st">"wide"</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
+<span class="r-in"><span>  output <span class="op">=</span> <span class="st">"tidy"</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
 <span class="r-in"><span>  <span class="co"># can only include a GEOID column and segregation-related measures</span></span></span>
 <span class="r-in"><span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">NAME</span>, <span class="fu">matches</span><span class="op">(</span><span class="st">"_M$"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Getting data from the 2018-2022 5-year ACS</span>
@@ -112,31 +122,30 @@ for tracts (relative to other tracts within the same county).</p></dd>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> http://api.census.gov/data/key_signup.html and then supply the key to the</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> `census_api_key()` function to use it throughout your tidycensus session.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #555555;">This warning is displayed once per session.</span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="fu">calculate_segregation_metrics</span><span class="op">(</span>data <span class="op">=</span> <span class="va">test_data</span>, nesting_geography_geoid_length <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">calculate_segregation_metrics</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  data <span class="op">=</span> <span class="va">df_long</span>,</span></span>
+<span class="r-in"><span>  data_format <span class="op">=</span> <span class="st">"long"</span>,</span></span>
+<span class="r-in"><span>  nesting_geography_geoid_length <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Joining with `by = join_by(GEOID)`</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Segregation results are missing for 10 geographies.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> The input data contained missing values for, 0 observations.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> The remaining 10 observations may be missing because there was only</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> a single smaller geography within the larger geography (e.g., a</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> county comprising a single tract).</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1,323 × 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    GEOID       segregation_small_geog…¹ p_small_geography segregation_large_ge…²</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> 45001950100                   0.076<span style="text-decoration: underline;">1</span>            0.124                   0.149</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> 45001950200                   0.010<span style="text-decoration: underline;">3</span>            0.174                   0.149</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> 45001950300                   0.232             0.155                   0.149</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> 45001950401                   0.013<span style="text-decoration: underline;">9</span>            0.150                   0.149</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> 45001950402                   0.046<span style="text-decoration: underline;">4</span>            0.094<span style="text-decoration: underline;">4</span>                  0.149</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> 45001950500                   0.105             0.188                   0.149</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> 45001950600                   0.158             0.113                   0.149</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> 45003020100                   0.053<span style="text-decoration: underline;">3</span>            0.029<span style="text-decoration: underline;">5</span>                  0.111</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> 45003020200                   0.015<span style="text-decoration: underline;">0</span>            0.036<span style="text-decoration: underline;">4</span>                  0.111</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> 45003020301                   0.123             0.012<span style="text-decoration: underline;">1</span>                  0.111</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1,313 more rows</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ abbreviated names: ¹​segregation_small_geography,</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;">#   ²​segregation_large_geography</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1 more variable: p_large_geography &lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1,369 × 3</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    GEOID segregation segregation_p</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> 45001      0.149        0.004<span style="text-decoration: underline;">97</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> 45003      0.111        0.033<span style="text-decoration: underline;">1</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> 45005      0.041<span style="text-decoration: underline;">3</span>       0.001<span style="text-decoration: underline;">64</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> 45007      0.215        0.040<span style="text-decoration: underline;">6</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> 45009      0.141        0.002<span style="text-decoration: underline;">77</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> 45011      0.098<span style="text-decoration: underline;">1</span>       0.004<span style="text-decoration: underline;">18</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> 45013      0.248        0.034<span style="text-decoration: underline;">7</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> 45015      0.138        0.043<span style="text-decoration: underline;">7</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> 45017      0.028<span style="text-decoration: underline;">8</span>       0.002<span style="text-decoration: underline;">86</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> 45019      0.256        0.080<span style="text-decoration: underline;">7</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1,359 more rows</span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
