@@ -53,8 +53,6 @@ df = compile_acs_data(
   states = "NJ",
   counties = NULL,
   retain_moes = TRUE)
-codebook = df \%>\%
-  attr("codebook")
 }
 \seealso{
 [tidycensus::get_acs()], which this function wraps.

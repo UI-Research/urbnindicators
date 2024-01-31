@@ -32,9 +32,15 @@ as part of `compile_acs_data()` and the resulting codebook is attached as an att
 to the output; it can be accessed via `compile_acs_data() %>% attr("codebook")`.
 }
 \examples{
-acs_variables = list_acs_variables(year = "2022")
-generate_codebook(
-  variables = acs_variables,
+df = compile_acs_data(
+  variables = list_acs_variables(year = 2022),
+  years = c(2022),
+  geography = "county",
+  states = "NJ",
+  counties = NULL,
+  retain_moes = TRUE)
+codebook = generate_codebook(
+  variables = colnames(df \%>\% dplyr::select(-matches("percent"))),
   years = c(2022))
 }
 \seealso{
