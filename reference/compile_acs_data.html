@@ -14,7 +14,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9001</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9002</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,6 +27,12 @@
 </li>
 <li class="active nav-item">
   <a class="nav-link" href="../reference/index.html">Reference</a>
+</li>
+<li class="nav-item dropdown">
+  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
+  <div class="dropdown-menu" aria-labelledby="dropdown-articles">
+    <a class="dropdown-item" href="../articles/coefficients-of-variation.html">coefficients-of-variation</a>
+  </div>
 </li>
       </ul><form class="form-inline my-2 my-lg-0" role="search">
         <input type="search" class="form-control me-sm-2" aria-label="Toggle navigation" name="search-input" data-search-index="../search.json" id="search-input" placeholder="Search for" autocomplete="off"></form>
@@ -112,7 +118,8 @@ or omit them?</p></dd>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">acs_variables</span> <span class="op">=</span> <span class="fu"><a href="list_acs_variables.html">list_acs_variables</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"2022"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span><span class="va">acs_variables</span> <span class="op">=</span> <span class="fu"><a href="list_acs_variables.html">list_acs_variables</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"2022"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  variables <span class="op">=</span> <span class="va">acs_variables</span>,</span></span>
 <span class="r-in"><span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2021</span>, <span class="fl">2022</span><span class="op">)</span>,</span></span>
@@ -120,12 +127,7 @@ or omit them?</p></dd>
 <span class="r-in"><span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span></span>
 <span class="r-in"><span>  counties <span class="op">=</span> <span class="cn">NULL</span>,</span></span>
 <span class="r-in"><span>  retain_moes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Variable names and geographies for ACS data products can change between years.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> Changes to geographies are particularly significant across decades (e.g., from 2019 to 2020), but these changes can occur in any year.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> Users should ensure that the logic embedded in this function--which was developed around five-year ACS estimates for 2017-2021--remains accurate for their use cases.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> Evaluation of measures and geographies over time should be thoroughly quality checked.</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Getting data from the 2017-2021 5-year ACS</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Getting data from the 2018-2022 5-year ACS</span>
+<span class="r-in"><span>  <span class="op">}</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>

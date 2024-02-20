@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9001</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9002</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,12 @@
 </li>
 <li class="nav-item">
   <a class="nav-link" href="../reference/index.html">Reference</a>
+</li>
+<li class="nav-item dropdown">
+  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
+  <div class="dropdown-menu" aria-labelledby="dropdown-articles">
+    <a class="dropdown-item" href="../articles/coefficients-of-variation.html">coefficients-of-variation</a>
+  </div>
 </li>
       </ul>
 <form class="form-inline my-2 my-lg-0" role="search">
@@ -67,12 +73,6 @@
 
     
     
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://walker-data.com/tidycensus/" class="external-link">tidycensus</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stringr.tidyverse.org" class="external-link">stringr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
 <p>Welcome to <code>urbnindicators</code>. The goal of this package is
 to streamline the process of obtaining an analysis-ready dataset, with a
 focus on use cases in the social sciences world.</p>
@@ -103,13 +103,28 @@ require a significant amount of knowledge and effort to use
 <code>tidycensus</code> to support a robust analysis process, and many
 users may fall into common pitfalls without realizing they’ve made an
 error(s).</p>
+<p>A <code>tidycensus</code> workflow might follow the steps below.</p>
 <p>First, we need to identify the names of the variables we’re
 interested in. We want to look at the share of the population with a
 disability, at the county level, in New Jersey. So we load the variable
 index for the corresponding data year and look for variables with
 “Disability” in the <code>concept</code> field:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">acs_codebook</span> <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/load_variables.html" class="external-link">load_variables</a></span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"acs5"</span>, year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://walker-data.com/tidycensus/" class="external-link">tidycensus</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
+<span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     filter, lag</span></span>
+<span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stringr.tidyverse.org" class="external-link">stringr</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">acs_codebook</span> <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/load_variables.html" class="external-link">load_variables</a></span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"acs5"</span>, year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span></span>
 <span><span class="co"># acs_codebook %&gt;% View() # not run</span></span>
 <span><span class="va">acs_codebook</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 28152</span></span>
@@ -122,7 +137,7 @@ point-and-click interface, and if not, you can do so programatically,
 subsetting the ~28,000 available variables down to the ~500 that match
 the term “Disability”. However, 500 variables is a few orders of
 magnitude greater than than the number of variables we actually want
-(2): the number of people with a disability and the number of all
+(read: 2): the number of people with a disability and the number of all
 people.</p>
 <p>So which variable(s) do we select? There’s not a clear answer. All
 variables relating to disability reflect disability and at least one
@@ -140,7 +155,7 @@ variables prefixed “B18101”, for “Sex by Age by Disability”. We think
 that most respondents who are asked about their disability status will
 also have been asked about their sex and age. We then pass this to
 <code>tidycensus</code> as:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_disability</span> <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs</a></span><span class="op">(</span></span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  state <span class="op">=</span> <span class="st">"NJ"</span>, </span>
@@ -191,7 +206,7 @@ undetected errors.</p>
 to incorporate the margins of error that are returned by
 <code>tidycensus</code>, opting simply to drop this critical information
 from their analysis. (See
-<code>vignette("coefficients-of-variation")</code> for more on how
+<code><a href="../articles/coefficients-of-variation.html">vignette("coefficients-of-variation")</a></code> for more on how
 <code>urbnindicators</code> provides analysts with quick and actionable
 characterizations of margins of error.)</p>
 </div>
@@ -203,7 +218,7 @@ scenes. In lieu of a call to <code><a href="https://walker-data.com/tidycensus/r
 to <code><a href="../reference/compile_acs_data.html">urbnindicators::compile_acs_data()</a></code> returns a
 comprehensive dataframe of both raw ACS measures and derived estimates
 (such as the share of all individuals who are disabled).</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op">=</span> <span class="fu">urbnindicators</span><span class="fu">::</span><span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  years <span class="op">=</span> <span class="fl">2022</span>,</span>
@@ -215,15 +230,17 @@ comprehensive dataframe of both raw ACS measures and derived estimates
 <span><span class="co">#&gt; Users should ensure that the logic embedded in this function--which was developed around five-year ACS estimates for 2017-2021--remains accurate for their use cases.</span></span>
 <span><span class="co">#&gt; Evaluation of measures and geographies over time should be thoroughly quality checked.</span></span>
 <span><span class="co">#&gt; Getting data from the 2018-2022 5-year ACS</span></span>
+<span><span class="co">#&gt; Warning in generate_codebook(variables = colnames(df_calculated_estimates), : 26 variable(s) in the codebook are missing information.</span></span>
+<span><span class="co">#&gt; Run [codebook] %&gt;% filter(is.na(definition)) to identify missingness.</span></span>
 <span></span>
 <span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1]   21 1326</span></span></code></pre></div>
+<span><span class="co">#&gt; [1]   21 1366</span></span></code></pre></div>
 <p>While this call returns us the same 21 observations (one per county
 in NJ), it returns us some 1,300 columns. Woah. Even when we subset to
 those matching “disability”, we still have 79 columns (the same columns
 available from our <code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">tidycensus::get_acs()</a></code> call, plus
 one).</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"disability"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
@@ -242,7 +259,7 @@ having a diverse array of measures in a single dataset.</p>
 descriptive names (e.g.,
 <code>sex_by_age_by_disability_status_female_75_years_over_with_a_disability</code>),
 and–importantly–that derived variables are included:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">GEOID</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"disability.*percent"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 21 × 2</span></span></span>
@@ -273,7 +290,7 @@ while <code>"$"</code> matches the end of a string.
 match columns with names containing “variable_of_interest”, followed by
 any number of characters, and that end in “percent”).</p>
 <p>For a look at all derived percent variables:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"percent$"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="co"># 230+</span></span>
@@ -295,7 +312,7 @@ about how
 <code>cost_burdened_30percentormore_incomeslessthan35000_percent</code>
 was calculated, or what the universe for that measure is? No
 problem:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">## NOTE: this functionality is not (yet) incorporated into the package!</span></span>
 <span><span class="co"># df_urbnindicators %&gt;%</span></span>
 <span><span class="co">#   attr("codebook")</span></span></code></pre></div>
@@ -338,7 +355,7 @@ developed and tested); and</p></li>
 <code>urbnindicators::calculate_coefficient_of_variation()</code>, which
 leverages the margins of error associated with each measure to assess
 the quality of estimates across all queried geographies. (See
-<code>vignette("coefficients-of-variation")</code> for more.)</p></li>
+<code><a href="../articles/coefficients-of-variation.html">vignette("coefficients-of-variation")</a></code> for more.)</p></li>
 </ol>
 </li>
 </ol>
