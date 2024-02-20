@@ -2,7 +2,7 @@
 % Please edit documentation in R/compile_acs_data.R
 \name{safe_divide}
 \alias{safe_divide}
-\title{Division without `NA`s}
+\title{Division without NAs}
 \usage{
 safe_divide(x, y)
 }
@@ -23,6 +23,6 @@ A modified division operation that returns zero when the divisor is zero
    rather than returning NA. Otherwise returns the quotient.
 }
 \examples{
-safe_divide(1, 2) ## .5
-safe_divide(3, 0) ## 0
+safe_divide(1, 2)
+safe_divide(3, 0)
 }

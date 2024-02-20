@@ -1,4 +1,4 @@
-#' @title Documentation for variables from `compile_acs_data()`
+#' @title Document variables from [compile_acs_data()]
 #' @description `generate_codebook()` returns a codebook for variables returned
 #' from `compile_acs_data()`.
 #' @details Generates a tibble of variable names and definitions that describe
@@ -9,7 +9,7 @@
 #' by `compile_acs_data()` are returned in the codebook with missing definitions.
 #' @param years A character vector (or coercible to the same) comprising one or more
 #'    four-digit years for which to pull variable definitions.
-#' @seealso [urbnindicators::compile_acs_data()], which automatically returns the
+#' @seealso [compile_acs_data()], which automatically returns the
 #' results of `generate_codebook()` attached to the primary data ouput.
 #' @returns A tibble containing the names and definitions of  the variables
 #' passed to `variables`. When variables have different definitions across years,

@@ -1,15 +1,14 @@
-#' @title Division without `NA`s
+#' @title Division without NAs
 #' @description `safe_divide()` returns 0 when the divisor is 0.
 #' @details A modified division operation that returns zero when the divisor is zero
 #'    rather than returning NA. Otherwise returns the quotient.
-#'
 #' @param x A numeric scalar.
 #' @param y A numeric scalar.
 #' @returns The traditional dividend in all cases except where `y` == 0, in which
 #'    case it returns 0.
 #' @examples
-#' safe_divide(1, 2) ## .5
-#' safe_divide(3, 0) ## 0
+#' safe_divide(1, 2)
+#' safe_divide(3, 0)
 #' @export
 safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 
@@ -36,6 +35,7 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'    Returned data are formatted wide. A codebook generated with `generate_codebook()`
 #'    is attached and can be accessed via `compile_acs_data() %>% attr("codebook")`.
 #' @examples
+#' \dontrun{
 #' acs_variables = list_acs_variables(year = "2022")
 #' df = compile_acs_data(
 #'   variables = acs_variables,
@@ -44,6 +44,7 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'   states = "NJ",
 #'   counties = NULL,
 #'   retain_moes = TRUE)
+#'   }
 #' @export
 #' @importFrom magrittr %>%
 compile_acs_data = function(
@@ -62,7 +63,9 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
 
   ## default values for the variables and states arguments.
   if (length(variables) == 0) { variables = list_acs_variables(year = years[1]) }
-  if (length(states) == 0) { states =  tigris::fips_codes %>% dplyr::filter(!state %in% c("PR", "UM", "VI", "GU", "AS", "MP")) %>% dplyr::pull(state) %>% unique() }
+  if (length(states) == 0) { states =  tigris::fips_codes %>%
+    dplyr::filter(!state %in% c("PR", "UM", "VI", "GU", "AS", "MP")) %>%
+    dplyr::pull(state) %>% unique() }
 
   super_state_geographies = c(
     "us", "region", "division", "metropolitan/micropolitan statistical area", "metropolitan statistical area/micropolitan statistical area",
@@ -258,6 +261,7 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
       year_structure_built_built_since_2020_percent = safe_divide(
         rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_202.*"))),
         year_structure_built_universe),
+      year_structure_built_built_before_1960_percent = 1 - year_structure_built_built_since_1960_percent, ## a common proxy for relative exposure to lead-based paint
 
       ####----TRANSPORTATION----####
       ## Note: means_transportation_work_public_transportation_excluding_taxicab is a measure of conventional "public transportation"
@@ -271,6 +275,10 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
       means_transportation_work_motor_vehicle_percent = safe_divide(
         rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(car_truck_van|taxicab|motorcycle)$"))),
         (means_transportation_work_universe - means_transportation_work_worked_from_home)),
+      dplyr::across(
+        .cols = dplyr::matches("travel_time_work"),
+        .fns = ~ safe_divide(.x, travel_time_work_universe),
+        .names = "{.col}_percent"),
 
       ####----EDUCATION----####
       educational_attainment_highschool_none_percent = safe_divide(
@@ -358,6 +366,7 @@ utils::globalVariables(c(
   "tenure_by_occupants_per_room_universe", "tenure_by_occupants_per_room_renter_occupied",
   "year_structure_built_universe", "means_transportation_work_universe", "means_transportation_work_universe",
   "means_transportation_work_worked_from_home", "educational_attainment_population_25_years_over_universe",
+  "year_structure_built_built_since_1960_percent",
   "educational_attainment_population_25_years_over_ged_alternative_credential",
   "educational_attainment_population_25_years_over_regular_high_school_diploma",
   "educational_attainment_population_25_years_over_associates_degree",

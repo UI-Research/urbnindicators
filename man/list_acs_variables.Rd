@@ -2,7 +2,7 @@
 % Please edit documentation in R/list_acs_variables.R
 \name{list_acs_variables}
 \alias{list_acs_variables}
-\title{Return a named character vector of useful ACS variables}
+\title{Return ACS variables codes and names}
 \usage{
 list_acs_variables(year = "2022")
 }
@@ -16,7 +16,7 @@ A named vector of variable codes (as specified in the Census Bureau's API)
 \description{
 Generate meaningful names for ACS variable codes based on their metadata
    and return these as a vector, along with their semantic names. Intended for
-   use with `compile_acs_data()`.
+   use with [compile_acs_data()].
 }
 \examples{
 list_acs_variables(year = "2022")

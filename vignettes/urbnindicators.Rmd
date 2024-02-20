@@ -17,14 +17,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup, message = F}
-library(urbnindicators)
-library(tidycensus)
-library(dplyr)
-library(stringr)
-library(ggplot2)
-```
-
 Welcome to `urbnindicators`. The goal of this package is to streamline
 the process of obtaining an analysis-ready dataset, with a focus on use
 cases in the social sciences world.
@@ -56,6 +48,8 @@ effort to use `tidycensus` to support a robust analysis process, and
 many users may fall into common pitfalls without realizing they've made
 an error(s).
 
+A `tidycensus` workflow might follow the steps below.
+
 First, we need to identify the names of the variables we're interested
 in. We want to look at the share of the population with a disability, at
 the county level, in New Jersey. So we load the variable index for the
@@ -63,6 +57,12 @@ corresponding data year and look for variables with "Disability" in the
 `concept` field:
 
 ```{r}
+library(urbnindicators)
+library(tidycensus)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+
 acs_codebook = load_variables(dataset = "acs5", year = 2022)
 # acs_codebook %>% View() # not run
 acs_codebook %>% nrow()
@@ -76,7 +76,7 @@ point-and-click interface, and if not, you can do so programatically,
 subsetting the \~28,000 available variables down to the \~500 that match
 the term "Disability". However, 500 variables is a few orders of
 magnitude greater than than the number of variables we actually want
-(2): the number of people with a disability and the number of all
+(read: 2): the number of people with a disability and the number of all
 people.
 
 So which variable(s) do we select? There's not a clear answer. All

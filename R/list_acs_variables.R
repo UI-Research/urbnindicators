@@ -1,4 +1,4 @@
-#' @title A utility for selecting ACS variables
+#' @title Easily rename ACS variables
 #' @description Given the name of an ACS variable (or a string that matches one or more such variables),
 #' generate a named character vector of original variable names and more meaningful names.
 #' @param variable_name A named vector (intended for use with named ACS variables).
@@ -51,7 +51,10 @@ select_variables_by_name = function(variable_name, census_codebook) {
           "black_african_american" = "black",
           "household_income_by_gross_rent_as_a_percentage_of_household_income_in_the_past_12_months" =
             "household_income_by_gross_rent_as_a_percentage_of_household_income")),
-      clean_names = dplyr::if_else(label == "Estimate!!Total:", paste0(clean_names, "_universe_"), paste0(clean_names, "_")))
+      clean_names = dplyr::if_else(
+        label %in% c("Estimate!!Total:", "Estimate!!Total"),
+        paste0(clean_names, "_universe_"),
+        paste0(clean_names, "_")))
 
   selected_variables = variables %>% dplyr::pull(name)
   names(selected_variables) = variables %>% dplyr::pull(clean_names)
@@ -59,7 +62,7 @@ select_variables_by_name = function(variable_name, census_codebook) {
   return(selected_variables)
 }
 
-#' @title A utility for filtering select ACS variables
+#' @title Easily filter ACS variables
 #' @description Filter the the results of [select_variables()] based on their `match_type` relative
 #' to `match_string`.
 #' @param variable_vector A named vector (intended for use with named ACS variables).
@@ -82,10 +85,10 @@ filter_variables = function(variable_vector, match_string, match_type = "positiv
     variable_vector[!stringr::str_detect(names(variable_vector), match_string)] }
 }
 
-#' @title Return a named character vector of useful ACS variables
+#' @title Return ACS variables codes and names
 #' @description Generate meaningful names for ACS variable codes based on their metadata
 #'    and return these as a vector, along with their semantic names. Intended for
-#'    use with `compile_acs_data()`.
+#'    use with [compile_acs_data()].
 #' @param year The year for which variable names should be selected.
 #' @returns A named vector of variable codes (as specified in the Census Bureau's API)
 #'    with semantically-meaningful names (e.g., "race_black_alone_nonhispanic").
@@ -94,7 +97,11 @@ filter_variables = function(variable_vector, match_string, match_type = "positiv
 #' @export
 list_acs_variables = function(year = "2022") {
 
-  census_codebook = tidycensus::load_variables(year = year, dataset = "acs5")
+  ## hard-coding this as variable metadata from 2023 for the time being because
+  ## variable metadata follows a different naming convention (issue IDed in 2013;
+  ## possibly other years as well), but the variables are (seemingly) the same
+  ## underlying variables
+  census_codebook = tidycensus::load_variables(year = 2022, dataset = "acs5")
 
   select_variables = purrr::partial(select_variables_by_name, census_codebook = census_codebook)
 
@@ -238,6 +245,9 @@ list_acs_variables = function(year = "2022") {
     ####----TRANSPORTATION----####
     ## MEANS OF TRANSPORTATION TO WORK
     select_variables("B08301_"),
+
+    ## TRAVEL TIME TO WORK
+    select_variables("B08303_"),
 
     ####----EDUCATION----####
     ## EDUCATIONAL ATTAINMENT FOR THE POPULATION 25 YEARS AND OVER

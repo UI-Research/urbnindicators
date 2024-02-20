@@ -2,7 +2,7 @@
 % Please edit documentation in R/generate_codebook.R
 \name{generate_codebook}
 \alias{generate_codebook}
-\title{Documentation for variables from `compile_acs_data()`}
+\title{Document variables from [compile_acs_data()]}
 \usage{
 generate_codebook(variables = NULL, years = NULL)
 }
@@ -44,6 +44,6 @@ codebook = generate_codebook(
   years = c(2022))
 }
 \seealso{
-[urbnindicators::compile_acs_data()], which automatically returns the
+[compile_acs_data()], which automatically returns the
 results of `generate_codebook()` attached to the primary data ouput.
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/list_acs_variables.R
 \name{select_variables_by_name}
 \alias{select_variables_by_name}
-\title{A utility for selecting ACS variables}
+\title{Easily rename ACS variables}
 \usage{
 select_variables_by_name(variable_name, census_codebook)
 }

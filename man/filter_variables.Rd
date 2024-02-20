@@ -2,7 +2,7 @@
 % Please edit documentation in R/list_acs_variables.R
 \name{filter_variables}
 \alias{filter_variables}
-\title{A utility for filtering select ACS variables}
+\title{Easily filter ACS variables}
 \usage{
 filter_variables(variable_vector, match_string, match_type = "positive")
 }

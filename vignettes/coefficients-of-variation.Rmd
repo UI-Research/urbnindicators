@@ -1,0 +1,36 @@
+---
+title: "coefficients-of-variation"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{coefficients-of-variation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(urbnindicators)
+```
+
+The Census Bureau API exposes an extensive set of estimates derived from responses to the American Community Survey. 
+But it also exposes a companion set of margins of error (MOE). These MOEs are critical for accurately interpreting--
+and responsibly using--ACS estimates. 
+
+In brief, margins of error quantify the error associated with conducting a survey
+and describe the precision of survey-derived statistics. If a point estimate is 500, and the associated 90% margin of error
+is 100, then we would expect that if we were to use the same surveying methods to calculate that same estimate 100 times, 
+90 of those 100 repeated survey efforts would produce point estimates in the range from 400 to 600. The remaining 10 would 
+produce point estimates outside of that range (e.g., of 385 and 650).
+
+This should give us some pause about our original point estimate; an MOE of 100 for a point estimate of 500 is fairly substantial.
+However, all too often, analysts are unsure how to incorporate MOEs into their analysis, inference drawing, and data summary processes.
+This can also make for more work as compared to just reporting out on point estimates. Further, for analysts working with derived measures--
+e.g., those calculated by dividing two point estimates--it may be unclear how to evaluate the error associated with these newly-created measures.
+
+`urbnindicators` helps to facilitate the incorporation of MOEs into analysts' workflows through a few inter-related functions. 

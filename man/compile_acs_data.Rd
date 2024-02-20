@@ -45,6 +45,7 @@ A dataframe containing the requested `variables`, their MOEs (optionally),
    the Census Bureau API.
 }
 \examples{
+\dontrun{
 acs_variables = list_acs_variables(year = "2022")
 df = compile_acs_data(
   variables = acs_variables,
@@ -53,6 +54,7 @@ df = compile_acs_data(
   states = "NJ",
   counties = NULL,
   retain_moes = TRUE)
+  }
 }
 \seealso{
 [tidycensus::get_acs()], which this function wraps.

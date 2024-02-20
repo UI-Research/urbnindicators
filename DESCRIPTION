@@ -1,7 +1,7 @@
 Package: urbnindicators
 Type: Package
 Title: Out of the Box Social Science Indicators from the American Community Survey (ACS)
-Version: 0.0.0.9001
+Version: 0.0.0.9002
 Authors@R: person("Will", "Curran-Groome", email = "wcurrangroome@gmail.com",
                   role = c("aut", "cre"))
 Description: There are many packages available that facilitate queries to the Census
@@ -10,7 +10,7 @@ Description: There are many packages available that facilitate queries to the Ce
   and selecting relevant variables, determining how to accurately calculate derived 
   measures (e.g., percentages), and naming variables semantically. urbnindicators
   abstracts much of this process away and provides users a quick interface to obtain a 
-  significant set of commonly-used social sciences measures from the ACS.
+  substantial set of commonly-used social sciences measures from the ACS.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
