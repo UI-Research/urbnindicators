@@ -1,19 +1,19 @@
 ####----Load Test Data----####
 
-if (!(file.exists(here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv"))))) {
+# if (!(file.exists(here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv"))))) {
 
   ## Statistics for all tracts
   df = compile_acs_data(
     variables = NULL,
     year = c(2022),
     geography = "tract",
-    states = NULL,
+    states = c("CA", "TX"),
     counties = NULL,
     retain_moes = TRUE)
 
-  readr::write_csv(df, here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv"))) } else {
-    df = readr::read_csv(here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv")))
-  }
+  # readr::write_csv(df, here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv"))) } else {
+  #   df = readr::read_csv(here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv")))
+  # }
 
 ####----Tests----####
 
