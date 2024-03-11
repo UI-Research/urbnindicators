@@ -21,7 +21,8 @@ compile_acs_data(
 four-digit years for which to pull five-year American Community Survey estimates.}
 
 \item{geography}{A geography type that is accepted by [tidycensus::get_acs()], e.g.,
-"tract", "county", "state", among others.}
+"tract", "county", "state", among others. Geographis below the tract level are not
+supported.}
 
 \item{states}{A vector of one or more state names, abbreviations, or codes as
 accepted by [tidycensus::get_acs()].}

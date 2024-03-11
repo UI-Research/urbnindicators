@@ -6,7 +6,9 @@ output: github_document
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
+  warning = FALSE,
   collapse = TRUE,
+  dpi = 1000,
   comment = "#>",
   fig.path = "man/figures/README-",
   out.width = "100%"
@@ -42,11 +44,14 @@ Install the development version of urbnindicators from [GitHub](https://github.c
 devtools::install_github("UI-Research/urbnindicators")
 ```
 
-This package is under active development with frequent updates--install an up-to-date version frequently!
+This package is under active development with frequent updates--check to ensure
+you have the most recent version installed!
 
 ## urbnindicators in action
 
 ```{r example}
+library(dplyr)
+library(stringr)
 library(urbnindicators)
 library(ggplot2)
 
@@ -59,32 +64,28 @@ acs_df = compile_acs_data(
   retain_moes = TRUE)
 
 acs_df %>% 
-  dplyr::select(c(
-    NAME,
-    data_source_year, 
-    race_personofcolor_percent)) %>%
-  dplyr::mutate(county_name = NAME %>% stringr::str_remove(" County, New Jersey")) %>%
-  ggplot2::ggplot(
-    ggplot2::aes(
-      x = reorder(county_name, race_personofcolor_percent), 
-      y = race_personofcolor_percent, 
-      color = factor(data_source_year))) +
-  ggplot2::geom_point() +
-  ggplot2::labs(
-    title = "Change in NJ Counties' Populations of Color, 2021 to 2022",
-    x = "County", 
-    y = "Share of population who are people of color",
-    color = "Year") +
-  ggplot2::scale_y_continuous(
-    breaks = c(0, .25, .50, .75, 1.0),
-    labels = scales::percent) +
-  ggplot2::coord_flip() +
-  ggplot2::theme_minimal() +
-  ggplot2::theme(
-    axis.title = ggplot2::element_text(size = 9, face = "italic"),
-    plot.title = ggplot2::element_text(size = 11, face = "bold"),
-    panel.grid.minor = ggplot2::element_blank(),
-    panel.grid.major.x = ggplot2::element_blank(),
-    legend.title = ggplot2::element_text(size = 9, face = "bold"),
-    legend.text = ggplot2::element_text(size = 8))
+  select(NAME, data_source_year, race_personofcolor_percent) %>%
+  mutate(county_name = NAME %>% str_remove(" County, New Jersey")) %>%
+  ggplot(aes(
+    x = reorder(county_name, race_personofcolor_percent), 
+    y = race_personofcolor_percent, 
+    color = factor(data_source_year))) +
+    geom_point() +
+    labs(
+      title = "Change in NJ Counties' Populations of Color, 2021 to 2022",
+      x = "County", 
+      y = "Share of population who are people of color",
+      color = "Year") +
+    scale_y_continuous(
+      breaks = c(0, .25, .50, .75, 1.0),
+      labels = scales::percent) +
+    coord_flip() +
+    theme_minimal() +
+    theme(
+      axis.title = element_text(size = 9, face = "italic"),
+      plot.title = element_text(size = 11, face = "bold"),
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      legend.title = element_text(size = 9, face = "bold"),
+      legend.text = element_text(size = 8))
 ```

@@ -19,5 +19,5 @@ Generate meaningful names for ACS variable codes based on their metadata
    use with [compile_acs_data()].
 }
 \examples{
-list_acs_variables(year = "2022")
+list_acs_variables(year = "2022") \%>\% head()
 }

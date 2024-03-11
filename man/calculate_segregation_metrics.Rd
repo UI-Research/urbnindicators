@@ -46,6 +46,7 @@ Given data at a smaller geography (e.g., tract), `calculate_segregation_metrics(
    further implementation details.
 }
 \examples{
+\dontrun{
 variables = c(
   race_nonhispanic_white_alone_ = "B03002_003",
   race_nonhispanic_black_alone_ = "B03002_004",
@@ -63,6 +64,7 @@ calculate_segregation_metrics(
   data = df_long,
   data_format = "long",
   nesting_geography_geoid_length = 5)
+}
 }
 \seealso{
 Functions used for underlying segregation calculations are from the `segregation` package.

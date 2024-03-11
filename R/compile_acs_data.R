@@ -21,7 +21,8 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' @param years A character vector (or coercible to the same) comprising one or more
 #'    four-digit years for which to pull five-year American Community Survey estimates.
 #' @param geography A geography type that is accepted by [tidycensus::get_acs()], e.g.,
-#'    "tract", "county", "state", among others.
+#'    "tract", "county", "state", among others. Geographis below the tract level are not
+#'    supported.
 #' @param states A vector of one or more state names, abbreviations, or codes as
 #'    accepted by [tidycensus::get_acs()].
 #' @param counties A vector of one or more county names, abbreviations, or codes as
@@ -47,6 +48,7 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'   }
 #' @export
 #' @importFrom magrittr %>%
+
 compile_acs_data = function(
     variables = NULL,
     years = c(2022),
@@ -57,9 +59,12 @@ compile_acs_data = function(
 
 warning(
 "Variable names and geographies for ACS data products can change between years.
-Changes to geographies are particularly significant across decades (e.g., from 2019 to 2020), but these changes can occur in any year.
-Users should ensure that the logic embedded in this function--which was developed around five-year ACS estimates for 2017-2021--remains accurate for their use cases.
-Evaluation of measures and geographies over time should be thoroughly quality checked.\n")
+Changes to geographies are particularly significant across decades
+(e.g., from 2019 to 2020), but these changes can occur in any year.
+Users should ensure that the logic embedded in this function--
+which was developed around five-year ACS estimates for 2017-2021--
+remains accurate for their use cases. Evaluation of measures and
+geographies over time should be thoroughly quality checked.\n")
 
   ## default values for the variables and states arguments.
   if (length(variables) == 0) { variables = list_acs_variables(year = years[1]) }
@@ -67,15 +72,28 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
     dplyr::filter(!state %in% c("PR", "UM", "VI", "GU", "AS", "MP")) %>%
     dplyr::pull(state) %>% unique() }
 
+
+  ## warning about inter-decadal tract geometry changes
+  if ( (max(years) >= 2020) & (min(years) < 2020) & (geography == "tract") ) {
+    warning("Requested years span the year 2020, which is when the Census Bureau re-configures
+      census tract boundaries. It is not valid to compare census tract-level statistics for years before 2020 to
+      statistics from 2020 and after; use a crosswalk, such as those provided by NHGIS, to interpolate values.
+      A future version of urbnindicators may address this issue automatically.") }
+
+  ## tracts and larger are supported
+  if ((geography %>% tolower) %in% c("block", "block group")) {
+    stop("Block and block group geographies are not supported at this time.") }
+
   super_state_geographies = c(
-    "us", "region", "division", "metropolitan/micropolitan statistical area", "metropolitan statistical area/micropolitan statistical area",
+    "us", "region", "division", "metropolitan/micropolitan statistical area",
+    "metropolitan statistical area/micropolitan statistical area",
     "cbsa", "urban area", "zip code tabulation area", "zcta")
 
   ## some geographies are not available by state and can only be returned nationally
   if (geography %in% super_state_geographies) {
     df_raw_estimates = purrr::map_dfr(
       ## when year is a vector with length > 1 (i.e., there are multiple years)
-      ## loop over each iterm in the vector (and this approach also works for a single year)
+      ## loop over each item in the vector (and this approach also works for a single year)
       years,
       ~ tidycensus::get_acs(
           geography = geography,
@@ -164,60 +182,80 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
       sex_male_percent = safe_divide(sex_by_age_male, sex_by_age_universe),
 
       ####----AGE----####
+      # creating combined, male and female counts by age group named, e.g., age_15_17_years
       dplyr::across(
-        .cols = dplyr::matches("sex_by_age_female_.*years"),
+        .cols = dplyr::matches("sex_by_age_female_.*years$"),
         .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("female", "male")),
-        .names =  "{.col}_male"),
+        .names =  "{stringr::str_replace(string = .col, pattern = 'sex_by_age_female_', replacement = 'age_')}"),
       dplyr::across(
-        .cols = dplyr::matches("sex_by_age_female_.*_male"),
-        .fns = ~ safe_divide( .x + get( dplyr::cur_column() %>% stringr::str_replace("female", "male") %>% stringr::str_remove("_male$")), sex_by_age_universe),
+        .cols = dplyr::matches("^age.*years$"),
+        .fns = ~ safe_divide(.x, sex_by_age_universe),
         .names =  "{.col}_percent")) %>%
 
     ## adding a new mutate call because rowSums is unable to access variables
     ## created within the same mutate call
     dplyr::mutate(
-      sex_by_age_female_under_18_male = safe_divide(
-        rowSums(
-          dplyr::select(.,
-                 sex_by_age_female_under_5_years_male,
-                 sex_by_age_female_5_9_years_male,
-                 sex_by_age_female_10_14_years_male,
-                 sex_by_age_female_15_17_years_male)),
+      age_under_18_percent = safe_divide(
+        rowSums(dplyr::select(., age_under_5_years, age_5_9_years, age_10_14_years, age_15_17_years)),
         sex_by_age_universe),
-      sex_by_age_female_over_64_male = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("sex_by_age_female_(6(5|7)|7|8).*male"))),
+      age_over_64_percent = safe_divide(
+        rowSums(dplyr::select(., dplyr::matches("age_(6(5|7)|7|8).*_years$"))),
         sex_by_age_universe),
 
       ####----DISABILITY----####
       disability_percent = safe_divide(rowSums(dplyr::select(., dplyr::matches("with_a_disability"))), sex_by_age_by_disability_status_universe),
 
       ####----HOUSING----####
-      tenure_renteroccupied_percent = safe_divide(tenure_renter_occupied, tenure_universe),
-      tenure_owneroccupied_percent = safe_divide(tenure_owner_occupied, tenure_universe),
-      dplyr::across(
-        .cols = dplyr::matches("tenure.*householder.*occupied"),
-        .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("(renter|owner)_occupied", "universe") )),
-        .names = "{.col}_percent"),
-
-      ## units in structure
-      ## (sums)
-      dplyr::across( ## summing renter- and owner-occupied estimates
-        .cols = dplyr::matches("tenure.*renter_occupied"),
-        .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
-        .names = "{.col}_owner_occupied"),
+      ## tenure
       ## (percentages)
       dplyr::across(
-        .cols = c(dplyr::matches("tenure.*renter.*owner"), -tenure_by_units_in_structure_renter_occupied_housing_units_owner_occupied),
-        .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_occupied_housing_units_owner_occupied),
+        .cols = dplyr::matches("tenure_(renter|owner)_occupied"),
+        .fns = ~ safe_divide(.x, tenure_universe),
         .names = "{.col}_percent"),
-      ## renter-occupied units in structure (percentages)
+
+      ## tenure by race
+      ## (sums)
       dplyr::across(
-        .cols = c(dplyr::matches("tenure.*renter_occupied"), -dplyr::matches("owner|units$")),
+        .cols = dplyr::matches("tenure_.*_householder_renter_occupied"),
+        .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
+        .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied', replacement = 'renter_owner_occupied')}"),
+
+      ## tenure by race, renter-occupied
+      ## (percentages)
+      dplyr::across(
+        .cols = dplyr::matches("tenure.*householder_renter_occupied"),
+        .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("renter", "renter_owner") )),
+        .names = "{.col}_percent"),
+
+      ## tenure by race, owner-occupied
+      ## (percentages)
+      dplyr::across(
+        .cols = dplyr::matches("tenure.*householder_owner_occupied"),
+        .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("owner", "renter_owner") )),
+        .names = "{.col}_percent"),
+
+      ## units in structure, both tenures
+      ## (sums)
+      dplyr::across( ## summing renter- and owner-occupied estimates
+        .cols = c(dplyr::matches("tenure_by_units.*renter_occupied_housing_units"), -dplyr::matches("owner")),
+        .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
+        .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied_housing_units', replacement = 'renter_owner_occupied_housing_units')}"),
+      ## units in structure, both tenure
+      ## (percentages)
+      dplyr::across(
+        .cols = dplyr::matches("tenure_by_units_in_structure_renter_owner_occupied_housing_units_"),
+        .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_owner_occupied_housing_units),
+        .names = "{.col}_percent"),
+      ## renter-occupied units in structure
+      ## (percentages)
+      dplyr::across(
+        .cols = dplyr::matches("tenure_by_units_in_structure_renter_occupied_housing_units_"),
         .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_occupied_housing_units),
         .names = "{.col}_percent"),
-      ## owner-occupied units in structure (percentages)
+      ## owner-occupied units in structure
+      ## (percentages)
       dplyr::across(
-        .cols = c(dplyr::matches("tenure.*owner_occupied"), -dplyr::matches("renter|units$")),
+        .cols = dplyr::matches("tenure_by_units_in_structure_owner_occupied_housing_units_"),
         .fns = ~ safe_divide(.x, tenure_by_units_in_structure_owner_occupied_housing_units),
         .names = "{.col}_percent"),
 
@@ -276,7 +314,7 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
         rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(car_truck_van|taxicab|motorcycle)$"))),
         (means_transportation_work_universe - means_transportation_work_worked_from_home)),
       dplyr::across(
-        .cols = dplyr::matches("travel_time_work"),
+        .cols = c(dplyr::matches("travel_time_work"), -travel_time_work_universe),
         .fns = ~ safe_divide(.x, travel_time_work_universe),
         .names = "{.col}_percent"),
 
@@ -343,6 +381,9 @@ Evaluation of measures and geographies over time should be thoroughly quality ch
     ## these variable names end in "percent", but they're actually count estimates
     dplyr::rename_with(.cols = dplyr::matches("household_income.*percent$"), .fn = ~ paste0(., "_count_estimate")) %>%
 
+    ## ensure the vintage of the data and the GEOID for each observation are the first columns
+    dplyr::select(data_source_year, GEOID, dplyr::everything()) %>%
+
     ## add back MOEs if retain_moes == T
     { if (retain_moes == TRUE) dplyr::left_join(., moes, by = c("GEOID", "data_source_year")) else . }
 
@@ -361,12 +402,13 @@ utils::globalVariables(c(
   "sex_by_age_male", "sex_by_age_female_under_5_years_male", "sex_by_age_female_10_14_years_male",
   "sex_by_age_female_5_9_years_male", "sex_by_age_female_10_14_years_male",
   "sex_by_age_female_15_17_years_male", "sex_by_age_by_disability_status_universe",
+  "age_under_5_years", "age_5_9_years", "age_10_14_years", "age_15_17_years",
   "tenure_renter_occupied", "tenure_universe", "tenure_owner_occupied",
   "tenure_by_units_in_structure_renter_occupied_housing_units_owner_occupied",
   "tenure_by_occupants_per_room_universe", "tenure_by_occupants_per_room_renter_occupied",
   "year_structure_built_universe", "means_transportation_work_universe", "means_transportation_work_universe",
   "means_transportation_work_worked_from_home", "educational_attainment_population_25_years_over_universe",
-  "year_structure_built_built_since_1960_percent",
+  "year_structure_built_built_since_1960_percent", "travel_time_work_universe",
   "educational_attainment_population_25_years_over_ged_alternative_credential",
   "educational_attainment_population_25_years_over_regular_high_school_diploma",
   "educational_attainment_population_25_years_over_associates_degree",

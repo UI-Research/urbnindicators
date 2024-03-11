@@ -26,6 +26,7 @@
 #' @returns A dataframe comprising segregation estimates and associated p-values at both
 #'    geographic levels.
 #' @examples
+#' \dontrun{
 #' variables = c(
 #'   race_nonhispanic_white_alone_ = "B03002_003",
 #'   race_nonhispanic_black_alone_ = "B03002_004",
@@ -43,6 +44,7 @@
 #'   data = df_long,
 #'   data_format = "long",
 #'   nesting_geography_geoid_length = 5)
+#' }
 #' @export
 #' @importFrom magrittr %>%
 calculate_segregation_metrics = function(data, data_format, nesting_geography_geoid_length) {
@@ -117,7 +119,7 @@ calculate_segregation_metrics = function(data, data_format, nesting_geography_ge
       nrow()
 
     warning(paste0("Segregation results are missing for ", number_error_geographies, " geographies.
-The input data contained missing values for, ", input_data_missingness, " observations.
+The input data contained missing values for ", input_data_missingness, " observations.
 The remaining ", number_error_geographies - input_data_missingness, " observations may be missing because there was only
 a single smaller geography within the larger geography (e.g., a
 county comprising a single tract).")) }

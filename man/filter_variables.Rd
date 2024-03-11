@@ -22,10 +22,12 @@ Filter the the results of [select_variables()] based on their `match_type` relat
 to `match_string`.
 }
 \examples{
+\dontrun{
 codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
 selected_variables = select_variables_by_name("B16005_", census_codebook = codebook)
 filter_variables(
   variable_vector = selected_variables,
   match_string = "universe_$|native_$|foreign_born_$|only|very_well",
   match_type = "positive")
+}
 }

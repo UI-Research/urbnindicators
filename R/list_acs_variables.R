@@ -7,8 +7,10 @@
 #'    `variable_name` from the `census_codebook`, with semantically-meaningful names
 #'    derived from metadata fields contained in `census_codebook`.
 #' @examples
+#' \dontrun{
 #' codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
 #' select_variables_by_name("B16005_", census_codebook = codebook)
+#' }
 #' @export
 #' @importFrom magrittr %>%
 select_variables_by_name = function(variable_name, census_codebook) {
@@ -71,12 +73,14 @@ select_variables_by_name = function(variable_name, census_codebook) {
 #'    (`match_type = "negative"`) matching elements.
 #' @returns The elements from `variable_vector` that do/don't match `match_string`.
 #' @examples
+#' \dontrun{
 #' codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
 #' selected_variables = select_variables_by_name("B16005_", census_codebook = codebook)
 #' filter_variables(
 #'   variable_vector = selected_variables,
 #'   match_string = "universe_$|native_$|foreign_born_$|only|very_well",
 #'   match_type = "positive")
+#' }
 #' @export
 filter_variables = function(variable_vector, match_string, match_type = "positive") {
   if (match_type == "positive") {
@@ -93,7 +97,7 @@ filter_variables = function(variable_vector, match_string, match_type = "positiv
 #' @returns A named vector of variable codes (as specified in the Census Bureau's API)
 #'    with semantically-meaningful names (e.g., "race_black_alone_nonhispanic").
 #' @examples
-#' list_acs_variables(year = "2022")
+#' list_acs_variables(year = "2022") %>% head()
 #' @export
 list_acs_variables = function(year = "2022") {
 
@@ -187,6 +191,9 @@ list_acs_variables = function(year = "2022") {
 
     ## MEDIAN MONTHLY HOUSING COSTS (DOLLARS)
     housing_cost_monthly_median_ = "B25105_001",
+
+    ## TENURE BY VEHICLES AVAILABLE
+    select_variables(variable_name = "B25044_"),
 
     ####----RACE AND ETHNICITY----####
     race_universe_ = "B03002_001",
