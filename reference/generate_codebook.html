@@ -12,7 +12,7 @@ from `compile_acs_data()`."><!-- mathjax --><script src="https://cdnjs.cloudflar
     
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9002</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9003</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -103,16 +103,25 @@ results of `generate_codebook()` attached to the primary data ouput.</p></div>
 <span class="r-in"><span>  counties <span class="op">=</span> <span class="cn">NULL</span>,</span></span>
 <span class="r-in"><span>  retain_moes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Variable names and geographies for ACS data products can change between years.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> Changes to geographies are particularly significant across decades (e.g., from 2019 to 2020), but these changes can occur in any year.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> Users should ensure that the logic embedded in this function--which was developed around five-year ACS estimates for 2017-2021--remains accurate for their use cases.</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> Evaluation of measures and geographies over time should be thoroughly quality checked.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> Changes to geographies are particularly significant across decades</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> (e.g., from 2019 to 2020), but these changes can occur in any year.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> Users should ensure that the logic embedded in this function--</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> which was developed around five-year ACS estimates for 2017-2021--</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> remains accurate for their use cases. Evaluation of measures and</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> geographies over time should be thoroughly quality checked.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Getting data from the 2018-2022 5-year ACS</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>26 variable(s) in the codebook are missing information.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span><span style="color: #00BBBB;">•</span> You have not set a Census API key. Users without a key are limited to 500</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> queries per day and may experience performance limitations.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #0000BB;">ℹ</span> For best results, get a Census API key at</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> http://api.census.gov/data/key_signup.html and then supply the key to the</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> `census_api_key()` function to use it throughout your tidycensus session.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span style="color: #555555;">This warning is displayed once per session.</span></span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>58 variable(s) in the codebook are missing information.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Run [codebook] %&gt;% filter(is.na(definition)) to identify missingness.</span>
 <span class="r-in"><span><span class="va">codebook</span> <span class="op">=</span> <span class="fu">generate_codebook</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">df</span> <span class="op"><a href="pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="fu">matches</span><span class="op">(</span><span class="st">"percent"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">df</span> <span class="op"><a href="pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"percent"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2022</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>13 variable(s) in the codebook are missing information.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>28 variable(s) in the codebook are missing information.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> Run [codebook] %&gt;% filter(is.na(definition)) to identify missingness.</span>
 </code></pre></div>
     </div>
