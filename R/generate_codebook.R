@@ -24,7 +24,8 @@
 #'   geography = "county",
 #'   states = "NJ",
 #'   counties = NULL,
-#'   retain_moes = TRUE)
+#'   retain_moes = TRUE,
+#'   spatial = FALSE)
 #' codebook = generate_codebook(
 #'   variables = colnames(df %>% dplyr::select(-matches("percent"))),
 #'   years = c(2022))

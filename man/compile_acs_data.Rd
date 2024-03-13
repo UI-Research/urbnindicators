@@ -10,7 +10,8 @@ compile_acs_data(
   geography = "county",
   states = NULL,
   counties = NULL,
-  retain_moes = TRUE
+  retain_moes = TRUE,
+  spatial = FALSE
 )
 }
 \arguments{
@@ -33,6 +34,8 @@ and must be set to NULL (as it is by default).}
 
 \item{retain_moes}{Boolean. Include margins of error (MOE) in the returned dataframe,
 or omit them?}
+
+\item{spatial}{Boolean. Return a simple features (sf), spatially-enabled dataframe?}
 }
 \value{
 A dataframe containing the requested `variables`, their MOEs (optionally),
@@ -54,7 +57,8 @@ df = compile_acs_data(
   geography = "county",
   states = "NJ",
   counties = NULL,
-  retain_moes = TRUE)
+  retain_moes = TRUE,
+  spatial = FALSE)
   }
 }
 \seealso{

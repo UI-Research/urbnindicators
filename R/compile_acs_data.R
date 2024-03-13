@@ -30,6 +30,7 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'    and must be set to NULL (as it is by default).
 #' @param retain_moes Boolean. Include margins of error (MOE) in the returned dataframe,
 #'    or omit them?
+#' @param spatial Boolean. Return a simple features (sf), spatially-enabled dataframe?
 #' @seealso [tidycensus::get_acs()], which this function wraps.
 #' @returns A dataframe containing the requested `variables`, their MOEs (optionally),
 #'    a series of derived variables, such as percentages, and the year of the data.
@@ -44,7 +45,8 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'   geography = "county",
 #'   states = "NJ",
 #'   counties = NULL,
-#'   retain_moes = TRUE)
+#'   retain_moes = TRUE,
+#'   spatial = FALSE)
 #'   }
 #' @export
 #' @importFrom magrittr %>%
@@ -55,7 +57,8 @@ compile_acs_data = function(
     geography = "county",
     states = NULL,
     counties = NULL,
-    retain_moes = TRUE) {
+    retain_moes = TRUE,
+    spatial = FALSE) {
 
 warning(
 "Variable names and geographies for ACS data products can change between years.
@@ -89,8 +92,43 @@ geographies over time should be thoroughly quality checked.\n")
     "metropolitan statistical area/micropolitan statistical area",
     "cbsa", "urban area", "zip code tabulation area", "zcta")
 
+  ## download corresponding geometries from tigris
+  ## these will be joined to the data to calculate population density
+  ## (and optionally retained in the final output)
+  geometries = purrr::map_dfr(
+    years,
+    function(year) {
+        switch(
+          geography,
+          "us" = tigris::nation(year = year) %>%
+            dplyr::mutate(GEOID = "1"),
+          "region" = tigris::regions(year = year),
+          "division" = tigris::divisions(year = year),
+          "state" = tigris::states(year = year, cb = TRUE),
+          "county" = purrr::map_dfr(states, ~ tigris::counties(state = .x, cb = TRUE, year = year)),
+          "county subdivision" = purrr::map_dfr(states, ~ tigris::county_subdivisions(state = .x, cb = TRUE, year = year)),
+          "tract" = purrr::map_dfr(states, ~ tigris::tracts(state = .x, cb = TRUE, year = year)),
+          "place" = purrr::map_dfr(states, ~ tigris::places(state = .x, cb = TRUE, year = year)),
+          "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
+          "american indian area/alaska native area/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
+          "american indian area/alaska native area (reservation of statistical entity only)" = tigris::native_areas(cb = TRUE, year = year),
+          "american indian area (off reservation trust land only)/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
+          "metropolitan/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "metropolitan statistical area/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
+          "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
+        dplyr::transmute(
+          area_land_sq_kilometer = safe_divide(ALAND, 1000000),
+          area_water_sq_kilometer = safe_divide(AWATER, 1000000),
+          area_land_water_sq_kilometer = area_land_sq_kilometer + area_water_sq_kilometer,
+          GEOID = GEOID,
+          data_source_year = year) })
+
+
   ## some geographies are not available by state and can only be returned nationally
   if (geography %in% super_state_geographies) {
+
     df_raw_estimates = purrr::map_dfr(
       ## when year is a vector with length > 1 (i.e., there are multiple years)
       ## loop over each item in the vector (and this approach also works for a single year)
@@ -384,7 +422,12 @@ geographies over time should be thoroughly quality checked.\n")
     ## ensure the vintage of the data and the GEOID for each observation are the first columns
     dplyr::select(data_source_year, GEOID, dplyr::everything()) %>%
 
-    ## add back MOEs if retain_moes == T
+    ## join geometries, calculate population density, drop geometry attribute if spatial == FALSE
+    dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one") %>%
+    dplyr::mutate(population_density_land_sq_kilometer = safe_divide(total_population_universe, area_land_sq_kilometer)) %>%
+    {if (spatial == FALSE) sf::st_drop_geometry(.) else . } %>%
+
+    ## add back MOEs if retain_moes == TRUE
     { if (retain_moes == TRUE) dplyr::left_join(., moes, by = c("GEOID", "data_source_year")) else . }
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
@@ -396,6 +439,7 @@ geographies over time should be thoroughly quality checked.\n")
 }
 
 utils::globalVariables(c(
+  "ALAND", "AWATER", "area_land_sq_kilometer", "area_water_sq_kilometer", "total_population_universe",
   "state", "GEOID", "data_source_year", "snap_received", "snap_universe",
   "public_assistance_received", "public_assistance_universe", ".",
   "race_nonhispanic_white_alone_percent", "sex_by_age_female", "sex_by_age_universe",

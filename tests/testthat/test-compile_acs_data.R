@@ -1,19 +1,14 @@
 ####----Load Test Data----####
 
-# if (!(file.exists(here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv"))))) {
-
-  ## Statistics for all tracts
-  df = compile_acs_data(
-    variables = NULL,
-    year = c(2022),
-    geography = "tract",
-    states = c("CA", "TX"),
-    counties = NULL,
-    retain_moes = TRUE)
-
-  # readr::write_csv(df, here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv"))) } else {
-  #   df = readr::read_csv(here::here("tests", "test-data", paste0("tracts_all_states_2022_", Sys.Date(), ".csv")))
-  # }
+## Statistics for all tracts
+df = compile_acs_data(
+  variables = NULL,
+  years = c(2022),
+  geography = "tract",
+  states = c("CA", "TX"),
+  counties = NULL,
+  retain_moes = TRUE,
+  spatial = FALSE)
 
 ####----Tests----####
 
@@ -41,8 +36,6 @@ testthat::test_that(
 
 # All measures have meaningful values: maximum and mean greater than zero,
 # all values are not missing, and there are at least two distinct values per measure
-# (Note: this is implemented with tract data across the entire US. This does not
-# inherently apply to other levels of geographic observation, nor for subsets of the US.)
 
 summary_statistics = df %>%
   dplyr::select(GEOID, matches("percent$")) %>%

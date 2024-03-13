@@ -22,9 +22,7 @@ Imports:
     stringr,
     tidycensus,
     tidyr,
-    tigris,
-    readr,
-    here
+    tigris
 Suggests:
     ggplot2,
     knitr,
