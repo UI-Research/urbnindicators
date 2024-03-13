@@ -63,7 +63,8 @@
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  counties <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  retain_moes <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  retain_moes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  spatial <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -100,6 +101,10 @@ and must be set to NULL (as it is by default).</p></dd>
 <dd><p>Boolean. Include margins of error (MOE) in the returned dataframe,
 or omit them?</p></dd>
 
+
+<dt>spatial</dt>
+<dd><p>Boolean. Return a simple features (sf), spatially-enabled dataframe?</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -127,7 +132,8 @@ or omit them?</p></dd>
 <span class="r-in"><span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span></span>
 <span class="r-in"><span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span></span>
 <span class="r-in"><span>  counties <span class="op">=</span> <span class="cn">NULL</span>,</span></span>
-<span class="r-in"><span>  retain_moes <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  retain_moes <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span>  spatial <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
 </code></pre></div>
     </div>
