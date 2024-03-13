@@ -119,8 +119,8 @@ geographies over time should be thoroughly quality checked.\n")
           "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
           "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
         dplyr::transmute(
-          area_land_sq_kilometer = safe_divide(ALAND, 1000000),
-          area_water_sq_kilometer = safe_divide(AWATER, 1000000),
+          area_land_sq_kilometer = ALAND / 1000000,
+          area_water_sq_kilometer = AWATER / 1000000,
           area_land_water_sq_kilometer = area_land_sq_kilometer + area_water_sq_kilometer,
           GEOID = GEOID,
           data_source_year = year) })

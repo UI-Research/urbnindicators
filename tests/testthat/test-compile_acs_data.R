@@ -49,6 +49,9 @@ summary_statistics = df %>%
     mean = mean(value, na.rm = T),
     distinct_values = dplyr::n_distinct(value, na.rm = T))
 
+summary_statistics %>%
+  dplyr::filter(stringr::str_detect(name, "area"))
+
 testthat::test_that(
   "All measures have meaningful values",
   { purrr::map_dbl(summary_statistics$max, ~testthat::expect_gt(.x, 0) )
