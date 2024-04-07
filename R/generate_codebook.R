@@ -22,9 +22,8 @@
 generate_codebook = function(.data)  {
 
     ####----Variable Crosswalk----####
-    list_acs_expression = ({
-      expression_list = rlang::enexpr(list_acs_variables) %>% as.list()
-      subset_expression = expression_list[[2]][[4]][[3]] })
+    expression_list = rlang::enexpr(list_acs_variables) %>% as.list()
+    list_acs_expression = expression_list[[2]][[4]][[3]]
 
     ## this covers all the manually named variables, does not include those selected via select_variables()
     variable_crosswalk = list_acs_expression %>%
@@ -131,7 +130,7 @@ generate_codebook = function(.data)  {
           dplyr::select(c(
             dplyr::matches(positive_matches),
             -dplyr::matches(negative_matches),
-            -dplyr::matches("percent$"),
+            -dplyr::matches("percent$|_M$"),
             dplyr::all_of(positive_columns),
             -dplyr::all_of(negative_columns))) %>%
           colnames
@@ -139,7 +138,7 @@ generate_codebook = function(.data)  {
       } else {
         input_columns = .data %>%
           dplyr::select(dplyr::matches(selection_term)) %>%
-          dplyr::select(-dplyr::matches("percent$")) %>%
+          dplyr::select(-dplyr::matches("percent$|_M$")) %>%
           colnames }
 
       output_column_naming_syntax = across_call %>%
