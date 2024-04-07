@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9003</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9100</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,25 +76,39 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span></code></pre></div>
 <p>The Census Bureau API exposes an extensive set of estimates derived
-from responses to the American Community Survey. But it also exposes a
-companion set of margins of error (MOE). These MOEs are critical for
-accurately interpreting– and responsibly using–ACS estimates.</p>
-<p>In brief, margins of error quantify the error associated with
-conducting a survey and describe the precision of survey-derived
-statistics. If a point estimate is 500, and the associated 90% margin of
-error is 100, then we would expect that if we were to use the same
-surveying methods to calculate that same estimate 100 times, 90 of those
-100 repeated survey efforts would produce point estimates in the range
-from 400 to 600. The remaining 10 would produce point estimates outside
-of that range (e.g., of 385 and 650).</p>
-<p>This should give us some pause about our original point estimate; an
-MOE of 100 for a point estimate of 500 is fairly substantial. However,
-all too often, analysts are unsure how to incorporate MOEs into their
-analysis, inference drawing, and data summary processes. This can also
-make for more work as compared to just reporting out on point estimates.
-Further, for analysts working with derived measures– e.g., those
-calculated by dividing two point estimates–it may be unclear how to
-evaluate the error associated with these newly-created measures.</p>
+from responses to the American Community Survey. Each estimate has an
+accompanying margin of error (MOE). These MOEs are critical for
+accurately interpreting and responsibly using ACS estimates.</p>
+<p>Margins of error account for the imprecision associated with
+extrapolating from a survey sample to the full population of interest.
+If a point estimate is 500, and the associated (90%) margin of error is
+50, then we would expect that if we were to use the same survey design
+to calculate that same estimate 100 times, 90 of those 100 repeated
+survey efforts would produce point estimates in the range from 450 to
+550. The remaining 10 iterations would produce point estimates outside
+of that range.</p>
+<p>Because the ACS 5-year estimates (the only ACS data used in
+<code>urbnindicators</code>) accumulate sample over five years, they
+have smaller MOEs for a given geography and statistic than do the
+corresponding ACS 1-year estimates. Nonetheless, 5-year estimates rely
+on roughly a 3% sample of the national population. Thus can lead to
+estimates with small MOEs for large geographies and/or broadly-captured
+characteristics (e.g., the counts of different race groups in New York
+City). Conversely, this can lead to very large MOEs when looking at
+smaller geographies and/or less broadly-captured characteristics (e.g.,
+the number of renter households that walk to work in a rural census
+tract in North Dakota).</p>
+<p>When MOEs associated with a given point estimate become large
+relative to the magnitude of that point estimate, analysts should take
+pause and assess whether they can draw meaningful and valid inferences
+about the geography and characteristic in question. Yet the process of
+integrating MOEs into analytic workflows can be unfamiliar and
+time-intensive. This is especially true when analysts are working with
+derived estimates (e.g., the share of the population that is Black
+alone, non-Hispanic) rather than raw count estimates reported directly
+by the ACS (e.g., the number of people who are Black alone,
+non-Hispanic), because an analyst must create a derived margin of error
+to accompany their derived estimate.</p>
 <p><code>urbnindicators</code> helps to facilitate the incorporation of
 MOEs into analysts’ workflows through a few inter-related functions.</p>
   </main>
