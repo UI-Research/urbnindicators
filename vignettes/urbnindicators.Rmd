@@ -57,11 +57,13 @@ corresponding data year and look for variables with "Disability" in the
 `concept` field:
 
 ```{r}
-library(urbnindicators)
-library(tidycensus)
-library(dplyr)
-library(stringr)
-library(ggplot2)
+suppressPackageStartupMessages({
+  library(urbnindicators)
+  library(tidycensus)
+  library(dplyr)
+  library(stringr)
+  library(ggplot2)  
+})
 
 acs_codebook = load_variables(dataset = "acs5", year = 2022)
 # acs_codebook %>% View() # not run
@@ -107,8 +109,7 @@ df_disability = get_acs(
   table = "B18101")
 
 df_disability %>% dim()
-
-df_disability %>% head()
+# df_disability %>% head()
 ```
 
 This returns us 21 observations (one for each county in NJ) along with
@@ -126,14 +127,14 @@ At the same time, many analysts will be overwhelmed by and unsure how to
 incorporate the margins of error that are returned by `tidycensus`,
 opting simply to drop this critical information from their analysis.
 (See `vignette("coefficients-of-variation")` for more on how
-`urbnindicators` provides analysts with quick and actionable
+`urbnindicators` provides quick and actionable
 characterizations of margins of error.)
 
 ## Enter `urbnindicators`
 
 `urbnindicators` abstracts the workflow above behind the scenes. In lieu
 of a call to `tidycensus::get_acs()`, a call to
-`urbnindicators::compile_acs_data()` returns a comprehensive dataframe
+`urbnindicators::compile_acs_data()` returns a dataframe
 of both raw ACS measures and derived estimates (such as the share of all
 individuals who are disabled).
 
@@ -143,13 +144,14 @@ df_urbnindicators = urbnindicators::compile_acs_data(
   years = 2022,
   geography = "county",
   states = "NJ",
-  retain_moes = T)
+  retain_moes = TRUE,
+  spatial = FALSE)
 
 df_urbnindicators %>% dim()
 ```
 
 While this call returns us the same 21 observations (one per county in
-NJ), it returns us some 1,300 columns. Woah. Even when we subset to
+NJ), it returns us some 1,300 columns. Even when we subset to
 those matching "disability", we still have 79 columns (the same columns
 available from our `tidycensus::get_acs()` call, plus one).
 
@@ -161,13 +163,12 @@ df_urbnindicators %>%
 ```
 
 This is because `urbnindicators` makes the same `tidycensus::get_acs()`
-query as illustrated above. Indeed, if the 80 columns returned via our
-workflow above were intimidating, 1,300 columns is likely... more
-intimidating. This reflects a design choice underlying
+query as illustrated above, along with many others.
+This reflects a design choice underlying
 `urbnindicators`--the package returns very large datasets, but it
 structures them such that analysts can use simple and familiar
-approaches to navigating the data, while benefiting from having a
-diverse array of measures in a single dataset.
+approaches to navigating the data while benefiting from a comprehensive array of 
+measures compiled into a single dataset.
 
 The primary differences between `urbnindicators` and `tidycensus`
 outputs are that returned columns have descriptive names (e.g.,
@@ -192,12 +193,11 @@ the end of a string. `select(matches("variable_of_interest.*percent$"))`
 says: match columns with names containing "variable_of_interest",
 followed by any number of characters, and that end in "percent").
 
-For a look at all derived percent variables:
-
+For a look at a subset of derived percent variables:
 ```{r}
 df_urbnindicators %>%
   dplyr::select(dplyr::matches("percent$")) %>%
-  colnames() %>% # 230+
+  colnames() %>% # 190+
   sort() %>%
   head(10) # but we'll just take a look at a few for now
 ```
@@ -205,26 +205,26 @@ df_urbnindicators %>%
 `urbnindicators::compile_acs_data()` also returns a codebook as an
 attribute of the returned dataframe. Want to know more about how
 `cost_burdened_30percentormore_incomeslessthan35000_percent` was
-calculated, or what the universe for that measure is? No problem:
+calculated? No problem:
 
 ```{r}
-## NOTE: this functionality is not (yet) incorporated into the package!
-# df_urbnindicators %>%
-#   attr("codebook")
+df_urbnindicators %>%
+  attr("codebook") %>%
+  filter(calculated_variable == "cost_burdened_30percentormore_incomeslessthan35000_percent") %>%
+  pull(definition)
 ```
 
 ## So Why `urbnindicators`?
 
-Good question. Hopefully the process above has illustrated some of the
-advantages, but to recap, we see two sets of advantages.
+Hopefully the process above has illustrated some of the advantages, which fall
+into two buckets: efficiency and reliability.
 
 1.  **`urbnindicators` saves time** by:
 
     1.  Making sensible decisions about variable and table selection;
-        and
 
     2.  Calculating common measures (typically percentages) behind the
-        scenes.
+        scenes; and
 
     3.  While not illustrated here, `urbnindicators` also allows for
         multi-year and multi-geography queries by default, whereas
@@ -243,11 +243,9 @@ advantages, but to recap, we see two sets of advantages.
     2.  Returning a codebook attached to the primary dataframe that
         documents how variables were created and what they represent;
 
-    3.  Running default data quality checks on generated measures (plus
-        lots of baked-in quality checks as the underlying package code
-        has been developed and tested); and
+    3.  Running default data quality checks on generated measures; and
 
-    4.  Producing out-of-the-box summaries of measure reliability via
+    4.  (Forthcoming) Producing out-of-the-box summaries of measure reliability via
         `urbnindicators::calculate_coefficient_of_variation()`, which
         leverages the margins of error associated with each measure to
         assess the quality of estimates across all queried geographies.

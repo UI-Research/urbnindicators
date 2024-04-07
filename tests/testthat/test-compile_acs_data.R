@@ -1,6 +1,5 @@
 ####----Load Test Data----####
-
-## Statistics for all tracts
+## Statistics for CA and TX Tracts
 df = compile_acs_data(
   variables = NULL,
   years = c(2022),
@@ -11,7 +10,6 @@ df = compile_acs_data(
   spatial = FALSE)
 
 ####----Tests----####
-
 # All percentages have no values greater than one and no values less than zero
 percentage_outliers_maxima = df %>%
   dplyr::select(dplyr::matches("percent$")) %>%

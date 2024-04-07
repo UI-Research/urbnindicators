@@ -50,10 +50,12 @@ you have the most recent version installed!
 ## urbnindicators in action
 
 ```{r example}
-library(dplyr)
-library(stringr)
-library(urbnindicators)
-library(ggplot2)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(stringr)
+  library(urbnindicators)
+  library(ggplot2)
+})
 
 acs_df = compile_acs_data(
   variables = NULL,
@@ -61,7 +63,8 @@ acs_df = compile_acs_data(
   geography = "county",
   states = "NJ",
   counties = NULL,
-  retain_moes = TRUE)
+  retain_moes = TRUE,
+  spatial = FALSE)
 
 acs_df %>% 
   select(NAME, data_source_year, race_personofcolor_percent) %>%
