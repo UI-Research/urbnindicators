@@ -42,18 +42,12 @@ ensure you have the most recent version installed!
 ## urbnindicators in action
 
 ``` r
-library(dplyr)
-#> 
-#> Attaching package: 'dplyr'
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
-library(stringr)
-library(urbnindicators)
-library(ggplot2)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(stringr)
+  library(urbnindicators)
+  library(ggplot2)
+})
 
 acs_df = compile_acs_data(
   variables = NULL,
@@ -62,6 +56,7 @@ acs_df = compile_acs_data(
   states = "NJ",
   counties = NULL,
   retain_moes = TRUE)
+
 #> Getting data from the 2017-2021 5-year ACS
 #> Getting data from the 2018-2022 5-year ACS
 

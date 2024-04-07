@@ -1,7 +1,7 @@
 Package: urbnindicators
 Type: Package
 Title: Out of the Box Social Science Indicators from the American Community Survey (ACS)
-Version: 0.0.0.9003
+Version: 0.0.0.9100
 Authors@R: person("Will", "Curran-Groome", email = "wcurrangroome@gmail.com",
                   role = c("aut", "cre"))
 Description: There are many packages available that facilitate queries to the Census
@@ -22,7 +22,10 @@ Imports:
     stringr,
     tidycensus,
     tidyr,
-    tigris
+    tigris,
+    rlang,
+    tibble,
+    sf
 Suggests:
     ggplot2,
     knitr,

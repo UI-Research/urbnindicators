@@ -12,163 +12,27 @@
 #' @export
 safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 
-#' @title Analysis-ready social science measures
-#' @description `compile_acs_data()` constructs measures frequently used in social sciences
-#'    research while leveraging [tidycensus::get_acs()] to acquire raw estimates from
-#'    the Census Bureau API.
-#' @param variables A named vector of ACS variables such as that returned from
-#'    [urbnindicators::list_acs_variables()].
-#' @param years A character vector (or coercible to the same) comprising one or more
-#'    four-digit years for which to pull five-year American Community Survey estimates.
-#' @param geography A geography type that is accepted by [tidycensus::get_acs()], e.g.,
-#'    "tract", "county", "state", among others. Geographis below the tract level are not
-#'    supported.
-#' @param states A vector of one or more state names, abbreviations, or codes as
-#'    accepted by [tidycensus::get_acs()].
-#' @param counties A vector of one or more county names, abbreviations, or codes as
-#'    accepted by [tidycensus::get_acs()]. NOTE: this parameter is not currently supported
-#'    and must be set to NULL (as it is by default).
-#' @param retain_moes Boolean. Include margins of error (MOE) in the returned dataframe,
-#'    or omit them?
-#' @param spatial Boolean. Return a simple features (sf), spatially-enabled dataframe?
-#' @seealso [tidycensus::get_acs()], which this function wraps.
-#' @returns A dataframe containing the requested `variables`, their MOEs (optionally),
-#'    a series of derived variables, such as percentages, and the year of the data.
-#'    Returned data are formatted wide. A codebook generated with `generate_codebook()`
-#'    is attached and can be accessed via `compile_acs_data() %>% attr("codebook")`.
+#' @title Calculate ACS measures
+#' @description Calculates derived ACS indicators.
+#' @details An internal function used to calculate indicators and derived variable
+#' definitions for the codebook.
+#' @param .data The dataset returned from `compile_acs_data()`.
+#' @returns A modified dataframe that includes newly calculated indicators.
 #' @examples
 #' \dontrun{
-#' acs_variables = list_acs_variables(year = "2022")
 #' df = compile_acs_data(
-#'   variables = acs_variables,
-#'   years = c(2021, 2022),
+#'   variables = list_acs_variables(year = 2022),
+#'   years = c(2022),
 #'   geography = "county",
 #'   states = "NJ",
 #'   counties = NULL,
 #'   retain_moes = TRUE,
 #'   spatial = FALSE)
-#'   }
-#' @export
+#' internal_compute_acs_variables(.data = df)
+#' }
 #' @importFrom magrittr %>%
-
-compile_acs_data = function(
-    variables = NULL,
-    years = c(2022),
-    geography = "county",
-    states = NULL,
-    counties = NULL,
-    retain_moes = TRUE,
-    spatial = FALSE) {
-
-warning(
-"Variable names and geographies for ACS data products can change between years.
-Changes to geographies are particularly significant across decades
-(e.g., from 2019 to 2020), but these changes can occur in any year.
-Users should ensure that the logic embedded in this function--
-which was developed around five-year ACS estimates for 2017-2021--
-remains accurate for their use cases. Evaluation of measures and
-geographies over time should be thoroughly quality checked.\n")
-
-  ## default values for the variables and states arguments.
-  if (length(variables) == 0) { variables = list_acs_variables(year = years[1]) }
-  if (length(states) == 0) { states =  tigris::fips_codes %>%
-    dplyr::filter(!state %in% c("PR", "UM", "VI", "GU", "AS", "MP")) %>%
-    dplyr::pull(state) %>% unique() }
-
-
-  ## warning about inter-decadal tract geometry changes
-  if ( (max(years) >= 2020) & (min(years) < 2020) & (geography == "tract") ) {
-    warning("Requested years span the year 2020, which is when the Census Bureau re-configures
-      census tract boundaries. It is not valid to compare census tract-level statistics for years before 2020 to
-      statistics from 2020 and after; use a crosswalk, such as those provided by NHGIS, to interpolate values.
-      A future version of urbnindicators may address this issue automatically.") }
-
-  ## tracts and larger are supported
-  if ((geography %>% tolower) %in% c("block", "block group")) {
-    stop("Block and block group geographies are not supported at this time.") }
-
-  super_state_geographies = c(
-    "us", "region", "division", "metropolitan/micropolitan statistical area",
-    "metropolitan statistical area/micropolitan statistical area",
-    "cbsa", "urban area", "zip code tabulation area", "zcta")
-
-  ## download corresponding geometries from tigris
-  ## these will be joined to the data to calculate population density
-  ## (and optionally retained in the final output)
-  geometries = purrr::map_dfr(
-    years,
-    function(year) {
-        switch(
-          geography,
-          "us" = tigris::nation(year = year) %>%
-            dplyr::mutate(GEOID = "1"),
-          "region" = tigris::regions(year = year),
-          "division" = tigris::divisions(year = year),
-          "state" = tigris::states(year = year, cb = TRUE),
-          "county" = purrr::map_dfr(states, ~ tigris::counties(state = .x, cb = TRUE, year = year)),
-          "county subdivision" = purrr::map_dfr(states, ~ tigris::county_subdivisions(state = .x, cb = TRUE, year = year)),
-          "tract" = purrr::map_dfr(states, ~ tigris::tracts(state = .x, cb = TRUE, year = year)),
-          "place" = purrr::map_dfr(states, ~ tigris::places(state = .x, cb = TRUE, year = year)),
-          "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
-          "american indian area/alaska native area/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
-          "american indian area/alaska native area (reservation of statistical entity only)" = tigris::native_areas(cb = TRUE, year = year),
-          "american indian area (off reservation trust land only)/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
-          "metropolitan/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-          "metropolitan statistical area/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-          "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-          "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
-          "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
-        dplyr::transmute(
-          area_land_sq_kilometer = ALAND / 1000000,
-          area_water_sq_kilometer = AWATER / 1000000,
-          area_land_water_sq_kilometer = area_land_sq_kilometer + area_water_sq_kilometer,
-          GEOID = GEOID,
-          data_source_year = year) })
-
-
-  ## some geographies are not available by state and can only be returned nationally
-  if (geography %in% super_state_geographies) {
-
-    df_raw_estimates = purrr::map_dfr(
-      ## when year is a vector with length > 1 (i.e., there are multiple years)
-      ## loop over each item in the vector (and this approach also works for a single year)
-      years,
-      ~ tidycensus::get_acs(
-          geography = geography,
-          variables = variables,
-          year = as.numeric(.x),
-          survey = "acs5",
-          output = "wide") %>%
-        dplyr::mutate(data_source_year = .x))
-  } else {
-    ## for those geographies that can (or must) be returned by state:
-    ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for data from each state
-    ## and then combine the resulting dataframes together into a single dataframe
-    df_raw_estimates = purrr::map_dfr(
-      states,
-      function (state) {
-        purrr::map_dfr(
-          ## when year is a vector with length > 1 (i.e., there are multiple years)
-          ## loop over each item in the vector (and this approach also works for a single year)
-          years,
-          ~ tidycensus::get_acs(
-              geography = geography,
-              variables = variables,
-              year = as.numeric(.x),
-              state = state,
-              county = counties,
-              survey = "acs5",
-              output = "wide") %>%
-            dplyr::mutate(data_source_year = .x))})}
-
-  if (retain_moes == TRUE) { moes = df_raw_estimates %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$")) }
-
-  df_calculated_estimates = df_raw_estimates %>%
-    ## drop margin of error variables for calculations since these only relate to raw
-    ## variables. these are joined back to the dataframe at the end of this process
-    ## if retain_moes == T
-    dplyr::select(-dplyr::matches("_M$")) %>%
-    dplyr::rename_with(~ stringr::str_remove(.x, "_E$")) %>% ## removing "_E" (for "Estimate") from column names
+internal_compute_acs_variables = function(.data) {
+  .data %>%
     dplyr::mutate(
       ####----INCOME, POVERTY, FINANCIAL ASSISTANCE----####
       snap_received_percent = safe_divide(snap_received, snap_universe),
@@ -210,7 +74,7 @@ geographies over time should be thoroughly quality checked.\n")
 
       ####----RACE/ETHNICITY----####
       dplyr::across(
-        .cols = dplyr::matches("^race_(nonhispanic|hispanic)"),
+        .cols = dplyr::matches("^race_nonhispanic|^race_hispanic"),
         .fns = ~ safe_divide(.x, race_universe),
         .names = "{.col}_percent"),
       race_personofcolor_percent = 1 - race_nonhispanic_white_alone_percent,
@@ -247,7 +111,7 @@ geographies over time should be thoroughly quality checked.\n")
       ## tenure
       ## (percentages)
       dplyr::across(
-        .cols = dplyr::matches("tenure_(renter|owner)_occupied"),
+        .cols = dplyr::matches("tenure_renter_occupied|tenure_owner_occupied"),
         .fns = ~ safe_divide(.x, tenure_universe),
         .names = "{.col}_percent"),
 
@@ -278,7 +142,7 @@ geographies over time should be thoroughly quality checked.\n")
         .cols = c(dplyr::matches("tenure_by_units.*renter_occupied_housing_units"), -dplyr::matches("owner")),
         .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
         .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied_housing_units', replacement = 'renter_owner_occupied_housing_units')}"),
-      ## units in structure, both tenure
+      ## units in structure, both tenures
       ## (percentages)
       dplyr::across(
         .cols = dplyr::matches("tenure_by_units_in_structure_renter_owner_occupied_housing_units_"),
@@ -342,9 +206,11 @@ geographies over time should be thoroughly quality checked.\n")
       ####----TRANSPORTATION----####
       ## Note: means_transportation_work_public_transportation_excluding_taxicab is a measure of conventional "public transportation"
       dplyr::across(
-        .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home")),
+        .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home"), -means_transportation_work_worked_from_home),
         .fns = ~ safe_divide(.x, (means_transportation_work_universe - means_transportation_work_worked_from_home)),
         .names = "{.col}_percent"), ## the denominator here does not include people who worked from home
+      means_transportation_work_worked_from_home_percent = safe_divide(
+        means_transportation_work_worked_from_home, means_transportation_work_universe),
       means_transportation_work_bicycle_walked_percent = safe_divide(
         rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(bicycle|walked)$"))),
         (means_transportation_work_universe - means_transportation_work_worked_from_home)),
@@ -414,8 +280,164 @@ geographies over time should be thoroughly quality checked.\n")
         health_insurance_coverage_status_type_by_employment_status_in_labor_force), ## denominator is only people in the labor force
       health_insurance_coverage_status_covered_unemployed_percent = safe_divide(
         rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*_unemployed.*with_health_insurance_coverage$"))),
-        health_insurance_coverage_status_type_by_employment_status_in_labor_force)) %>% ## denominator is only people in the labor force
+        health_insurance_coverage_status_type_by_employment_status_in_labor_force)) ## denominator is only people in the labor force
+}
 
+#' @title Analysis-ready social science measures
+#' @description `compile_acs_data()` constructs measures frequently used in social sciences
+#'    research while leveraging [tidycensus::get_acs()] to acquire raw estimates from
+#'    the Census Bureau API.
+#' @param variables A named vector of ACS variables such as that returned from
+#'    [urbnindicators::list_acs_variables()].
+#' @param years A character vector (or coercible to the same) comprising one or more
+#'    four-digit years for which to pull five-year American Community Survey estimates.
+#' @param geography A geography type that is accepted by [tidycensus::get_acs()], e.g.,
+#'    "tract", "county", "state", among others. Geographis below the tract level are not
+#'    supported.
+#' @param states A vector of one or more state names, abbreviations, or codes as
+#'    accepted by [tidycensus::get_acs()].
+#' @param counties A vector of one or more county names, abbreviations, or codes as
+#'    accepted by [tidycensus::get_acs()]. NOTE: this parameter is not currently supported
+#'    and must be set to NULL (as it is by default).
+#' @param retain_moes Boolean. Include margins of error (MOE) in the returned dataframe,
+#'    or omit them?
+#' @param spatial Boolean. Return a simple features (sf), spatially-enabled dataframe?
+#' @seealso [tidycensus::get_acs()], which this function wraps.
+#' @returns A dataframe containing the requested `variables`, their MOEs (optionally),
+#'    a series of derived variables, such as percentages, and the year of the data.
+#'    Returned data are formatted wide. A codebook generated with `generate_codebook()`
+#'    is attached and can be accessed via `compile_acs_data() %>% attr("codebook")`.
+#' @examples
+#' \dontrun{
+#' acs_variables = list_acs_variables(year = "2022")
+#' df = compile_acs_data(
+#'   variables = acs_variables,
+#'   years = c(2021, 2022),
+#'   geography = "county",
+#'   states = "NJ",
+#'   counties = NULL,
+#'   retain_moes = TRUE,
+#'   spatial = FALSE)
+#'   }
+#' @export
+#' @importFrom magrittr %>%
+
+compile_acs_data = function(
+    variables = NULL,
+    years = c(2022),
+    geography = "county",
+    states = NULL,
+    counties = NULL,
+    retain_moes = TRUE,
+    spatial = FALSE) {
+
+warning(
+"Variable names and geographies for ACS data products can change between years.
+Changes to geographies are particularly significant across decades
+(e.g., from 2019 to 2020), but these changes can occur in any year.
+Users should ensure that the logic embedded in this function--
+which was developed around five-year ACS estimates for 2017-2021--
+remains accurate for their use cases. Evaluation of measures and
+geographies over time should be thoroughly quality checked.\n")
+
+  ## default values for the variables and states arguments.
+  if (length(variables) == 0) { variables = list_acs_variables(year = years[1]) }
+  if (length(states) == 0) { states =  tigris::fips_codes %>%
+    dplyr::filter(!state %in% c("PR", "UM", "VI", "GU", "AS", "MP")) %>%
+    dplyr::pull(state) %>% unique() }
+
+  ## warning about inter-decadal tract geometry changes
+  if ( (max(years) >= 2020) & (min(years) < 2020) & (geography == "tract") ) {
+    warning("Requested years span the year 2020, which is when the Census Bureau re-configures
+      census tract boundaries. It is not valid to compare census tract-level statistics for years before 2020 to
+      statistics from 2020 and after; use a crosswalk, such as those provided by NHGIS, to interpolate values.
+      A future version of urbnindicators may address this issue automatically.") }
+
+  ## tracts and larger are supported
+  if ((geography %>% tolower) %in% c("block", "block group")) {
+    stop("Block and block group geographies are not supported at this time.") }
+
+  super_state_geographies = c(
+    "us", "region", "division", "metropolitan/micropolitan statistical area",
+    "metropolitan statistical area/micropolitan statistical area",
+    "cbsa", "urban area", "zip code tabulation area", "zcta")
+
+  ## download corresponding geometries from tigris
+  ## these will be joined to the data to calculate population density
+  ## (and optionally retained in the final output)
+  geometries = purrr::map_dfr(
+    years,
+    function(year) {
+        switch(
+          geography,
+          "us" = tigris::nation(year = year) %>%
+            dplyr::mutate(GEOID = "1"),
+          "region" = tigris::regions(year = year),
+          "division" = tigris::divisions(year = year),
+          "state" = tigris::states(year = year, cb = TRUE),
+          "county" = purrr::map_dfr(states, ~ tigris::counties(state = .x, cb = TRUE, year = year)),
+          "county subdivision" = purrr::map_dfr(states, ~ tigris::county_subdivisions(state = .x, cb = TRUE, year = year)),
+          "tract" = purrr::map_dfr(states, ~ tigris::tracts(state = .x, cb = TRUE, year = year)),
+          "place" = purrr::map_dfr(states, ~ tigris::places(state = .x, cb = TRUE, year = year)),
+          "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
+          "american indian area/alaska native area/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
+          "american indian area/alaska native area (reservation of statistical entity only)" = tigris::native_areas(cb = TRUE, year = year),
+          "american indian area (off reservation trust land only)/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
+          "metropolitan/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "metropolitan statistical area/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
+          "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
+        dplyr::transmute(
+          area_land_sq_kilometer = ALAND / 1000000,
+          area_water_sq_kilometer = AWATER / 1000000,
+          area_land_water_sq_kilometer = area_land_sq_kilometer + area_water_sq_kilometer,
+          GEOID = GEOID,
+          data_source_year = year) })
+
+  ## some geographies are not available by state and can only be returned nationally
+  if (geography %in% super_state_geographies) {
+    df_raw_estimates = purrr::map_dfr(
+      ## when year is a vector with length > 1 (i.e., there are multiple years)
+      ## loop over each item in the vector (and this approach also works for a single year)
+      years,
+      ~ tidycensus::get_acs(
+          geography = geography,
+          variables = variables,
+          year = as.numeric(.x),
+          survey = "acs5",
+          output = "wide") %>%
+        dplyr::mutate(data_source_year = .x))
+  } else {
+    ## for those geographies that can (or must) be returned by state:
+    ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for data from each state
+    ## and then combine the resulting dataframes together into a single dataframe
+    df_raw_estimates = purrr::map_dfr(
+      states,
+      function (state) {
+        purrr::map_dfr(
+          ## when year is a vector with length > 1 (i.e., there are multiple years)
+          ## loop over each item in the vector (and this approach also works for a single year)
+          years,
+          ~ tidycensus::get_acs(
+              geography = geography,
+              variables = variables,
+              year = as.numeric(.x),
+              state = state,
+              county = counties,
+              survey = "acs5",
+              output = "wide") %>%
+            dplyr::mutate(data_source_year = .x))})}
+
+  if (retain_moes == TRUE) { moes = df_raw_estimates %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$")) }
+
+  df_calculated_estimates = df_raw_estimates %>%
+    ## drop margin of error variables for calculations since these only relate to raw
+    ## variables. these are joined back to the dataframe at the end of this process
+    ## if retain_moes == T
+    dplyr::select(-dplyr::matches("_M$")) %>%
+    dplyr::rename_with(~ stringr::str_remove(.x, "_E$")) %>% ## removing "_E" (for "Estimate") from column names
+    internal_compute_acs_variables() %>%
     ## these variable names end in "percent", but they're actually count estimates
     dplyr::rename_with(.cols = dplyr::matches("household_income.*percent$"), .fn = ~ paste0(., "_count_estimate")) %>%
 
@@ -431,9 +453,7 @@ geographies over time should be thoroughly quality checked.\n")
     { if (retain_moes == TRUE) dplyr::left_join(., moes, by = c("GEOID", "data_source_year")) else . }
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
-  attr(df_calculated_estimates, "codebook") = generate_codebook(
-    variables = colnames(df_calculated_estimates),
-    years = years)
+  attr(df_calculated_estimates, "codebook") = generate_codebook(.data = df_calculated_estimates)
 
   return(df_calculated_estimates)
 }
