@@ -371,7 +371,10 @@ geographies over time should be thoroughly quality checked.\n")
         switch(
           geography,
           "us" = tigris::nation(year = year) %>%
-            dplyr::mutate(GEOID = "1"),
+            dplyr::mutate(
+              GEOID = "1",
+              ALAND = 9161555541118, ## sum of ALAND from tigris::states(year = 2022, cb = TRUE)
+              AWATER = 711492860209), ## sum of AWATER from tigris::states(year = 2022, cb = TRUE)
           "region" = tigris::regions(year = year),
           "division" = tigris::divisions(year = year),
           "state" = tigris::states(year = year, cb = TRUE),
