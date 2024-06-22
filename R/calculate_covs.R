@@ -1,3 +1,119 @@
+#' @importFrom magrittr %>%
+
+#' @title Calculate a simple standard error
+#' @details Create a standard error at the 90% level from a margin of error
+#' @param .moe A margin of error, or a vector thereof
+#' @returns A 90% standard error
+se_simple = function(moe) {
+  se = moe / 1.645
+  return(se)
+}
+
+#' @title Calculate a pooled standard error for a summed or subtracted estimate
+#' @details For an estimate derived by adding or subtracting multiple estimates, calculate the pooled standard error
+#' @param ... The unquoted names of the margin of error variables to be added or subtracted
+#' @returns A pooled 90% standard error
+se_sum = function(...) {
+  dots = list(...)
+
+  ## depending on how / where this is called, the dots may be a list of lists
+  ## where the top-level list is unneeded and only has a length of one
+  if (length(dots) == 1) { dots = dots[[1]]}
+
+  ## convert margins of error to standard errors
+  ## square each standard error
+  ## sum (rowwise) standard errors
+  ## take the square root of the summed standard errors
+  se = dots %>%
+    purrr::map(se_simple) %>%
+    purrr::map(~ .x ^2) %>%
+    purrr::pmap_dbl(sum) %>%
+    purrr::map_dbl(sqrt)
+
+  return(se)
+}
+
+#' @title Calculate a pooled standard  for a proportion or ratio estimate
+#' @details For an estimate derived by dividing multiple estimates, calculate the pooled standard error
+#' @param estimate_numerator The estimate of the numerator
+#' @param estimate_denominator The estimate of the denominator
+#' @param moe_numerator The margin of error of the numerator
+#' @param moe_denominator The margin of error of the denominator
+#' @param se_numerator The standard error of the numerator
+#' @param se_denominator The standard error of the denominator
+#' @param type The type of estimate being calculated, either "proportion" or "ratio"
+#' @returns A pooled 90% standard error
+se_proportion_ratio = function(
+    estimate_numerator,
+    estimate_denominator,
+    moe_numerator = NULL,
+    moe_denominator = NULL,
+    se_numerator = NULL,
+    se_denominator = NULL,
+    type = "proportion") {
+
+  if (all(is.null(c(moe_numerator, se_numerator))) | all(is.na(c(moe_denominator, se_denominator)))) {
+    stop("A margin of error or standard error must be provided for both the numerator and the denominator.")
+  }
+
+  if( ((!is.null(moe_numerator) & !is.null(se_numerator))) | (!is.null(moe_denominator) & !is.null(se_denominator))) {
+    stop("Only one of a margin of error or a standard error can be provided for the numerator and denominator.")
+  }
+
+  if (!is.null(moe_numerator)) { se_numerator = se_simple(moe_numerator) }
+  if (!is.null(moe_denominator)) { se_denominator = se_simple(moe_denominator) }
+
+  ## squared standard error of the numerator
+  radical_term_one = se_numerator %>% `^`(2)
+
+  ## squared numerator over the squared denominator times the squared standard error of the denominator
+  radical_term_two = ( (estimate_numerator ^ 2) / (estimate_denominator ^ 2) ) *
+    (se_denominator %>% `^`(2))
+
+  ## if the value under the radical is negative, use the formula for ratio standard errors
+  ## i.e., add the radical terms, rather than subtract them
+  se = dplyr::if_else(
+    radical_term_one < radical_term_two | type == "ratio",
+    ((1 / estimate_denominator) * sqrt( radical_term_one + radical_term_two )),
+    ((1 / estimate_denominator) * sqrt( radical_term_one - radical_term_two )))
+
+}
+
+#' @title Calculate a coefficient of variation
+#' @details
+#' @param estimate The estimate
+#' @param se The standard error
+#' @returns A coefficient of variation at the 90% level
+cv = function(estimate, se) {
+  cv = se / estimate * 100
+
+  ## when the estimate is zero, this produces an infinite value
+  ## replacing this with a zero
+  cv = dplyr::if_else(is.infinite(cv), 0, cv)
+
+  return(cv)
+}
+
+# temp = tibble::tibble(
+#   estimate1 = c(1, 2, 3, 4, 5),
+#   estimate2 = c(2, 3, 4, 5, 6),
+#   estimate3 = c(3, 4, 5, 6, 7),
+#   moe1 = c(.5, .5, 1, 3, 4),
+#   moe2 = c(1, 1, 2, 4, 5),
+#   moe3 = c(.75, 1, .5, 2, 2.3))
+#
+# temp %>%
+#   dplyr::mutate(
+#     #se_sum_1_2 = se_sum_difference(moe1, moe2),
+#     #se_sum_1_2_3 = se_sum_difference(moe1, moe2, moe3),
+#     se_proportion_ratio_1_2 = se_proportion_ratio(
+#       estimate_numerator = estimate1,
+#       estimate_denominator = estimate2,
+#       moe_numerator = moe1,
+#       moe_denominator = moe2))#,
+#     #cv1 = cv(sum(estimate1, estimate2), se_sum_1_2),
+#     #cv_proportion_1_2 = cv((estimate1 / estimate2), se_proportion_ratio_1_2))
+
 #' @title Calculate Coefficients of Variation (CVs)
 #' @details Create CVs for all ACS estimates and derived indicators
 #' @param .data The dataset returned from `compile_acs_data()`.
@@ -14,68 +130,6 @@
 #'   spatial = FALSE)
 #' internal_compute_acs_variables(.data = df)
 #' }
-#' @importFrom magrittr %>%
-
-se_simple = function(moe) {
-  se = moe / 1.645
-  return(se)
-}
-
-tidycensus::moe_sum
-
-## this formula can be read as the the square root of the summed standard errors
-## i.e.: sqrt(sum(map_dbl(moes, ~ se_simple(.x) ^2 )))
-##
-se_sum_difference = function(moe, estimate) {
-
-  se = sqrt(sum(purrr::map_dbl(moe, ~ se_simple(.x) ^2 )))
-  return(se)
-}
-
-#moes = (rlang::!!! rlang::syms(c("sex_by_age_by_disability_status_male_18_34_years_with_a_disability_M", "sex_by_age_by_disability_status_male_35_64_years_with_a_disability_M")))
-special_function = function(x) {
-  moes = !!! rlang::syms(c("sex_by_age_by_disability_status_male_18_34_years_with_a_disability_M", "sex_by_age_by_disability_status_male_35_64_years_with_a_disability_M"))
-  estimates = !!! rlang::syms(c("sex_by_age_by_disability_status_male_18_34_years_with_a_disability", "sex_by_age_by_disability_status_male_35_64_years_with_a_disability"))
-
-  print(moes)
-  print(estimates)
-
-  return (se_sum_difference(moe = moes, estimate = estimates)) }
-df %>%
-  dplyr::rowwise() %>%
-  dplyr::transmute(
-    dplyr::across(disability_percent, ~ special_function(.x))
-
-se_ratio = function(value_numer, value_denom) {
-  (1 / value_denom) * ( sqrt( (se_direct(value_numer) ^ 2) + ( ((value_numer ^ 2) / (value_denom ^ 2)) * ((se_direct(value_denom) ^ 2)) ) ) )
-}
-
-## note from Census documentation here: https://www2.census.gov/programs-surveys/acs/tech_docs/accuracy/2018_ACS_Accuracy_Document_Worked_Examples.pdf?
-## "if the value under the radical is negative, use the ratio standard error formula instead
-se_perc = function(value_numer, value_denom, moe_numer, moe_denom) {
-  radical_term_one = (se_direct(moe_numer)^2)
-  radical_term_two = ( ( (value_numer^2) / (value_denom^2) ) * (se_direct(moe_denom)^2) )
-
-  ## if the value under the radical is negative, use the ratio SE formula
-  se = if_else(
-    radical_term_one < radical_term_two,
-    se_ratio(value_numer = value_numer, value_denom = value_denom),
-    ((1 / value_denom) * sqrt( radical_term_one - radical_term_two )))
-
-  return(se)
-}
-
-
-cv = function(estimate, se) {
-  sv = se / estimate * 100
-
-  ## when the estimate is zero, this produces an infinite value
-  ## replacing this with a zero
-  cv = dplyr::if_else(is.infinite(cv), 0, cv)
-
-  return(CV)
-}
-
 calculae_covs = function(.data) {
 
   ## testing / development only
@@ -89,11 +143,9 @@ calculae_covs = function(.data) {
     retain_moes = TRUE,
     spatial = FALSE)
 
-    ## the attached to the default compile_acs_data() return
+  ## the attached to the default compile_acs_data() return
   codebook = .data %>%
     attr("codebook")
-
-
 
   ## helper function -- pull out the numerator and denominator from the definition
   extract_definition_terms = function(.definition, .type) {
@@ -170,8 +222,8 @@ calculae_covs = function(.data) {
   simple_percent_no_calculated_variables_codebook = codebook1 %>%
     dplyr::filter(
       variable_type == "Percent",
-      numerator_variable_count == 0,
-      denominator_variable_count == 0,
+      numerator_variable_count == 1,
+      denominator_variable_count == 1,
       !stringr::str_detect(definition, "calculated variable"),
       no_moe_flag == 0)
   ##
@@ -182,22 +234,22 @@ calculae_covs = function(.data) {
         .fns = function(x) {
           current_column = dplyr::cur_column()
 
-          tidycensus::moe_prop(
-            num = get(
+          se_proportion_ratio(
+            estimate_numerator = get(
               simple_percent_no_calculated_variables_codebook %>%
                 dplyr::filter(calculated_variable == current_column) %>%
                 dplyr::pull(numerator)),
-            denom = get(
+            estimate_denominator = get(
               simple_percent_no_calculated_variables_codebook %>%
                 dplyr::filter(calculated_variable == current_column) %>%
                 dplyr::pull(denominator)),
-            moe_num = get(
+            moe_numerator = get(
               simple_percent_no_calculated_variables_codebook %>%
                 dplyr::filter(calculated_variable == current_column) %>%
                 dplyr::pull(numerator) %>%
                 stringr::str_remove_all("_count_estimate") %>%
                 paste0("_M")),
-            moe_denom = get(
+            moe_denominator = get(
               simple_percent_no_calculated_variables_codebook %>%
                 dplyr::filter(calculated_variable == current_column) %>%
                 dplyr::pull(denominator) %>%
@@ -207,15 +259,25 @@ calculae_covs = function(.data) {
         .names = "{.col}_cov"),
       dplyr::across(
         .cols = dplyr::matches("_cov$"),
-        .fns = ~ .x / 1.645 / get(dplyr::cur_column() %>% stringr::str_remove("_cov$")) * 100))
+        .fns = ~ cv(
+          estimate = get(dplyr::cur_column() %>% stringr::str_remove("_cov$")),
+          se = .x))
+        )
+
 
   ####----Numerator Sums----####
-  df %>%
-    dplyr::select(disability_percent) %>%
-    dplyr::rowwise() %>%
+  numerator_sum_codebook = codebook1 %>%
+    dplyr::filter(
+      variable_type == "Percent",
+      numerator_variable_count > 1,
+      denominator_variable_count == 1,
+      !stringr::str_detect(definition, "calculated variable"),
+      no_moe_flag == 0)
+
+  .data %>%
     dplyr::mutate(
       across(
-        .cols = everything(),
+        .cols = any_of(numerator_sum_codebook$calculated_variable),
         .fns = function(x) {
           current_column = dplyr::cur_column()
 
@@ -233,37 +295,24 @@ calculae_covs = function(.data) {
             stringr::str_split(", ") %>%
             unlist()
 
-          print(paste0("Current column: ", current_column))
-          print(paste0("Numerator: ", numerator_variables))
-          print(paste0("Denominator: ", denominator_variables))
+          if (length(denominator_variables) != 1) {
+            stop("The denominator must be a single variable.")
+          }
 
-          numerator_moe = tidycensus::moe_sum(
-            moe = !!! rlang::syms(numerator_variables %>% paste0("_M")),
-            estimate = !!! rlang::syms(numerator_variables),
-            na.rm = FALSE)
+          if (any(!is.na(numerator_variables))) {
+            print("numerator_variables exists.")
+          }
 
-          # percent_moe = tidycensus::moe_prop(
-          #   num = sum(get(numerator_variables), na.rm = TRUE),
-          #   denom = get(denominator_variables),
-          #   moe_num = numerator_moe,
-          #   moe_denom = get(denominator_variables %>% paste0("_M")))
+          se = se_proportion_ratio(
+            estimate_numerator = rowSums(dplyr::select(., all_of(numerator_variables))),
+            estimate_denominator = get(denominator_variables),
+            se_numerator = se_sum(purrr::imap(numerator_variables, ~ .data[[numerator_variables[.y]]])),
+            moe_denominator = get(denominator_variables %>% stringr::str_remove_all("_count_estimate") %>% paste0("_M")))
+
+          return(se)
+
           }))
 
-  df %>%
-    dplyr::rowwise() %>%
-    dplyr::transmute(
-      moe_sum_disability = tidycensus::moe_sum(
-        moe = !!! rlang::syms(c("sex_by_age_by_disability_status_male_18_34_years_with_a_disability_M", "sex_by_age_by_disability_status_male_35_64_years_with_a_disability_M")),
-        estimate = !!! rlang::syms(c("sex_by_age_by_disability_status_male_18_34_years_with_a_disability", "sex_by_age_by_disability_status_male_35_64_years_with_a_disability")),
-        na.rm = FALSE))
-  tidycensus::moe_sum
-
-      dplyr::select(definition, numerator, denominator)
-  ## variables with subtraction in the denominator are not accurately reflected in the codebook
-  codebook1 %>%
-    dplyr::filter(!stringr::str_detect(definition, "raw")) %>%
-    dplyr::slice(20) %>%
-    dplyr::pull(definition)
   ####----Denominator Sums----####
 
 }
