@@ -221,7 +221,7 @@ generate_codebook = function(.data)  {
                 variable_type == "Sum" ~ paste0(
                   "Sum of: ", inputs, " (", inputs_raw, "), ",
                   denominators, " (" , denominators_raw, ").")) %>%
-                stringr::str_replace_all("\\(NA\\)", "calculated variable")) })
+                stringr::str_replace_all("\\(NA\\)", "(calculated variable)")) })
     }
 
     ####----Get Across Variable Names (Function)----####
