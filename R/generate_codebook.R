@@ -81,7 +81,7 @@ generate_codebook = function(.data)  {
             "american_indian_alaska_native" = "native",
             "black_african_american" = "black",
             "household_income_by_gross_rent_as_a_percentage_of_household_income_in_the_past_12_months" =
-              "household_income_by_gross_rent_as_a_percentage_of_household_income")),
+            "household_income_by_gross_rent_as_a_percentage_of_household_income")),
         clean_names = dplyr::if_else(label == "Estimate!!Total:", clean_names %>% paste0("_universe_"), paste0(clean_names, "_")),
         clean_names = clean_names %>% stringr::str_remove("_$"))
 
@@ -383,7 +383,8 @@ generate_codebook = function(.data)  {
           calculated_variable == "area_land_sq_kilometer" ~ "Land area of the geographic unit, in square kilometers.",
           calculated_variable == "area_water_sq_kilometer" ~ "Water area of the geographic unit, in square kilometers.",
           calculated_variable == "area_land_water_sq_kilometer" ~ "Combined land and water area of the geographic unit, in square kilometers.",
-          calculated_variable == "population_density_land_sq_kilometer" ~ "Rate. Numerator: total_population_universe (B01003_001). Denominator: area_land_sq_kilometer.",
+          calculated_variable == "population_density_land_sq_kilometer" ~
+            "Rate. Numerator: total_population_universe (B01003_001). Denominator: area_land_sq_kilometer.",
           calculated_variable == "geometry" ~ "The spatial goemetry attributes of the geographic unit.",
           !is.na(definition) ~ definition,
           .default = "This is a raw ACS estimate."),
