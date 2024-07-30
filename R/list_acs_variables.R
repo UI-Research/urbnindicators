@@ -246,8 +246,15 @@ list_acs_variables = function(year = "2022") {
     # (AKA cost burden)
     select_variables(variable_name = "B25074"),
 
+    ## TENURE BY HOUSING COSTS AS A PERCENTAGE OF HOUSEHOLD INCOME IN THE PAST 12 MONTHS
+    ## (AKA tenure by cost burden)
+    select_variables(variable_name = "B25106"),
+
     ## MEDIAN MONTHLY HOUSING COSTS (DOLLARS)
     housing_cost_monthly_median_ = "B25105_001",
+
+    ## MEDIAN ANNUAL HOUSEHOLD INCOME BY TENURE
+    select_variables("B25119_00"),
 
     ####----TRANSPORTATION----####
     ## MEANS OF TRANSPORTATION TO WORK
@@ -285,7 +292,20 @@ list_acs_variables = function(year = "2022") {
 
     ####----HEALTH INSURANCE----####
     ## HEALTH INSURANCE COVERAGE STATUS AND TYPE BY EMPLOYMENT STATUS
-    select_variables("B27011")
+    select_variables("B27011"),
+
+    ####----DIGITAL INFRASTRUCTURE ACCESS----####
+    ## PRESENCE AND TYPES OF INTERNET SUBSCRIPTIONS IN HOUSEHOLD
+    internet_subscription_household_universe_ = "B28002_001",
+    internet_subscription_household_with_subscription_ = "B28002_002",
+    internet_subscription_household_with_subscription_broadband_ = "B28002_004",
+
+    ## TYPES OF COMPUTERS IN HOUSEHOLD
+    types_of_computing_devices_household_universe_ = "B28001_001",
+    types_of_computing_devices_household_with_any_device_ = "B28001_002",
+    types_of_computing_devices_household_with_computer_laptop_ = "B28001_003",
+    types_of_computing_devices_household_with_smartphone_ = "B28001_005",
+
   )
 
   ## Check that all variables are in the Census codebook
