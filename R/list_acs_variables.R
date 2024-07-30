@@ -256,6 +256,10 @@ list_acs_variables = function(year = "2022") {
     ## MEDIAN ANNUAL HOUSEHOLD INCOME BY TENURE
     select_variables("B25119_00"),
 
+    ## MORTGAGE STATUS
+    mortgage_status_universe_ = "B25081_001",
+    mortgage_status_housing_units_with_mortgage_ = "B25081_002",
+
     ####----TRANSPORTATION----####
     ## MEANS OF TRANSPORTATION TO WORK
     select_variables("B08301_"),
