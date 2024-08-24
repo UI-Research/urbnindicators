@@ -49,13 +49,19 @@ you have the most recent version installed!
 
 ## urbnindicators in action
 
+```{r, include = F, echo = F, warning = F, mesage = F, eval = T}
+library(dplyr)
+library(stringr)
+library(urbnindicators)
+library(ggplot2)
+```
+
+
 ```{r example}
-suppressPackageStartupMessages({
-  library(dplyr)
-  library(stringr)
-  library(urbnindicators)
-  library(ggplot2)
-})
+# library(dplyr)
+# library(stringr)
+# library(urbnindicators)
+# library(ggplot2)
 
 acs_df = compile_acs_data(
   variables = NULL,

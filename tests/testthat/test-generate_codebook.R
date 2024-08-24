@@ -1,14 +1,14 @@
 ####----Load Test Data----####
 
 ## Statistics for NJ Counties
-df = urbnindicators::compile_acs_data(
-  variables = urbnindicators::list_acs_variables(year = "2022"),
+df = compile_acs_data(
+  variables = list_acs_variables(year = "2022"),
   years = 2022,
   geography = "county",
   states = "NJ",
   counties = NULL,
   retain_moes = TRUE,
-  spatial = FALSE)
+  spatial = TRUE)
 
 codebook = attr(df, "codebook")
 
@@ -69,9 +69,9 @@ codebook = attr(df, "codebook")
     { testthat::expect_equal(results_phantom_definitions, 0) } )
 
 ## All variables in the input data are in the codebook
-derived_variables = df %>% dplyr::select(dplyr::matches("percent$")) %>% colnames
-undefined_variables = derived_variables[!(derived_variables %in% (codebook %>% dplyr::pull(calculated_variable)))]
+  derived_variables = df %>% dplyr::select(dplyr::matches("percent$")) %>% colnames
+  undefined_variables = derived_variables[!(derived_variables %in% (codebook %>% dplyr::pull(calculated_variable)))]
 
-testthat::test_that(
-  "All variables in the input data are in the codebook.",
-  { testthat::expect_equal(length(undefined_variables), 0) } )
+  testthat::test_that(
+    "All variables in the input data are in the codebook.",
+    { testthat::expect_equal(length(undefined_variables), 0) } )
