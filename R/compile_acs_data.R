@@ -331,7 +331,7 @@ compile_acs_data = function(
     retain_moes = TRUE,
     spatial = FALSE) {
 
-warning("\n
+message("\n
 Variable names and geographies for ACS data products can change between years.
 Changes to geographies are particularly significant across decades
 (e.g., from 2019 to 2020), but these changes can occur in any year.\n
@@ -348,7 +348,7 @@ geographies over time should be thoroughly quality checked.\n")
 
   ## warning about inter-decadal tract geometry changes
   if ( (max(years) >= 2020) & (min(years) < 2020) & (geography == "tract") ) {
-    warning("Requested years span the year 2020, which is when the Census Bureau re-configures
+    message("Requested years span the year 2020, which is when the Census Bureau re-configures
       census tract boundaries. It is not valid to compare census tract-level statistics for years before 2020 to
       statistics from 2020 and after; use a crosswalk, such as those provided by NHGIS, to interpolate values.
       A future version of urbnindicators may address this issue automatically.") }
@@ -456,7 +456,7 @@ geographies over time should be thoroughly quality checked.\n")
     { if (retain_moes == TRUE) dplyr::left_join(., moes, by = c("GEOID", "data_source_year")) else . }
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
-  attr(df_calculated_estimates, "codebook") = generate_codebook(.data = df_calculated_estimates)
+  attr(df_calculated_estimates, "codebook") = generate_codebook(.data = df_calculated_estimates %>% sf::st_drop_geometry())
 
   return(df_calculated_estimates)
 }
