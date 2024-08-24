@@ -456,7 +456,7 @@ geographies over time should be thoroughly quality checked.\n")
     { if (retain_moes == TRUE) dplyr::left_join(., moes, by = c("GEOID", "data_source_year")) else . }
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
-  attr(df_calculated_estimates, "codebook") = generate_codebook(.data = df_calculated_estimates)
+  attr(df_calculated_estimates, "codebook") = generate_codebook(.data = df_calculated_estimates %>% sf::st_drop_geometry())
 
   return(df_calculated_estimates)
 }
