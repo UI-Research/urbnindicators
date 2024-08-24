@@ -1,7 +1,7 @@
 Package: urbnindicators
 Type: Package
 Title: Out of the Box Social Science Indicators from the American Community Survey (ACS)
-Version: 0.0.0.9100
+Version: 0.0.0.9200
 Authors@R: person("Will", "Curran-Groome", email = "wcurrangroome@gmail.com",
                   role = c("aut", "cre"))
 Description: There are many packages available that facilitate queries to the Census
@@ -11,7 +11,7 @@ Description: There are many packages available that facilitate queries to the Ce
   measures (e.g., percentages), and naming variables semantically. urbnindicators
   abstracts much of this process away and provides users a quick interface to obtain a 
   substantial set of commonly-used social sciences measures from the ACS.
-License: MIT + file LICENSE
+License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: 
@@ -25,7 +25,8 @@ Imports:
     tigris,
     rlang,
     tibble,
-    sf
+    sf,
+    lifecycle
 Suggests:
     ggplot2,
     knitr,
@@ -37,3 +38,4 @@ RoxygenNote: 7.3.1
 URL: https://ui-research.github.io/urbnindicators/
 VignetteBuilder: knitr
 Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)

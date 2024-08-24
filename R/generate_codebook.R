@@ -1,11 +1,11 @@
-#' @title Document variables from `compile_acs_data()`
-#' @description `generate_codebook()` defines how variables produced via `compile_acs_data()`
+#' @title Document variables from \code{urbnindicators::compile_acs_data()}
+#' @description Define how variables produced via \code{urbnindicators::compile_acs_data()}
 #' are calculated.
 #' @details Generates a tibble of variable names and definitions that describe
 #' how each variable was created.
-#' @param .data The dataset returned from `compile_acs_data()`.
+#' @param .data The dataset returned from \code{urbnindicators::compile_acs_data()}.
 #' @returns A tibble containing the names and definitions of  variables returned from
-#' `compile_acs_data()`.
+#' \code{urbnindicators::compile_acs_data()}.
 #' @examples
 #' \dontrun{
 #' df = compile_acs_data(
@@ -14,12 +14,23 @@
 #'   geography = "county",
 #'   states = "NJ",
 #'   counties = NULL,
-#'   retain_moes = TRUE,
 #'   spatial = FALSE)
 #' codebook = generate_codebook(.data = df)
 #' }
 #' @importFrom magrittr %>%
+
+#### CURRENT ISSUES ####
+# tenure_white_alone_householder_renter_occupied (and others calculated similarly) does not get registered as a
+# calculated count variable
 generate_codebook = function(.data)  {
+
+    .data = compile_acs_data(
+      variables = list_acs_variables(year = 2022),
+      years = c(2022),
+      geography = "county",
+      states = "NJ",
+      counties = NULL,
+      spatial = FALSE)
 
     ####----Variable Crosswalk----####
     expression_list = rlang::enexpr(list_acs_variables) %>% as.list()
@@ -88,7 +99,7 @@ generate_codebook = function(.data)  {
     ## this should cover all of the variables returned by list_acs_variables() / compile_acs_data()
     variable_name_crosswalk = dependencies %>%
       dplyr::select(raw_name = name, clean_name = clean_names) %>%
-      dplyr::bind_rows(variable_crosswalk %>%dplyr::select(raw_name = raw_variable_name, clean_name = clean_variable_name)) %>%
+      dplyr::bind_rows(variable_crosswalk %>% dplyr::select(raw_name = raw_variable_name, clean_name = clean_variable_name)) %>%
       ## a handful of count columns end in "percent"; we've renamed them to clarify, and are adjusting the clean names accordingly
       ## in this crosswalk
       dplyr::mutate(
@@ -98,6 +109,8 @@ generate_codebook = function(.data)  {
 
     ####----Document Across Call (Function)----#####
     document_across_call = function(across_call) {
+      # for testing:
+      # across_call = mutate_call
 
       selection_term = across_call %>%
         rlang::call_args() %>%
@@ -139,7 +152,8 @@ generate_codebook = function(.data)  {
         input_columns = .data %>%
           dplyr::select(dplyr::matches(selection_term)) %>%
           dplyr::select(-dplyr::matches("percent$|_M$")) %>%
-          colnames }
+          colnames
+        }
 
       output_column_naming_syntax = across_call %>%
         as.character %>%
@@ -147,7 +161,6 @@ generate_codebook = function(.data)  {
         stringr::str_replace("\\.col", ".x")
 
       variable_type = dplyr::if_else(stringr::str_detect(output_column_naming_syntax, "percent"), "Percent", "Sum")
-
       output_columns = purrr::map_chr(input_columns, ~ stringr::str_glue(output_column_naming_syntax))
 
       denominator_columns = purrr::map_chr(
@@ -204,8 +217,14 @@ generate_codebook = function(.data)  {
         outputs = output_columns,
         inputs = input_columns,
         denominators = denominator_columns) %>%
-          dplyr::left_join(variable_name_crosswalk %>% dplyr::select(inputs_raw = raw_name, clean_name), by = c("inputs" = "clean_name")) %>%
-          dplyr::left_join(variable_name_crosswalk %>% dplyr::select(denominators_raw = raw_name, clean_name), by = c("denominators" = "clean_name"))
+          dplyr::left_join(
+            variable_name_crosswalk %>%
+              dplyr::select(inputs_raw = raw_name, clean_name),
+            by = c("inputs" = "clean_name")) %>%
+          dplyr::left_join(
+            variable_name_crosswalk %>%
+              dplyr::select(denominators_raw = raw_name, clean_name),
+            by = c("denominators" = "clean_name"))
 
       purrr::pmap_dfr(
         codebook_dataframe,
@@ -219,9 +238,8 @@ generate_codebook = function(.data)  {
                   "Numerator = ", inputs, " (", inputs_raw, "). ",
                   "Denominator = ", denominators, " (", denominators_raw, ")."),
                 variable_type == "Sum" ~ paste0(
-                  "Sum of: ", inputs, " (", inputs_raw, "), ",
-                  denominators, " (" , denominators_raw, ").")) %>%
-                stringr::str_replace_all("\\(NA\\)", "(calculated variable)")) })
+                  "Sum of: ", inputs, " (", inputs_raw, "), ", denominators, " (", denominators_raw, ").")) %>%
+                stringr::str_replace_all("\\(NA\\).", "(calculated variable).")) })
     }
 
     ####----Get Across Variable Names (Function)----####
@@ -230,7 +248,6 @@ generate_codebook = function(.data)  {
         dplyr::select(dplyr::matches(match_expression), -dplyr::matches("_M$|percent$")) %>%
         colnames
     }
-
 
     ####----Get rowSums Variables (Function)----####
     get_rowsums_variables = function(expression) {
@@ -263,6 +280,11 @@ generate_codebook = function(.data)  {
     # compile_acs_expression[[2]][[3]] %>% .[2:length(.)]
 
     define_codebook_variable = function(mutate_call, mutate_call_name) {
+
+      # mutate_call = rlang::expr(
+      #   dplyr::across(.cols = dplyr::matches("tenure_.*_householder_renter_occupied"),
+      #               .fns = ~.x + get(dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
+      #               .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied', replacement = 'renter_owner_occupied')}"))
 
       if (any((mutate_call[[1]] %>% as.character) == "safe_divide")) {
         numerator = rlang::call_args(mutate_call) %>% .[[1]]
@@ -369,10 +391,10 @@ generate_codebook = function(.data)  {
             mutate_chain %>%
               purrr::imap_dfr( ~ define_codebook_variable(mutate_call = .x, mutate_call_name = .y)) })
 
-    uncalculated_variables = colnames(.data)[!(colnames(.data) %in% partial_documentation$calculated_variable)]
+    uncalculated_variables = names((list_acs_variables())) %>% stringr::str_remove("_$")
 
-    ## some final adjustments
-    result = tibble::tibble(calculated_variable = uncalculated_variables) %>%
+    ## some adjustments
+    result1 = tibble::tibble(calculated_variable = uncalculated_variables) %>%
       dplyr::bind_rows(partial_documentation) %>%
       dplyr::mutate(
         definition = dplyr::case_when(
@@ -387,7 +409,7 @@ generate_codebook = function(.data)  {
             "Rate. Numerator: total_population_universe (B01003_001). Denominator: area_land_sq_kilometer.",
           calculated_variable == "geometry" ~ "The spatial goemetry attributes of the geographic unit.",
           !is.na(definition) ~ definition,
-          .default = "This is a raw ACS estimate."),
+          calculated_variable %in% uncalculated_variables ~ "This is a raw ACS estimate."),
         variable_type = dplyr::case_when(
           calculated_variable %in% c("data_source_year", "GEOID", "NAME", "geometry", "geography") ~ "Metadata",
           stringr::str_detect(calculated_variable, "median.*income") ~ "Median ($)",
@@ -398,6 +420,50 @@ generate_codebook = function(.data)  {
           stringr::str_detect(calculated_variable, "index") ~ "Index",
           is.na(variable_type) ~ "Count",
           .default = variable_type))
+
+    ## lastly, correcting entries for variables that are calculated using other
+    ## calculated variables
+    custom_function = function(definition) {
+      definition = "Numerator = age_under_5_years (calculated variable), age_5_9_years (calculated variable), age_10_14_years (calculated variable), age_15_17_years (calculated variable). Denominator = sex_by_age_universe (B01001_001)."
+
+      result1 %>% filter(calculated_variable == "tenure_white_alone_householder_renter_occupied")
+      #replacement_variables =
+        str_extract_all(definition, "( .+?calculated variable?)") %>%
+        str_extract_all("(?<=\\().+?(?=\\))")
+        stringr::str_replace_all(c("Denominator" = ",", "(?<=\\().+?(?=\\))" = "")) #%>%
+        str_remove_all("\\(|\\)|calculated variable|=Numerator|Denominator| |=|\\.") %>%
+        str_split(",") #%>%
+        .[[1]] %>%
+        purrr::map(
+          function(calculated_variable) {
+            print(calculated_variable)
+
+            result1 %>%
+              filter(calculated_variable == !!calculated_variable) %>%
+              pull(definition) %>%
+              stringr::str_extract_all("\\(.*?\\)") %>%
+              .[[1]] %>%
+              stringr::str_remove_all("\\(|\\)") %>%
+              paste0(collapse = ", ")
+            })
+
+        for (i in 1:length(replacement_variables)) {
+          str_sub(
+            definition,
+            str_locate_all(definition, "calculated variable")[[1]][1,1],
+            str_locate_all(definition, "calculated variable")[[1]][1,2]) = replacement_variables[[i]]
+        }
+        return(definition)
+      }
+
+    vectorized_custom_function = Vectorize(custom_function)
+
+    #result2 =
+      result1 %>%
+      dplyr::filter(stringr::str_detect(definition, "calculated variable")) %>%
+      dplyr::mutate(definition = vectorized_custom_function(definition))
+
+
 
     return(result)
 }

@@ -1,7 +1,7 @@
 #' @importFrom magrittr %>%
 
 #' @title Calculate a simple standard error
-#' @details Create a standard error at the 90% level from a margin of error
+#' @details Create a standard error at the 90% level from a 90% margin of error
 #' @param .moe A margin of error, or a vector thereof
 #' @returns A 90% standard error
 se_simple = function(moe) {
@@ -96,9 +96,19 @@ cv = function(estimate, se) {
   return(cv)
 }
 
+## helper function -- pull out the numerator and denominator from the definition
+extract_definition_terms = function(.definition, .type) {
+  .definition %>%
+    stringr::str_extract_all(paste0(.type, " .*?\\.")) %>%
+    stringr::str_remove_all("Numerator = |Denominator = |Sum of: |\\.") %>%
+    stringr::str_remove_all("\\(.*?\\)") %>%
+    stringr::str_trim() %>% stringr::str_squish() %>%
+    stringr::str_replace_all(" ,", ",")
+}
+
 #' @title Calculate Coefficients of Variation (CVs)
 #' @details Create CVs for all ACS estimates and derived indicators
-#' @param .data The dataset returned from `compile_acs_data()`.
+#' @param .data The dataset returned from \code{compile_acs_data()}.
 #' @returns A modified dataframe that includes newly calculated indicators.
 #' @examples
 #' \dontrun{
@@ -108,29 +118,36 @@ cv = function(estimate, se) {
 #'   geography = "county",
 #'   states = "NJ",
 #'   counties = NULL,
-#'   retain_moes = TRUE,
 #'   spatial = FALSE)
 #' cvs = calculate_cvs(df) %>%
 #'  dplyr::select(matches("_cv$"))
 #' }
 
+## OUTSTANDING ISSUES
+## -- Percentages that rely on calculated variables (e.g., age_under_5_years_percent)
+##    do not have accurate numerators listed in the codebook
+
 calculate_cvs = function(data) {
+
+  data = compile_acs_data(
+      variables = list_acs_variables(year = 2022),
+      years = c(2022),
+      geography = "county",
+      states = "NJ",
+      counties = NULL,
+      spatial = FALSE)
 
   ## the attached to the default compile_acs_data() return
   codebook = data %>%
     attr("codebook")
 
-  ## helper function -- pull out the numerator and denominator from the definition
-  extract_definition_terms = function(.definition, .type) {
-    .definition %>%
-      stringr::str_extract_all(paste0(.type, " .*?\\.")) %>%
-      stringr::str_remove_all("Numerator = |Denominator = |Sum of: |\\.") %>%
-      stringr::str_remove_all("\\(.*?\\)") %>%
-      stringr::str_trim() %>% stringr::str_squish() %>%
-      stringr::str_replace_all(" ,", ",") }
+  codebook %>%
+
+    dplyr::filter(stringr::str_detect(calculated_variable, "age_under_5_years")) %>% View()
 
   ## modified codebook prepared for calculating CVs
   codebook1 = codebook %>%
+    dplyr::distinct(calculated_variable, .keep_all = TRUE) %>%
     dplyr::filter(!stringr::str_detect(calculated_variable, "_M$")) %>%
     dplyr::mutate(
       numerator_variable_count = dplyr::case_when(
@@ -165,6 +182,10 @@ calculate_cvs = function(data) {
         numerator_variable_count > 1 & denominator_variable_count == 1 ~ "complex numerator percent",
         numerator_variable_count > 1 & denominator_variable_count > 1 ~ "complex numerator and complex denominator percent",
         TRUE ~ "unspecified"))
+
+  codebook1 %>%
+    dplyr::filter(str_detect(definition, "calculated")) %>%
+      View()
 
   simple_percent_no_calculated_variables_codebook = codebook1 %>%
     dplyr::filter(
@@ -204,6 +225,9 @@ calculate_cvs = function(data) {
       !stringr::str_detect(definition, "calculated variable"),
       no_moe_flag == 0)
 
+  calculated_variables_dependencies_codebook = codebook1 %>%
+    dplyr::filter(calculated_variable_dependency_flag == 1)
+
   ## percents where there's no MOE for the denominator
   no_moe_codebook = codebook1 %>%
     dplyr::filter(no_moe_flag == 1, variable_type == "Percent")
@@ -214,24 +238,40 @@ calculate_cvs = function(data) {
       stringr::str_detect(definition, "This is a raw ACS estimate."),
       !(calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe")))
 
-  codebook1 %>%
-    dplyr::filter(calculated_variable == "tenure_by_units_in_structure_renter_owner_occupied_housing_units") %>% View()
-      stringr::str_detect(definition, "calculated variable"),
-      !calculated_variable %in% summed_variable_codebook$calculated_variable) %>%
-    dplyr::select(definition) %>%
-    View()
-
-   df_cvs = data %>%
+  df_cvs = data %>%
     dplyr::mutate(
+      ## derived sum variables - calculate MOEs that can be used in subsequent calculations
+      dplyr::across(
+        .cols = any_of(summed_variable_codebook$calculated_variable),
+        .fns = function(x) {
+          current_column = dplyr::cur_column()
+
+          numerator_variables = codebook1 %>%
+            dplyr::filter(calculated_variable == current_column) %>%
+            dplyr::pull(numerator) %>%
+            stringr::str_remove_all("_count_estimate") %>%
+            stringr::str_split(", ") %>%
+            unlist() %>%
+            paste0("_M")
+
+          se = se_sum(purrr::map(numerator_variables, ~ data %>% dplyr::pull(.x)))
+          moe = se * 1.645
+
+          return(moe) },
+        .names = "{.col}_M"),
       ## raw ACS variables
       dplyr::across(
-        .cols = any_of(raw_variables_codebook$calculated_variable %>% stringr::str_remove("_count_estimate")),
+        .cols = any_of(c(
+          ## true raw ACS variables
+          raw_variables_codebook$calculated_variable %>% stringr::str_remove("_count_estimate"),
+          ## summed raw ACS variables with derived MOEs calculated above
+          summed_variable_codebook$calculated_variable)),
         .fns = ~ se_simple(get(dplyr::cur_column() %>% paste0("_M"))),
         .names = "{.col}_cv"),
-      ## summed, unstandardized variables AND
-      ## percent variables variables with a denominator that doesn't have an MOE
+      ## percent variables with a denominator that doesn't have an MOE
+      ## these are treated as if there is no demoninator
       dplyr::across(
-        .cols = any_of(c(denominator_sum_codebook$calculated_variable, summed_variable_codebook$calculated_variable)),
+        .cols = any_of(no_moe_codebook$calculated_variable),
         .fns = function(x) {
           current_column = dplyr::cur_column()
 
@@ -316,5 +356,5 @@ calculate_cvs = function(data) {
    return(df_cvs)
   }
 
-df = calculate_cvs(data)
+# df = calculate_cvs(data)
 
