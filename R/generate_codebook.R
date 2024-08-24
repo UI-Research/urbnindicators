@@ -78,7 +78,7 @@ generate_codebook = function(.data)  {
             "__" = "_",
             "native_hawaiian_other_pacific_islander" = "nhpi",
             "hispanic_latino" = "hispanic",
-            "american_indian_alaska_native" = "native",
+            "american_indian_alaska_native" = "aian",
             "black_african_american" = "black",
             "household_income_by_gross_rent_as_a_percentage_of_household_income_in_the_past_12_months" =
               "household_income_by_gross_rent_as_a_percentage_of_household_income")),
@@ -88,13 +88,8 @@ generate_codebook = function(.data)  {
     ## this should cover all of the variables returned by list_acs_variables() / compile_acs_data()
     variable_name_crosswalk = dependencies %>%
       dplyr::select(raw_name = name, clean_name = clean_names) %>%
-      dplyr::bind_rows(variable_crosswalk %>%dplyr::select(raw_name = raw_variable_name, clean_name = clean_variable_name)) %>%
-      ## a handful of count columns end in "percent"; we've renamed them to clarify, and are adjusting the clean names accordingly
-      ## in this crosswalk
-      dplyr::mutate(
-        clean_name = dplyr::case_when(
-          stringr::str_detect(clean_name, "household_income_by_gross_rent.*percent$") ~ paste0(clean_name, "_count_estimate"),
-          TRUE ~ clean_name))
+      dplyr::bind_rows(variable_crosswalk %>% dplyr::select(raw_name = raw_variable_name, clean_name = clean_variable_name))
+
 
     ####----Document Across Call (Function)----#####
     document_across_call = function(across_call) {

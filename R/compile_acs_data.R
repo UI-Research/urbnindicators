@@ -35,252 +35,252 @@ internal_compute_acs_variables = function(.data) {
   .data %>%
     dplyr::mutate(
       ####----INCOME, POVERTY, FINANCIAL ASSISTANCE----####
-      snap_received_percent = safe_divide(snap_received, snap_universe),
-      public_assistance_received_percent = safe_divide(public_assistance_received, public_assistance_universe),
-      dplyr::across(
-        .cols = dplyr::matches("federal_poverty_limit.*below"),
-        .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("below", "universe") )),
-        .names = "{.col}_percent"),
-      cost_burdened_30percentormore_allincomes_percent = safe_divide(
-        ## numerator -- all households where gross rent is 30% or more of household income
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*percent"))),
-        ## denominator -- all households with computed rent shares
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed")))),
-      cost_burdened_50percentormore_allincomes_percent = safe_divide(
-        ## numerator -- all households where gross rent is 50% or more of household income
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*50_0.*percent"))),
-        ## denominator -- all households with computed rent shares
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed")))),
-      cost_burdened_30percentormore_incomeslessthan35000_percent = safe_divide(
-        ## numerator -- all households where gross rent is 30% or more of household income
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*percent"))),
-        ## denominator -- all households whose household incomes are $34,999 or less
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$")))),
-      cost_burdened_50percentormore_incomeslessthan35000_percent = safe_divide(
-        ## numerator -- all households where gross rent is 50% or more of household income
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*percent"))),
-        ## denominator -- all households whose household incomes are $34,999 or less
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$")))),
-      cost_burdened_30percentormore_incomeslessthan50000_percent = safe_divide(
-        ## numerator -- all households where gross rent is 30% or more of household income
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*percent"))),
-        ## denominator -- all households whose household incomes are $50,000 or less
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$")))),
-      cost_burdened_50percentormore_incomeslessthan50000_percent = safe_divide(
-        ## numerator -- all households where gross rent is 50% or more of household income
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*percent"))),
-        ## denominator -- all households whose household incomes are $50,000 or less
-        rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$")))),
+        snap_received_percent = safe_divide(snap_received, snap_universe),
+        public_assistance_received_percent = safe_divide(public_assistance_received, public_assistance_universe),
+        dplyr::across(
+          .cols = dplyr::matches("federal_poverty_limit.*below"),
+          .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("below", "universe"))),
+          .names = "{.col}_percent"),
+        cost_burdened_30percentormore_allincomes_percent = safe_divide(
+          ## numerator -- all households where gross rent is 30% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*percent"))),
+          ## denominator -- all households with computed rent shares
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed")))),
+        cost_burdened_50percentormore_allincomes_percent = safe_divide(
+          ## numerator -- all households where gross rent is 50% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*50_0.*percent"))),
+          ## denominator -- all households with computed rent shares
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed")))),
+        cost_burdened_30percentormore_incomeslessthan35000_percent = safe_divide(
+          ## numerator -- all households where gross rent is 30% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*percent"))),
+          ## denominator -- all households whose household incomes are $34,999 or less
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$")))),
+        cost_burdened_50percentormore_incomeslessthan35000_percent = safe_divide(
+          ## numerator -- all households where gross rent is 50% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*percent"))),
+          ## denominator -- all households whose household incomes are $34,999 or less
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$")))),
+        cost_burdened_30percentormore_incomeslessthan50000_percent = safe_divide(
+          ## numerator -- all households where gross rent is 30% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*percent"))),
+          ## denominator -- all households whose household incomes are $50,000 or less
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$")))),
+        cost_burdened_50percentormore_incomeslessthan50000_percent = safe_divide(
+          ## numerator -- all households where gross rent is 50% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*percent"))),
+          ## denominator -- all households whose household incomes are $50,000 or less
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$")))),
 
       ####----RACE/ETHNICITY----####
-      dplyr::across(
-        .cols = dplyr::matches("^race_nonhispanic|^race_hispanic"),
-        .fns = ~ safe_divide(.x, race_universe),
-        .names = "{.col}_percent"),
-      race_personofcolor_percent = 1 - race_nonhispanic_white_alone_percent,
+        dplyr::across(
+          .cols = dplyr::matches("^race_nonhispanic|^race_hispanic"),
+          .fns = ~ safe_divide(.x, race_universe),
+          .names = "{.col}_percent"),
+        race_personofcolor_percent = 1 - race_nonhispanic_white_alone_percent,
 
       ####----SEX----####
-      sex_female_percent = safe_divide(sex_by_age_female, sex_by_age_universe),
-      sex_male_percent = safe_divide(sex_by_age_male, sex_by_age_universe),
+        sex_female_percent = safe_divide(sex_by_age_female, sex_by_age_universe),
+        sex_male_percent = safe_divide(sex_by_age_male, sex_by_age_universe),
 
       ####----AGE----####
-      # creating combined, male and female counts by age group named, e.g., age_15_17_years
-      dplyr::across(
-        .cols = dplyr::matches("sex_by_age_female_.*years$"),
-        .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("female", "male")),
-        .names =  "{stringr::str_replace(string = .col, pattern = 'sex_by_age_female_', replacement = 'age_')}"),
-      dplyr::across(
-        .cols = dplyr::matches("^age.*years$"),
-        .fns = ~ safe_divide(.x, sex_by_age_universe),
-        .names =  "{.col}_percent")) %>%
+        ## creating combined, male and female counts by age group named, e.g., age_15_17_years
+        dplyr::across(
+          .cols = dplyr::matches("sex_by_age_female_.*years$"),
+          .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("female", "male")),
+          .names =  "{stringr::str_replace(string = .col, pattern = 'sex_by_age_female_', replacement = 'age_')}"),
+        dplyr::across(
+          .cols = dplyr::matches("^age.*years$"),
+          .fns = ~ safe_divide(.x, sex_by_age_universe),
+          .names =  "{.col}_percent")) %>%
 
-    ## adding a new mutate call because rowSums is unable to access variables
-    ## created within the same mutate call
-    dplyr::mutate(
-      age_under_18_percent = safe_divide(
-        rowSums(dplyr::select(., age_under_5_years, age_5_9_years, age_10_14_years, age_15_17_years)),
-        sex_by_age_universe),
-      age_over_64_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("age_(6(5|7)|7|8).*_years$"))),
-        sex_by_age_universe),
+        ## adding a new mutate call because rowSums is unable to access variables
+        ## created within the same mutate call
+        dplyr::mutate(
+          age_under_18_percent = safe_divide(
+            rowSums(dplyr::select(., age_under_5_years, age_5_9_years, age_10_14_years, age_15_17_years)),
+            sex_by_age_universe),
+          age_over_64_percent = safe_divide(
+            rowSums(dplyr::select(., dplyr::matches("age_(6(5|7)|7|8).*_years$"))),
+            sex_by_age_universe),
 
       ####----DISABILITY----####
-      disability_percent = safe_divide(rowSums(dplyr::select(., dplyr::matches("with_a_disability"))), sex_by_age_by_disability_status_universe),
+        disability_percent = safe_divide(rowSums(dplyr::select(., dplyr::matches("with_a_disability"))), sex_by_age_by_disability_status_universe),
 
       ####----HOUSING----####
-      ## tenure
-      ## (percentages)
-      dplyr::across(
-        .cols = dplyr::matches("tenure_renter_occupied|tenure_owner_occupied"),
-        .fns = ~ safe_divide(.x, tenure_universe),
-        .names = "{.col}_percent"),
+        ## tenure
+        ## (percentages)
+        dplyr::across(
+          .cols = dplyr::matches("^tenure_renter_occupied|^tenure_owner_occupied"),
+          .fns = ~ safe_divide(.x, tenure_universe),
+          .names = "{.col}_percent"),
 
-      ## tenure by race
-      ## (sums)
-      dplyr::across(
-        .cols = dplyr::matches("tenure_.*_householder_renter_occupied"),
-        .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
-        .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied', replacement = 'renter_owner_occupied')}"),
+        ## tenure by race
+        ## (sums)
+        dplyr::across(
+          .cols = dplyr::matches("tenure_.*_householder_renter_occupied"),
+          .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
+          .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied', replacement = 'renter_owner_occupied')}"),
 
-      ## tenure by race, renter-occupied
-      ## (percentages)
-      dplyr::across(
-        .cols = dplyr::matches("tenure.*householder_renter_occupied"),
-        .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("renter", "renter_owner") )),
-        .names = "{.col}_percent"),
+        ## tenure by race, renter-occupied
+        ## (percentages)
+        dplyr::across(
+          .cols = dplyr::matches("tenure.*householder_renter_occupied"),
+          .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("renter", "renter_owner") )),
+          .names = "{.col}_percent"),
 
-      ## tenure by race, owner-occupied
-      ## (percentages)
-      dplyr::across(
-        .cols = dplyr::matches("tenure.*householder_owner_occupied"),
-        .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("owner", "renter_owner") )),
-        .names = "{.col}_percent"),
+        ## tenure by race, owner-occupied
+        ## (percentages)
+        dplyr::across(
+          .cols = dplyr::matches("tenure.*householder_owner_occupied"),
+          .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("owner", "renter_owner") )),
+          .names = "{.col}_percent"),
 
-      ## units in structure, both tenures
-      ## (sums)
-      dplyr::across( ## summing renter- and owner-occupied estimates
-        .cols = c(dplyr::matches("tenure_by_units.*renter_occupied_housing_units"), -dplyr::matches("owner")),
-        .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
-        .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied_housing_units', replacement = 'renter_owner_occupied_housing_units')}"),
-      ## units in structure, both tenures
-      ## (percentages)
-      dplyr::across(
-        .cols = dplyr::matches("tenure_by_units_in_structure_renter_owner_occupied_housing_units_"),
-        .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_owner_occupied_housing_units),
-        .names = "{.col}_percent"),
-      ## renter-occupied units in structure
-      ## (percentages)
-      dplyr::across(
-        .cols = dplyr::matches("tenure_by_units_in_structure_renter_occupied_housing_units_"),
-        .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_occupied_housing_units),
-        .names = "{.col}_percent"),
-      ## owner-occupied units in structure
-      ## (percentages)
-      dplyr::across(
-        .cols = dplyr::matches("tenure_by_units_in_structure_owner_occupied_housing_units_"),
-        .fns = ~ safe_divide(.x, tenure_by_units_in_structure_owner_occupied_housing_units),
-        .names = "{.col}_percent"),
+        ## units in structure, both tenures
+        ## (sums)
+        dplyr::across( ## summing renter- and owner-occupied estimates
+          .cols = c(dplyr::matches("tenure_by_units.*renter_occupied_housing_units"), -dplyr::matches("owner")),
+          .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
+          .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied_housing_units', replacement = 'renter_owner_occupied_housing_units')}"),
+        ## units in structure, both tenures
+        ## (percentages)
+        dplyr::across(
+          .cols = dplyr::matches("tenure_by_units_in_structure_renter_owner_occupied_housing_units_"),
+          .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_owner_occupied_housing_units),
+          .names = "{.col}_percent"),
+        ## renter-occupied units in structure
+        ## (percentages)
+        dplyr::across(
+          .cols = dplyr::matches("tenure_by_units_in_structure_renter_occupied_housing_units_"),
+          .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_occupied_housing_units),
+          .names = "{.col}_percent"),
+        ## owner-occupied units in structure
+        ## (percentages)
+        dplyr::across(
+          .cols = dplyr::matches("tenure_by_units_in_structure_owner_occupied_housing_units_"),
+          .fns = ~ safe_divide(.x, tenure_by_units_in_structure_owner_occupied_housing_units),
+          .names = "{.col}_percent"),
 
-      ## overcrowding
-      overcrowding_morethan1_ppr_alltenures_percent = safe_divide( ## ppr stands for "people per room"
-        rowSums(dplyr::select(., dplyr::matches("tenure_by_occupants_per_room.*(1_01|1_51|2_01)"))),
-        tenure_by_occupants_per_room_universe),
-      overcrowding_morethan1_ppr_renteroccupied_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("tenure_by_occupants_per_room_renter.*(1_01|1_51|2_01)"))),
-        tenure_by_occupants_per_room_renter_occupied),
+        ## overcrowding
+        overcrowding_morethan1_ppr_alltenures_percent = safe_divide( ## ppr stands for "people per room"
+          rowSums(dplyr::select(., dplyr::matches("tenure_by_occupants_per_room.*(1_01|1_51|2_01)"))),
+          tenure_by_occupants_per_room_universe),
+        overcrowding_morethan1_ppr_renteroccupied_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("tenure_by_occupants_per_room_renter.*(1_01|1_51|2_01)"))),
+          tenure_by_occupants_per_room_renter_occupied),
 
-      ## year built
-      dplyr::across(
-        .cols = dplyr::matches("year_structure_built_built_[0-9].*"),
-        .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("[0-9].*", "universe") %>% stringr::str_replace("built_", "") )),
-        .names = "{.col}_percent"),
-      year_structure_built_built_since_1940_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[4-9]|2).*"))),
-        year_structure_built_universe),
-      year_structure_built_built_since_1950_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[5-9]|2).*"))),
-        year_structure_built_universe),
-      year_structure_built_built_since_1960_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[6-9]|2).*"))),
-        year_structure_built_universe),
-      year_structure_built_built_since_1970_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[7-9]|2).*"))),
-        year_structure_built_universe),
-      year_structure_built_built_since_1980_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[8-9]|2).*"))),
-        year_structure_built_universe),
-      year_structure_built_built_since_1990_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[9]|2).*"))),
-        year_structure_built_universe),
-      year_structure_built_built_since_2000_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(200|201|202).*"))),
-        year_structure_built_universe),
-      year_structure_built_built_since_2010_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(201|202).*"))),
-        year_structure_built_universe),
-      year_structure_built_built_since_2020_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_202.*"))),
-        year_structure_built_universe),
-      year_structure_built_built_before_1960_percent = 1 - year_structure_built_built_since_1960_percent, ## a common proxy for relative exposure to lead-based paint
+        ## year built
+        dplyr::across(
+          .cols = dplyr::matches("year_structure_built_built_[0-9].*"),
+          .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("[0-9].*", "universe") %>% stringr::str_replace("built_", "") )),
+          .names = "{.col}_percent"),
+        year_structure_built_built_since_1940_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[4-9]|2).*"))),
+          year_structure_built_universe),
+        year_structure_built_built_since_1950_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[5-9]|2).*"))),
+          year_structure_built_universe),
+        year_structure_built_built_since_1960_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[6-9]|2).*"))),
+          year_structure_built_universe),
+        year_structure_built_built_since_1970_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[7-9]|2).*"))),
+          year_structure_built_universe),
+        year_structure_built_built_since_1980_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[8-9]|2).*"))),
+          year_structure_built_universe),
+        year_structure_built_built_since_1990_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[9]|2).*"))),
+          year_structure_built_universe),
+        year_structure_built_built_since_2000_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(200|201|202).*"))),
+          year_structure_built_universe),
+        year_structure_built_built_since_2010_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(201|202).*"))),
+          year_structure_built_universe),
+        year_structure_built_built_since_2020_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_202.*"))),
+          year_structure_built_universe),
+        year_structure_built_built_before_1960_percent = 1 - year_structure_built_built_since_1960_percent, ## a common proxy for relative exposure to lead-based paint
 
       ####----TRANSPORTATION----####
-      ## Note: means_transportation_work_public_transportation_excluding_taxicab is a measure of conventional "public transportation"
-      dplyr::across(
-        .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home"), -means_transportation_work_worked_from_home),
-        .fns = ~ safe_divide(.x, (means_transportation_work_universe - means_transportation_work_worked_from_home)),
-        .names = "{.col}_percent"), ## the denominator here does not include people who worked from home
-      means_transportation_work_worked_from_home_percent = safe_divide(
-        means_transportation_work_worked_from_home, means_transportation_work_universe),
-      means_transportation_work_bicycle_walked_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(bicycle|walked)$"))),
-        (means_transportation_work_universe - means_transportation_work_worked_from_home)),
-      means_transportation_work_motor_vehicle_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(car_truck_van|taxicab|motorcycle)$"))),
-        (means_transportation_work_universe - means_transportation_work_worked_from_home)),
-      dplyr::across(
-        .cols = c(dplyr::matches("travel_time_work"), -travel_time_work_universe),
-        .fns = ~ safe_divide(.x, travel_time_work_universe),
-        .names = "{.col}_percent"),
+        ## Note: means_transportation_work_public_transportation_excluding_taxicab is a measure of conventional "public transportation"
+        dplyr::across(
+          .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home"), -means_transportation_work_worked_from_home),
+          .fns = ~ safe_divide(.x, (means_transportation_work_universe - means_transportation_work_worked_from_home)),
+          .names = "{.col}_percent"), ## the denominator here does not include people who worked from home
+        means_transportation_work_worked_from_home_percent = safe_divide(
+          means_transportation_work_worked_from_home, means_transportation_work_universe),
+        means_transportation_work_bicycle_walked_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(bicycle|walked)$"))),
+          (means_transportation_work_universe - means_transportation_work_worked_from_home)),
+        means_transportation_work_motor_vehicle_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(car_truck_van|taxicab|motorcycle)$"))),
+          (means_transportation_work_universe - means_transportation_work_worked_from_home)),
+        dplyr::across(
+          .cols = c(dplyr::matches("travel_time_work"), -travel_time_work_universe),
+          .fns = ~ safe_divide(.x, travel_time_work_universe),
+          .names = "{.col}_percent"),
 
       ####----EDUCATION----####
-      educational_attainment_highschool_none_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade)"))),
-        educational_attainment_population_25_years_over_universe),
-      educational_attainment_highschool_nodiploma_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(9th|10th|11th|12th)"))),
-        educational_attainment_population_25_years_over_universe),
-      educational_attainment_ged_percent = safe_divide(
-        educational_attainment_population_25_years_over_ged_alternative_credential,
-        educational_attainment_population_25_years_over_universe),
-      educational_attainment_highschool_diploma_percent = safe_divide(
-        educational_attainment_population_25_years_over_regular_high_school_diploma,
-        educational_attainment_population_25_years_over_universe),
-      educational_attainment_college_some_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("educational_attainment.*some_college"))),
-        educational_attainment_population_25_years_over_universe),
-      educational_attainment_degree_associate_percent = safe_divide(
-        educational_attainment_population_25_years_over_associates_degree,
-        educational_attainment_population_25_years_over_universe),
-      educational_attainment_degree_bachelors_percent = safe_divide(
-        educational_attainment_population_25_years_over_bachelors_degree,
-        educational_attainment_population_25_years_over_universe),
-      educational_attainment_degree_morethanbachelors_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(masters|professional|doctorate)"))),
-        educational_attainment_population_25_years_over_universe),
-      educational_enrollment_grades_1thru12_percent = safe_divide(
-        school_enrollment_universe - rowSums(dplyr::select(., dplyr::matches("school_enrollment.*[^(_universe)]"))),
-        school_enrollment_universe),
-      dplyr::across(
-        .cols = dplyr::matches("school_enrollment.*[^(_universe)]"),
-        .fns = ~ safe_divide(.x, school_enrollment_universe),
-        .names = "{.col}_percent"),
+        educational_attainment_highschool_none_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade)"))),
+          educational_attainment_population_25_years_over_universe),
+        educational_attainment_highschool_nodiploma_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(9th|10th|11th|12th)"))),
+          educational_attainment_population_25_years_over_universe),
+        educational_attainment_ged_percent = safe_divide(
+          educational_attainment_population_25_years_over_ged_alternative_credential,
+          educational_attainment_population_25_years_over_universe),
+        educational_attainment_highschool_diploma_percent = safe_divide(
+          educational_attainment_population_25_years_over_regular_high_school_diploma,
+          educational_attainment_population_25_years_over_universe),
+        educational_attainment_college_some_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("educational_attainment.*some_college"))),
+          educational_attainment_population_25_years_over_universe),
+        educational_attainment_degree_associate_percent = safe_divide(
+          educational_attainment_population_25_years_over_associates_degree,
+          educational_attainment_population_25_years_over_universe),
+        educational_attainment_degree_bachelors_percent = safe_divide(
+          educational_attainment_population_25_years_over_bachelors_degree,
+          educational_attainment_population_25_years_over_universe),
+        educational_attainment_degree_morethanbachelors_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(masters|professional|doctorate)"))),
+          educational_attainment_population_25_years_over_universe),
+        educational_enrollment_grades_1thru12_percent = safe_divide(
+          school_enrollment_universe - rowSums(dplyr::select(., dplyr::matches("school_enrollment.*[^(_universe)]"))),
+          school_enrollment_universe),
+        dplyr::across(
+          .cols = dplyr::matches("school_enrollment.*[^(_universe)]"),
+          .fns = ~ safe_divide(.x, school_enrollment_universe),
+          .names = "{.col}_percent"),
 
       ####----PLACE OF BIRTH/LANGUAGE----####
-      nativity_native_born_percent = safe_divide(
-        nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native,
-        nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
-      nativity_foreign_born_percent = safe_divide(
-        nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born,
-        nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
-      ability_speak_english_very_well_better_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("nativity.*(only_english|english_very_well)"))),
-        nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
-      ability_speak_english_less_than_very_well_percent = 1 - ability_speak_english_very_well_better_percent,
+        nativity_native_born_percent = safe_divide(
+          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native,
+          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
+        nativity_foreign_born_percent = safe_divide(
+          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born,
+          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
+        ability_speak_english_very_well_better_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("nativity.*(only_english|english_very_well)"))),
+          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
+        ability_speak_english_less_than_very_well_percent = 1 - ability_speak_english_very_well_better_percent,
 
       ####----EMPLOYMENT----####
-      employment_civilian_labor_force_percent = safe_divide(employment_civilian_labor_force_employed, employment_civilian_labor_force_universe),
+        employment_civilian_labor_force_percent = safe_divide(employment_civilian_labor_force_employed, employment_civilian_labor_force_universe),
 
       ####----HEALTH INSURANCE----####
-      health_insurance_coverage_status_covered_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*with_health_insurance_coverage$"))),
-        health_insurance_coverage_status_type_by_employment_status_universe),
-      health_insurance_coverage_status_notcovered_percent = 1 - health_insurance_coverage_status_covered_percent,
-      health_insurance_coverage_status_covered_employed_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*_employed.*with_health_insurance_coverage$"))),
-        health_insurance_coverage_status_type_by_employment_status_in_labor_force), ## denominator is only people in the labor force
-      health_insurance_coverage_status_covered_unemployed_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*_unemployed.*with_health_insurance_coverage$"))),
-        health_insurance_coverage_status_type_by_employment_status_in_labor_force)) ## denominator is only people in the labor force
+        health_insurance_coverage_status_covered_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*with_health_insurance_coverage$"))),
+          health_insurance_coverage_status_type_by_employment_status_universe),
+        health_insurance_coverage_status_notcovered_percent = 1 - health_insurance_coverage_status_covered_percent,
+        health_insurance_coverage_status_covered_employed_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*_employed.*with_health_insurance_coverage$"))),
+          health_insurance_coverage_status_type_by_employment_status_in_labor_force), ## denominator is only people in the labor force
+        health_insurance_coverage_status_covered_unemployed_percent = safe_divide(
+          rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*_unemployed.*with_health_insurance_coverage$"))),
+          health_insurance_coverage_status_type_by_employment_status_in_labor_force)) ## denominator is only people in the labor force
 }
 
 #' @title Analysis-ready social science measures
@@ -331,10 +331,10 @@ compile_acs_data = function(
     retain_moes = TRUE,
     spatial = FALSE) {
 
-warning(
-"Variable names and geographies for ACS data products can change between years.
+warning("\n
+Variable names and geographies for ACS data products can change between years.
 Changes to geographies are particularly significant across decades
-(e.g., from 2019 to 2020), but these changes can occur in any year.
+(e.g., from 2019 to 2020), but these changes can occur in any year.\n
 Users should ensure that the logic embedded in this function--
 which was developed around five-year ACS estimates for 2017-2021--
 remains accurate for their use cases. Evaluation of measures and
@@ -442,7 +442,7 @@ geographies over time should be thoroughly quality checked.\n")
     dplyr::rename_with(~ stringr::str_remove(.x, "_E$")) %>% ## removing "_E" (for "Estimate") from column names
     internal_compute_acs_variables() %>%
     ## these variable names end in "percent", but they're actually count estimates
-    dplyr::rename_with(.cols = dplyr::matches("household_income.*percent$"), .fn = ~ paste0(., "_count_estimate")) %>%
+    dplyr::rename_with(.cols = dplyr::matches("household_income.*percent$"), .fn = ~ stringr::str_replace(., "percent$", "pct")) %>%
 
     ## ensure the vintage of the data and the GEOID for each observation are the first columns
     dplyr::select(data_source_year, GEOID, dplyr::everything()) %>%
@@ -450,7 +450,7 @@ geographies over time should be thoroughly quality checked.\n")
     ## join geometries, calculate population density, drop geometry attribute if spatial == FALSE
     dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one") %>%
     dplyr::mutate(population_density_land_sq_kilometer = safe_divide(total_population_universe, area_land_sq_kilometer)) %>%
-    {if (spatial == FALSE) sf::st_drop_geometry(.) else . } %>%
+    {if (spatial == FALSE) sf::st_drop_geometry(.) else sf::st_as_sf(.) } %>%
 
     ## add back MOEs if retain_moes == TRUE
     { if (retain_moes == TRUE) dplyr::left_join(., moes, by = c("GEOID", "data_source_year")) else . }

@@ -9,8 +9,8 @@ Description: There are many packages available that facilitate queries to the Ce
   work (much of which must be repeated from analysis to analysis), such as identifying
   and selecting relevant variables, determining how to accurately calculate derived 
   measures (e.g., percentages), and naming variables semantically. urbnindicators
-  abstracts much of this process away and provides users a quick interface to obtain a 
-  substantial set of commonly-used social sciences measures from the ACS.
+  abstracts much of this process away and provides users a simple interface to obtain
+  commonly-used social sciences measures from the ACS.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
