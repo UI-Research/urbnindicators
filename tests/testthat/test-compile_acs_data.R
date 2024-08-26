@@ -1,14 +1,15 @@
-message("Update test data prior to testing, as needed.")
+# message("Update test data prior to testing, as needed.")
+#
 # df = compile_acs_data(
 #   variables = NULL,
 #   years = c(2022),
 #   geography = "tract",
 #   states = c("CA", "TX"),
 #   counties = NULL,
-#   retain_moes = TRUE,
 #   spatial = FALSE)
 #
 # codebook = attr(df, "codebook")
+#
 # saveRDS(object = df, file = file.path("inst", "test-data", "test_data_2024-08-24.rds"))
 # saveRDS(codebook, file = file.path("inst", "test-data", "codebook_2024-08-24.rds"))
 

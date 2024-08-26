@@ -11,12 +11,12 @@ list_acs_variables(year = "2022")
 }
 \value{
 A named vector of variable codes (as specified in the Census Bureau's API)
-   with semantically-meaningful names (e.g., "race_black_alone_nonhispanic").
+with semantically-meaningful names (e.g., "race_black_alone_nonhispanic").
 }
 \description{
 Generate meaningful names for ACS variable codes based on their metadata
-   and return these as a vector, along with their semantic names. Intended for
-   use with [compile_acs_data()].
+and return these as a vector, along with their semantic names. Intended for
+use with \code{\link[=compile_acs_data]{compile_acs_data()}}.
 }
 \examples{
 list_acs_variables(year = "2022") \%>\% head()

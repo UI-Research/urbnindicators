@@ -56,7 +56,7 @@ the county level, in New Jersey. So we load the variable index for the
 corresponding data year and look for variables with "Disability" in the
 `concept` field:
 
-```{r}
+```{r, include = FALSE, message = FALSE, warning = FALSE, echo = FALSE}
 suppressPackageStartupMessages({
   library(urbnindicators)
   library(tidycensus)
@@ -64,10 +64,19 @@ suppressPackageStartupMessages({
   library(stringr)
   library(ggplot2)  
 })
+```
+
+
+```{r}
+# library(urbnindicators)
+# library(tidycensus)
+# library(dplyr)
+# library(stringr)
+# library(ggplot2)  
 
 acs_codebook = load_variables(dataset = "acs5", year = 2022)
 # acs_codebook %>% View() # not run
-acs_codebook %>% nrow()
+
 acs_codebook %>%
   dplyr::filter(stringr::str_detect(concept, "Disability")) %>%
   nrow() 

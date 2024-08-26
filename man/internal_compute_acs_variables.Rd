@@ -7,7 +7,7 @@
 internal_compute_acs_variables(.data)
 }
 \arguments{
-\item{.data}{The dataset returned from `compile_acs_data()`.}
+\item{.data}{The dataset returned from \code{compile_acs_data()}.}
 }
 \value{
 A modified dataframe that includes newly calculated indicators.
@@ -27,7 +27,6 @@ df = compile_acs_data(
   geography = "county",
   states = "NJ",
   counties = NULL,
-  retain_moes = TRUE,
   spatial = FALSE)
 internal_compute_acs_variables(.data = df)
 }

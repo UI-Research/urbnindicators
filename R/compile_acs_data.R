@@ -294,7 +294,7 @@ internal_compute_acs_variables = function(.data) {
 #'    "tract", "county", "state", among others. Geographies below the tract level are not
 #'    supported.
 #' @param states A vector of one or more state names, abbreviations, or codes as
-#'    accepted by \code{tidycensus::get_acs()\code{.
+#'    accepted by \code{tidycensus::get_acs()}.
 #' @param counties A vector of five-digit county FIPS codes. If specified, this parameter
 #'    will override the \code{states} parameter. If \code{NULL}, all counties in the the
 #'    state(s) specified in the \code{states} parameter will be included.
@@ -415,6 +415,10 @@ geographies over time should be thoroughly quality checked.\n")
 
   states = county_codes$state %>% unique
 
+  # county_codes %>% View()
+  #
+  # browser()
+
   suppressMessages({ suppressWarnings({
     ## some geographies are not available by state and can only be returned nationally
     if (geography %in% super_state_geographies) {
@@ -446,7 +450,7 @@ geographies over time should be thoroughly quality checked.\n")
                 year = as.numeric(.x),
                 state = state,
                 ## this argument is ignored when a query cannot be made at the county level
-                county = county_codes %>% dplyr::filter(state == state) %>% dplyr::pull(county),
+                county = county_codes %>% dplyr::filter(state == !!state) %>% dplyr::pull(county),
                 survey = "acs5",
                 output = "wide") %>%
               dplyr::mutate(data_source_year = .x))})}
@@ -470,18 +474,22 @@ geographies over time should be thoroughly quality checked.\n")
     dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one") %>%
     dplyr::mutate(population_density_land_sq_kilometer = safe_divide(total_population_universe, area_land_sq_kilometer)) %>%
     {if (spatial == FALSE) sf::st_drop_geometry(.) else sf::st_as_sf(.) } %>%
-    dplyr::left_join(., moes, by = c("GEOID", "data_source_year"))
+    dplyr::left_join(
+      .,
+      moes %>%
+        dplyr::rename_with(.cols = dplyr::matches("household_income.*percent_M$"), .fn = ~ stringr::str_replace(., "percent_M$", "pct_M")),
+      by = c("GEOID", "data_source_year"))
 
   ## generate the codebook, which is used to calculate CVs
   codebook = generate_codebook(.data = df_calculated_estimates)
   attr(df_calculated_estimates, "codebook") = codebook
 
-  # df_cvs = calculate_cvs(df_calculated_estimates)
-  #
-  # ## attach the codebook as an attribute named "codebook" to the returned dataset
-  # attr(df_cvs, "codebook") = codebook
+  df_cvs = calculate_cvs(df_calculated_estimates)
 
-  final_df = df_calculated_estimates
+  ## attach the codebook as an attribute named "codebook" to the returned dataset
+  attr(df_cvs, "codebook") = codebook
+
+  final_df = df_cvs
 
   return(final_df)
 }
@@ -511,4 +519,5 @@ utils::globalVariables(c(
   "ability_speak_english_very_well_better_percent", "employment_civilian_labor_force_employed",
   "employment_civilian_labor_force_universe", "health_insurance_coverage_status_type_by_employment_status_universe",
   "health_insurance_coverage_status_covered_percent",
-  "health_insurance_coverage_status_type_by_employment_status_in_labor_force"))
+  "health_insurance_coverage_status_type_by_employment_status_in_labor_force", "state_code",
+  "county_code", "county_fips", "state_name"))

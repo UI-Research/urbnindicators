@@ -2,19 +2,19 @@
 % Please edit documentation in R/generate_codebook.R
 \name{generate_codebook}
 \alias{generate_codebook}
-\title{Document variables from `compile_acs_data()`}
+\title{Document variables from \code{urbnindicators::compile_acs_data()}}
 \usage{
 generate_codebook(.data)
 }
 \arguments{
-\item{.data}{The dataset returned from `compile_acs_data()`.}
+\item{.data}{The dataset returned from \code{urbnindicators::compile_acs_data()}.}
 }
 \value{
 A tibble containing the names and definitions of  variables returned from
-`compile_acs_data()`.
+\code{urbnindicators::compile_acs_data()}.
 }
 \description{
-`generate_codebook()` defines how variables produced via `compile_acs_data()`
+Define how variables produced via \code{urbnindicators::compile_acs_data()}
 are calculated.
 }
 \details{
@@ -29,7 +29,6 @@ df = compile_acs_data(
   geography = "county",
   states = "NJ",
   counties = NULL,
-  retain_moes = TRUE,
   spatial = FALSE)
 codebook = generate_codebook(.data = df)
 }

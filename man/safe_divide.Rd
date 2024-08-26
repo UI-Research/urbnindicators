@@ -12,15 +12,15 @@ safe_divide(x, y)
 \item{y}{A numeric scalar.}
 }
 \value{
-The traditional dividend in all cases except where `y` == 0, in which
-   case it returns 0.
+The traditional dividend in all cases except where \code{y == 0}, in which
+case it returns 0.
 }
 \description{
-`safe_divide()` returns 0 when the divisor is 0.
+Return 0 when the divisor is 0.
 }
 \details{
 A modified division operation that returns zero when the divisor is zero
-   rather than returning NA. Otherwise returns the quotient.
+rather than returning NA. Otherwise returns the quotient.
 }
 \examples{
 safe_divide(1, 2)

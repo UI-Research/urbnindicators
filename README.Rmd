@@ -28,9 +28,21 @@ v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/li
 
 <!-- badges: end -->
 
+> **WARNING** 
+
+> This package is under active development. Some functions
+> return results that are known to be incomplete or are completely
+> untested. Other functions return results that are only partly tested.
+> Coefficients of variation are a particularly new and untested feature
+> that should not be relied on. Users should independently verify all
+> results. Please open a new issue (or pull request) in response to any
+> identified issues.
+
 The goal of `urbnindicators` is to provide users with analysis-ready
-data from the American Community Survey (ACS). Here's what it offers as
-compared to other solutions for working with ACS data:
+data from the American Community Survey (ACS).
+
+**Here's what it offers now** as compared to other solutions for working
+with ACS data:
 
 -   Meaningful, consistent variable names.
 
@@ -48,7 +60,7 @@ compared to other solutions for working with ACS data:
 -   Built-in quality checks to help ensure that calculated variables are
     accurate.
 
-And there's more in the works. Future updates will include:
+**And there's more in the works**:
 
 -   Even more indicators.
 
@@ -64,15 +76,16 @@ And there's more in the works. Future updates will include:
 Install the development version of urbnindicators from
 [GitHub](https://github.com/) with:
 
-``` r
+```{r}
 # install.packages("renv")
-renv::install("UI-Research/urbnindicators")
+# renv::install("UI-Research/urbnindicators")
 ```
 
 This package is under active development with frequent updates--check to
 ensure you have the most recent version installed!
 
 ## urbnindicators in action
+
 ```{r, include = FALSE, echo = FALSE, message = FALSE, warning = FALSE, eval = TRUE}
 library(dplyr)
 library(tidyr)
@@ -83,22 +96,7 @@ library(urbnthemes)
 set_urbn_defaults(style = "print")
 ```
 
-<<<<<<< HEAD
-```{r, include = F, echo = F, warning = F, mesage = F, eval = T}
-library(dplyr)
-library(stringr)
-library(urbnindicators)
-library(ggplot2)
-```
-
-
-```{r example}
-# library(dplyr)
-# library(stringr)
-# library(urbnindicators)
-# library(ggplot2)
-=======
-```{r example, fig.height = 5}
+```{r example, warning = FALSE, message = F}
 # library(dplyr)
 # library(tidyr)
 # library(stringr)
@@ -106,7 +104,6 @@ library(ggplot2)
 # library(ggplot2)
 # library(urbnthemes) 
 # set_urbn_defaults(style = "print")
->>>>>>> covs-2
 
 acs_df = compile_acs_data(
   variables = NULL,

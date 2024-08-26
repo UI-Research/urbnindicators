@@ -234,7 +234,7 @@ generate_codebook = function(.data)  {
       codebook_dataframe %>%
         dplyr::rename(calculated_variable = outputs) %>%
         dplyr::mutate(
-          across(.cols = c(inputs_raw, denominators_raw), ~ dplyr::if_else(is.na(.x), "calculated variable", .x)),
+          dplyr::across(.cols = c(inputs_raw, denominators_raw), ~ dplyr::if_else(is.na(.x), "calculated variable", .x)),
           inputs_formatted = stringr::str_c(inputs, " (", inputs_raw, ")"),
           denominators_formatted = stringr::str_c(denominators, " (", denominators_raw, ")")) %>%
         dplyr::group_by(calculated_variable) %>%
@@ -426,22 +426,22 @@ generate_codebook = function(.data)  {
     ## some adjustments
     result1 = tibble::tibble(calculated_variable = uncalculated_variables) %>%
       dplyr::bind_rows(partial_documentation) %>%
+      dplyr::bind_rows(tibble::tribble(
+        ~calculated_variable, ~definition, ~variable_type,
+        "data_source_year", "End year of five-year ACS period from which the estimates were queried.", "Metadata",
+   #     "geography", "Geography at which estimates are specified.", "Metadata",
+        "GEOID", "A federally-issued identifier of the geographic unit.", "Metadata",
+        "NAME", "The name of the geographic unit.", "Metadata",
+        "area_land_sq_kilometer", "Land area of the geographic unit, in square kilometers.", "Metadata",
+        "area_water_sq_kilometer", "Water area of the geographic unit, in square kilometers.", "Metadata",
+        "area_land_water_sq_kilometer", "Combined land and water area of the geographic unit, in square kilometers.", "Metadata",
+        "population_density_land_sq_kilometer", "Rate. Numerator: total_population_universe (B01003_001). Denominator: area_land_sq_kilometer.", "Metadata",
+        "geometry", "The spatial goemetry attributes of the geographic unit.", "Metadata")) %>%
       dplyr::mutate(
         definition = dplyr::case_when(
-          calculated_variable == "data_source_year" ~ "End year of five-year ACS period from which the estimates were queried.",
-          calculated_variable == "geography" ~ "Geography at which estimates are specified.",
-          calculated_variable == "GEOID" ~ "A federally-issued identifier of the geographic unit.",
-          calculated_variable == "NAME" ~ "The name of the geographic unit.",
-          calculated_variable == "area_land_sq_kilometer" ~ "Land area of the geographic unit, in square kilometers.",
-          calculated_variable == "area_water_sq_kilometer" ~ "Water area of the geographic unit, in square kilometers.",
-          calculated_variable == "area_land_water_sq_kilometer" ~ "Combined land and water area of the geographic unit, in square kilometers.",
-          calculated_variable == "population_density_land_sq_kilometer" ~
-            "Rate. Numerator: total_population_universe (B01003_001). Denominator: area_land_sq_kilometer.",
-          calculated_variable == "geometry" ~ "The spatial goemetry attributes of the geographic unit.",
-          !is.na(definition) ~ definition,
-          calculated_variable %in% uncalculated_variables ~ "This is a raw ACS estimate."),
+          calculated_variable %in% uncalculated_variables ~ "This is a raw ACS estimate.",
+          !is.na(definition) ~ definition),
         variable_type = dplyr::case_when(
-          calculated_variable %in% c("data_source_year", "GEOID", "NAME", "geometry", "geography") ~ "Metadata",
           stringr::str_detect(calculated_variable, "median.*income") ~ "Median ($)",
           stringr::str_detect(calculated_variable, "cost.*median") ~ "Median ($)",
           stringr::str_detect(calculated_variable, "median") ~ "Median",
@@ -501,8 +501,8 @@ generate_codebook = function(.data)  {
       dplyr::bind_rows(result2) %>%
       dplyr::mutate(
         calculated_variable = dplyr::if_else(
-          stringr::str_detect(calculated_variable, "percent$") & variable_type == "County",
-          stringr::str_c(calculated_variable, "_count_estimate"),
+          stringr::str_detect(calculated_variable, "percent$") & variable_type == "Count",
+          stringr::str_replace(calculated_variable, "percent$", "pct"),
           calculated_variable))
 
     return(result3)
@@ -510,4 +510,7 @@ generate_codebook = function(.data)  {
 
 utils::globalVariables(c(
   "variable_name", "domain", "variable_type", "definition", "x", "y", "clean_variable_name",
-  "raw_variable_name", "raw_name", "clean_name", "variable_definition_year", "value"))
+  "raw_variable_name", "raw_name", "clean_name", "variable_definition_year", "value",
+  "calculated_variable", "replacement", "denominators", "inputs", "denominators1",
+  "denominators2", "inputs_formatted", "denominators_formatted", "variable_crosswalk",
+  "inputs_raw", "denominators_raw", "outputs", "count"))

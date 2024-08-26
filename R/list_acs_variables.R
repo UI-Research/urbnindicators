@@ -65,7 +65,7 @@ select_variables_by_name = function(variable_name, census_codebook) {
 }
 
 #' @title Easily filter ACS variables
-#' @description Filter the the results of [select_variables()] based on their `match_type` relative
+#' @description Filter the the results of \code{select_variables_by_name()} based on their `match_type` relative
 #' to `match_string`.
 #' @param variable_vector A named vector (intended for use with named ACS variables).
 #' @param match_string A string on which to filter (or not filter) elements in `variable_vector`.
@@ -160,7 +160,7 @@ list_acs_variables = function(year = "2022") {
       median_household_income_aian_alone_ = "B19013C_001",
       median_household_income_asian_alone_ = "B19013D_001",
       median_household_income_nhpi_ = "B19013E_001",
-      median_household_income_otherrace_alone = "B19013F_001",
+      median_household_income_otherrace_alone_ = "B19013F_001",
       median_household_income_twoormore_ = "B19013G_001",
       median_household_income_hispanic_ = "B19013I_001",
 
@@ -306,7 +306,6 @@ list_acs_variables = function(year = "2022") {
       types_of_computing_devices_household_with_any_device_ = "B28001_002",
       types_of_computing_devices_household_with_computer_laptop_ = "B28001_003",
       types_of_computing_devices_household_with_smartphone_ = "B28001_005"
-
   )
 
   ## Check that all variables are in the Census codebook

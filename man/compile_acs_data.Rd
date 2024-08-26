@@ -10,43 +10,39 @@ compile_acs_data(
   geography = "county",
   states = NULL,
   counties = NULL,
-  retain_moes = TRUE,
   spatial = FALSE
 )
 }
 \arguments{
 \item{variables}{A named vector of ACS variables such as that returned from
-[urbnindicators::list_acs_variables()].}
+\code{urbnindicators::list_acs_variables()}.}
 
 \item{years}{A character vector (or coercible to the same) comprising one or more
 four-digit years for which to pull five-year American Community Survey estimates.}
 
-\item{geography}{A geography type that is accepted by [tidycensus::get_acs()], e.g.,
-"tract", "county", "state", among others. Geographis below the tract level are not
+\item{geography}{A geography type that is accepted by \code{tidycensus::get_acs()}, e.g.,
+"tract", "county", "state", among others. Geographies below the tract level are not
 supported.}
 
 \item{states}{A vector of one or more state names, abbreviations, or codes as
-accepted by [tidycensus::get_acs()].}
+accepted by \code{tidycensus::get_acs()}.}
 
-\item{counties}{A vector of one or more county names, abbreviations, or codes as
-accepted by [tidycensus::get_acs()]. NOTE: this parameter is not currently supported
-and must be set to NULL (as it is by default).}
-
-\item{retain_moes}{Boolean. Include margins of error (MOE) in the returned dataframe,
-or omit them?}
+\item{counties}{A vector of five-digit county FIPS codes. If specified, this parameter
+will override the \code{states} parameter. If \code{NULL}, all counties in the the
+state(s) specified in the \code{states} parameter will be included.}
 
 \item{spatial}{Boolean. Return a simple features (sf), spatially-enabled dataframe?}
 }
 \value{
-A dataframe containing the requested `variables`, their MOEs (optionally),
-   a series of derived variables, such as percentages, and the year of the data.
-   Returned data are formatted wide. A codebook generated with `generate_codebook()`
-   is attached and can be accessed via `compile_acs_data() %>% attr("codebook")`.
+A dataframe containing the requested \code{variables}, their MOEs,
+a series of derived variables, such as percentages, and the year of the data.
+Returned data are formatted wide. A codebook generated with \code{generate_codebook()}
+is attached and can be accessed via \code{compile_acs_data() \%>\% attr("codebook")}.
 }
 \description{
-`compile_acs_data()` constructs measures frequently used in social sciences
-   research while leveraging [tidycensus::get_acs()] to acquire raw estimates from
-   the Census Bureau API.
+Construct measures frequently used in social sciences
+research, leveraging \code{tidycensus::get_acs()} to acquire raw estimates from
+the Census Bureau API.
 }
 \examples{
 \dontrun{
@@ -57,10 +53,9 @@ df = compile_acs_data(
   geography = "county",
   states = "NJ",
   counties = NULL,
-  retain_moes = TRUE,
   spatial = FALSE)
   }
 }
 \seealso{
-[tidycensus::get_acs()], which this function wraps.
+\code{tidycensus::get_acs()}, which this function wraps.
 }

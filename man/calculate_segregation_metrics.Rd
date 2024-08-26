@@ -11,39 +11,39 @@ calculate_segregation_metrics(
 )
 }
 \arguments{
-\item{data}{A dataframe containing a `GEOID` column and the required input measures,
-e.g., of race or income, at a single geography (e.g., tract). The `GEOID` column must
-be a character column, and each `GEOID` must be unique. If data are formatted wide, there must be
-at least two columns in addition to `GEOID`. If data are formatted long, there must be a single
-columd in addition to `GEOID`. inputted data cannot contain other measures.For example:
+\item{data}{A dataframe containing a \code{GEOID} column and the required input measures,
+e.g., of race or income, at a single geography (e.g., tract). The \code{GEOID} column must
+be a character column, and each \code{GEOID} must be unique. If data are formatted wide, there must be
+at least two columns in addition to \code{GEOID}. If data are formatted long, there must be a single
+columd in addition to \code{GEOID}. inputted data cannot contain other measures.For example:
 tibble::tribble(
-    ~GEOID, ~race_nonhispanic_white_alone, ~race_nonhispanic_black_alone,
-    "37001020100", 2835, 1035,
-    "37001020200", 1205, 1321)}
+~GEOID, ~race_nonhispanic_white_alone, ~race_nonhispanic_black_alone,
+"37001020100", 2835, 1035,
+"37001020200", 1205, 1321)}
 
 \item{data_format}{Describe the structure of the inputted data. One of "wide" or "long". Data are
 returned in the same format in which they are passed to the function.}
 
-\item{nesting_geography_geoid_length}{The length of the `GEOID` that identifies nesting
+\item{nesting_geography_geoid_length}{The length of the \code{GEOID} that identifies nesting
 geographies. For example, if smaller_geography_data is defined at the tract
-level (with a GEOID of length 11), then `nesting_geography_geoid_length = 5` would
+level (with a GEOID of length 11), then \code{nesting_geography_geoid_length = 5} would
 return segregation metrics for counties (which have a GEOID of length 5) and
 for tracts (relative to other tracts within the same county).}
 }
 \value{
 A dataframe comprising segregation estimates and associated p-values at both
-   geographic levels.
+geographic levels.
 }
 \description{
 Calculate multi-group segregation metrics using the Mutual Information Index (M)
 }
 \details{
-Given data at a smaller geography (e.g., tract), `calculate_segregation_metrics()`
-   returns Mutual Information Index (M) values and associated p-values for a perfectly
-   nested larger geography (e.g., a county or state) as well as decomposed values for the
-   smaller geography (e.g., tract). Note that all segregation calculations rely on `segregation`
-   and users should refer to that package at https://github.com/elbersb/segregation for
-   further implementation details.
+Given data at a smaller geography (e.g., tract), \code{calculate_segregation_metrics()}
+returns Mutual Information Index (M) values and associated p-values for a perfectly
+nested larger geography (e.g., a county or state) as well as decomposed values for the
+smaller geography (e.g., tract). Note that all segregation calculations rely on \code{segregation}
+and users should refer to that package at https://github.com/elbersb/segregation for
+further implementation details.
 }
 \examples{
 \dontrun{
@@ -67,5 +67,5 @@ calculate_segregation_metrics(
 }
 }
 \seealso{
-Functions used for underlying segregation calculations are from the `segregation` package.
+Functions used for underlying segregation calculations are from the \code{segregation} package.
 }

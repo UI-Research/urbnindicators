@@ -9,12 +9,12 @@ select_variables_by_name(variable_name, census_codebook)
 \arguments{
 \item{variable_name}{A named vector (intended for use with named ACS variables).}
 
-\item{census_codebook}{An object returned from [tidycensus::load_variables()].}
+\item{census_codebook}{An object returned from \code{tidycensus::load_variables()}.}
 }
 \value{
 A named character vector containing the variables that matched
-   `variable_name` from the `census_codebook`, with semantically-meaningful names
-   derived from metadata fields contained in `census_codebook`.
+\code{variable_name} from the \code{census_codebook}, with semantically-meaningful names
+derived from metadata fields contained in \code{census_codebook}.
 }
 \description{
 Given the name of an ACS variable (or a string that matches one or more such variables),
