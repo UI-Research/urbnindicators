@@ -144,7 +144,6 @@ df_urbnindicators = urbnindicators::compile_acs_data(
   years = 2022,
   geography = "county",
   states = "NJ",
-  retain_moes = TRUE,
   spatial = FALSE)
 
 df_urbnindicators %>% dim()

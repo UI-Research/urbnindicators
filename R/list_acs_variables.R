@@ -2,10 +2,10 @@
 #' @description Given the name of an ACS variable (or a string that matches one or more such variables),
 #' generate a named character vector of original variable names and more meaningful names.
 #' @param variable_name A named vector (intended for use with named ACS variables).
-#' @param census_codebook An object returned from [tidycensus::load_variables()].
+#' @param census_codebook An object returned from \code{tidycensus::load_variables()}.
 #' @returns A named character vector containing the variables that matched
-#'    `variable_name` from the `census_codebook`, with semantically-meaningful names
-#'    derived from metadata fields contained in `census_codebook`.
+#'    \code{variable_name} from the \code{census_codebook}, with semantically-meaningful names
+#'    derived from metadata fields contained in \code{census_codebook}.
 #' @examples
 #' \dontrun{
 #' codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
