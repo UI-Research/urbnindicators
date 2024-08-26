@@ -205,7 +205,7 @@ internal_compute_acs_variables = function(.data) {
       ####----TRANSPORTATION----####
       ## Note: means_transportation_work_public_transportation_excluding_taxicab is a measure of conventional "public transportation"
       dplyr::across(
-        .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home"), -means_transportation_work_worked_from_home),
+        .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home")),
         .fns = ~ safe_divide(.x, (means_transportation_work_universe - means_transportation_work_worked_from_home)),
         .names = "{.col}_percent"), ## the denominator here does not include people who worked from home
       means_transportation_work_worked_from_home_percent = safe_divide(
@@ -295,12 +295,12 @@ internal_compute_acs_variables = function(.data) {
 #'    supported.
 #' @param states A vector of one or more state names, abbreviations, or codes as
 #'    accepted by \code{tidycensus::get_acs()\code{.
-#' @param counties A vector of one or more county names, abbreviations, or codes as
-#'    accepted by \code{tidycensus::get_acs()}. NOTE: this parameter is not currently supported
-#'    and must be set to NULL (as it is by default).
+#' @param counties A vector of five-digit county FIPS codes. If specified, this parameter
+#'    will override the \code{states} parameter. If \code{NULL}, all counties in the the
+#'    state(s) specified in the \code{states} parameter will be included.
 #' @param spatial Boolean. Return a simple features (sf), spatially-enabled dataframe?
 #' @seealso \code{tidycensus::get_acs()}, which this function wraps.
-#' @returns A dataframe containing the requested \code{variables}, their MOEs (optionally),
+#' @returns A dataframe containing the requested \code{variables}, their MOEs,
 #'    a series of derived variables, such as percentages, and the year of the data.
 #'    Returned data are formatted wide. A codebook generated with \code{generate_codebook()}
 #'    is attached and can be accessed via \code{compile_acs_data() %>% attr("codebook")}.
@@ -397,6 +397,24 @@ geographies over time should be thoroughly quality checked.\n")
               data_source_year = year) })
     })})
 
+  ## configuring to subset call to specified counties, if applicable
+  if (geography %in% c("county", "county subdivision", "tract") & !is.null(counties)) {
+    county_codes = tidycensus::fips_codes %>%
+      dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
+      dplyr::filter(county_fips %in% counties)
+
+    if (nrow(county_codes) == 0) {
+      stop("No valid county FIPS codes were found in the `counties` argument.") }
+
+    if (nrow(county_codes) != length(counties)) {
+      invalid_county_count = length(counties) - nrow(county_codes)
+      warning(paste0("There were ", invalid_county_count, " invalid county codes; no results are returned for these counties.")) }
+  } else {
+    county_codes = tidycensus::fips_codes %>%
+      dplyr::filter(state %in% states | state_code %in% states | state_name %in% states) }
+
+  states = county_codes$state %>% unique
+
   suppressMessages({ suppressWarnings({
     ## some geographies are not available by state and can only be returned nationally
     if (geography %in% super_state_geographies) {
@@ -427,7 +445,8 @@ geographies over time should be thoroughly quality checked.\n")
                 variables = variables,
                 year = as.numeric(.x),
                 state = state,
-                county = counties,
+                ## this argument is ignored when a query cannot be made at the county level
+                county = county_codes %>% dplyr::filter(state == state) %>% dplyr::pull(county),
                 survey = "acs5",
                 output = "wide") %>%
               dplyr::mutate(data_source_year = .x))})}
@@ -453,10 +472,18 @@ geographies over time should be thoroughly quality checked.\n")
     {if (spatial == FALSE) sf::st_drop_geometry(.) else st_as_sf(.) } %>%
     dplyr::left_join(., moes, by = c("GEOID", "data_source_year"))
 
-  ## attach the codebook as an attribute named "codebook" to the returned dataset
-  attr(df_calculated_estimates, "codebook") = generate_codebook(.data = df_calculated_estimates)
+  ## generate the codebook, which is used to calculate CVs
+  codebook = generate_codebook(.data = df_calculated_estimates)
+  attr(df_calculated_estimates, "codebook") = codebook
 
-  return(df_calculated_estimates)
+  # df_cvs = calculate_cvs(df_calculated_estimates)
+  #
+  # ## attach the codebook as an attribute named "codebook" to the returned dataset
+  # attr(df_cvs, "codebook") = codebook
+
+  final_df = df_calculated_estimates
+
+  return(final_df)
 }
 
 utils::globalVariables(c(

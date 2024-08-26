@@ -19,19 +19,8 @@
 #' }
 #' @importFrom magrittr %>%
 
-#### CURRENT ISSUES ####
-# tenure_white_alone_householder_renter_occupied (and others calculated similarly) does not get registered as a
-# calculated count variable
 generate_codebook = function(.data)  {
-
-    .data = compile_acs_data(
-      variables = list_acs_variables(year = 2022),
-      years = c(2022),
-      geography = "county",
-      states = "NJ",
-      counties = NULL,
-      spatial = FALSE)
-
+    # .data = data
     ####----Variable Crosswalk----####
     expression_list = rlang::enexpr(list_acs_variables) %>% as.list()
     list_acs_expression = expression_list[[2]][[4]][[3]]
@@ -166,10 +155,8 @@ generate_codebook = function(.data)  {
       denominator_columns = purrr::map_chr(
         input_columns,
         function(input) {
-
           ## in the case that the denominator varies (using get (cur_column() ...))
           if (stringr::str_detect(across_call %>% as.character %>% .[3], "dplyr::cur_column")) {
-
             ## extract the renaming syntax used to convert the input variable into
             ## the denominator
             denominator_function = across_call %>%
@@ -204,42 +191,67 @@ generate_codebook = function(.data)  {
 
             denominator = eval(denominator_function)
           } else {
-            denominator = across_call %>%
+            denominator =
+              across_call %>%
               as.character %>%
               .[3] %>%
               stringr::str_extract(",.*\\)") %>%
-              stringr::str_remove_all(", |\\)")
+              stringr::str_remove_all(", |\\)|\\(") %>%
+              stringr::str_replace(" - ", " MINUS ")
           }
           return(denominator)
         })
 
       codebook_dataframe = tibble::tibble(
-        outputs = output_columns,
-        inputs = input_columns,
-        denominators = denominator_columns) %>%
-          dplyr::left_join(
-            variable_name_crosswalk %>%
-              dplyr::select(inputs_raw = raw_name, clean_name),
-            by = c("inputs" = "clean_name")) %>%
-          dplyr::left_join(
-            variable_name_crosswalk %>%
-              dplyr::select(denominators_raw = raw_name, clean_name),
-            by = c("denominators" = "clean_name"))
+          outputs = output_columns,
+          inputs = input_columns,
+          denominators = denominator_columns) %>%
+        dplyr::mutate(
+          denominators2 = dplyr::case_when(
+            stringr::str_detect(denominators, "MINUS") ~ stringr::str_extract(denominators, "MINUS .*") %>% stringr::str_remove_all("MINUS "),
+            TRUE ~ NA_character_),
+          denominators1 = dplyr::case_when(
+            stringr::str_detect(denominators, "MINUS") ~ stringr::str_extract(denominators, ".* MINUS") %>% stringr::str_remove(" MINUS"),
+            TRUE ~ denominators)) %>%
+        dplyr::select(-denominators) %>%
+        tidyr::pivot_longer(cols = c(denominators1, denominators2), names_to = "denominator_type", values_to = "denominators") %>%
+        dplyr::filter(!is.na(denominators)) %>%
+        dplyr::left_join(
+          variable_name_crosswalk %>%
+            dplyr::select(inputs_raw = raw_name, clean_name),
+          by = c("inputs" = "clean_name")) %>%
+        dplyr::left_join(
+          variable_name_crosswalk %>%
+            dplyr::select(denominators_raw = raw_name, clean_name),
+          by = c("denominators" = "clean_name")) %>%
+        dplyr::group_by(outputs) %>%
+        dplyr::mutate(
+          count = dplyr::n()) %>%
+        dplyr::ungroup()
 
-      purrr::pmap_dfr(
-        codebook_dataframe,
-        function(outputs, inputs, denominators, inputs_raw, denominators_raw) {
-          tibble::tibble(
-            calculated_variable = outputs,
-            variable_type = variable_type) %>%
-            dplyr::mutate(
-              definition = dplyr::case_when(
-                variable_type == "Percent" ~ paste0(
-                  "Numerator = ", inputs, " (", inputs_raw, "). ",
-                  "Denominator = ", denominators, " (", denominators_raw, ")."),
-                variable_type == "Sum" ~ paste0(
-                  "Sum of: ", inputs, " (", inputs_raw, "), ", denominators, " (", denominators_raw, ").")) %>%
-                stringr::str_replace_all("\\(NA\\).", "(calculated variable).")) })
+      multiple_denominator_flag = codebook_dataframe %>% dplyr::filter(count > 1) %>% nrow() > 0
+
+      codebook_dataframe %>%
+        dplyr::rename(calculated_variable = outputs) %>%
+        dplyr::mutate(
+          across(.cols = c(inputs_raw, denominators_raw), ~ dplyr::if_else(is.na(.x), "calculated variable", .x)),
+          inputs_formatted = stringr::str_c(inputs, " (", inputs_raw, ")"),
+          denominators_formatted = stringr::str_c(denominators, " (", denominators_raw, ")")) %>%
+        dplyr::group_by(calculated_variable) %>%
+        { if (multiple_denominator_flag)
+            dplyr::summarize(.,
+              inputs = dplyr::first(inputs_formatted),
+              denominators = paste0(denominators_formatted, collapse = " - "))
+          else
+            dplyr::summarize(.,
+              inputs = stringr::str_c(inputs_formatted, collapse = ", "),
+              denominators = stringr::str_c(denominators_formatted, collapse = ",")) } %>%
+        dplyr::mutate(
+          calculated_variable = calculated_variable,
+          variable_type = variable_type,
+          definition = dplyr::case_when(
+            variable_type == "Percent" ~ stringr::str_c("Numerator = ", inputs, ". ", "Denominator = ", denominators, "."),
+            variable_type == "Sum" ~ stringr::str_c("Sum of: ", inputs, ", ", denominators, ".")))
     }
 
     ####----Get Across Variable Names (Function)----####
@@ -251,7 +263,7 @@ generate_codebook = function(.data)  {
 
     ####----Get rowSums Variables (Function)----####
     get_rowsums_variables = function(expression) {
-
+      # expression = numerator
       if (any(expression %>% as.character %>% stringr::str_detect("select"))) {
         summed_variables = expression %>%
           rlang::call_args() %>%
@@ -281,10 +293,11 @@ generate_codebook = function(.data)  {
 
     define_codebook_variable = function(mutate_call, mutate_call_name) {
 
-      # mutate_call = rlang::expr(
-      #   dplyr::across(.cols = dplyr::matches("tenure_.*_householder_renter_occupied"),
-      #               .fns = ~.x + get(dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
-      #               .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied', replacement = 'renter_owner_occupied')}"))
+       # mutate_call = rlang::expr(
+       #   safe_divide(
+       #     rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(bicycle|walked)$"))),
+       #     (means_transportation_work_universe - means_transportation_work_worked_from_home))
+       # )
 
       if (any((mutate_call[[1]] %>% as.character) == "safe_divide")) {
         numerator = rlang::call_args(mutate_call) %>% .[[1]]
@@ -299,8 +312,24 @@ generate_codebook = function(.data)  {
           denominator = get_rowsums_variables(denominator) }
 
         formatter = function(x) {
-          raw_variable_code = variable_name_crosswalk %>% dplyr::filter(clean_name == x) %>% dplyr::pull(raw_name)
-          result = dplyr::if_else(length(raw_variable_code) == 0, paste0(x, " (calculated variable)"), paste0(x, " (", raw_variable_code, ")"))
+          ## in the case that the denominator contains a subtraction term
+          if (stringr::str_detect(x, " - ")) {
+            result = x %>%
+              stringr::str_split(" - ") %>%
+              unlist() %>%
+              purrr::map_chr(
+                function(x) {
+                  raw_variable_code = variable_name_crosswalk %>% dplyr::filter(clean_name == x) %>% dplyr::pull(raw_name)
+                  result = dplyr::if_else(
+                    length(raw_variable_code) == 0,
+                    paste0(x, " (calculated variable)"),
+                    paste0(x, " (", raw_variable_code, ")")) }) %>%
+              paste0(collapse = " - ")
+            } else {
+              raw_variable_code = variable_name_crosswalk %>% dplyr::filter(clean_name == x) %>% dplyr::pull(raw_name)
+              result = dplyr::if_else(length(raw_variable_code) == 0, paste0(x, " (calculated variable)"), paste0(x, " (", raw_variable_code, ")"))
+          }
+          return(result)
         }
 
         numerator_formatted = numerator %>%
@@ -309,6 +338,7 @@ generate_codebook = function(.data)  {
           paste0(collapse = ", ")
         denominator_formatted = denominator %>%
           as.character() %>%
+          purrr::keep(~ .x != "(") %>%
           purrr::map_chr(formatter) %>%
           paste0(collapse = ", ")
 
@@ -391,7 +421,7 @@ generate_codebook = function(.data)  {
             mutate_chain %>%
               purrr::imap_dfr( ~ define_codebook_variable(mutate_call = .x, mutate_call_name = .y)) })
 
-    uncalculated_variables = names((list_acs_variables())) %>% stringr::str_remove("_$")
+    uncalculated_variables = names(list_acs_variables()) %>% unique %>% stringr::str_remove("_$")
 
     ## some adjustments
     result1 = tibble::tibble(calculated_variable = uncalculated_variables) %>%
@@ -419,53 +449,63 @@ generate_codebook = function(.data)  {
           stringr::str_detect(calculated_variable, "quintile") ~ "Quintile ($)",
           stringr::str_detect(calculated_variable, "index") ~ "Index",
           is.na(variable_type) ~ "Count",
-          .default = variable_type))
+          .default = variable_type)) %>%
+      dplyr::select(-c(inputs, denominators))
 
-    ## lastly, correcting entries for variables that are calculated using other
-    ## calculated variables
-    custom_function = function(definition) {
-      definition = "Numerator = age_under_5_years (calculated variable), age_5_9_years (calculated variable), age_10_14_years (calculated variable), age_15_17_years (calculated variable). Denominator = sex_by_age_universe (B01001_001)."
+    result2 = purrr::map_dfr(
+      result1 %>% dplyr::filter(stringr::str_detect(definition, "calculated variable")) %>% dplyr::pull(calculated_variable),
+      function(variable) {
+        # variable = "means_transportation_work_car_truck_van_percent"
+        numerator_calculated_variables = result1 %>%
+          dplyr::filter(calculated_variable == !!variable) %>%
+          dplyr::pull(definition) %>%
+          stringr::str_remove_all("Numerator = | Denominator.*|\\.| |,") %>%
+          stringr::str_split("variable\\)") %>%
+          unlist() %>%
+          purrr::keep(~ stringr::str_detect(.x, "\\(calculated")) %>%
+          stringr::str_remove_all("\\(calculated|^.* - ") %>% ## this second group is for subtraction cases... not a great solution
+          stringr::str_trim()
 
-      result1 %>% filter(calculated_variable == "tenure_white_alone_householder_renter_occupied")
-      #replacement_variables =
-        str_extract_all(definition, "( .+?calculated variable?)") %>%
-        str_extract_all("(?<=\\().+?(?=\\))")
-        stringr::str_replace_all(c("Denominator" = ",", "(?<=\\().+?(?=\\))" = "")) #%>%
-        str_remove_all("\\(|\\)|calculated variable|=Numerator|Denominator| |=|\\.") %>%
-        str_split(",") #%>%
-        .[[1]] %>%
-        purrr::map(
-          function(calculated_variable) {
-            print(calculated_variable)
+        denominator_calculated_variables = result1 %>%
+          dplyr::filter(calculated_variable == !!variable) %>%
+          dplyr::pull(definition) %>%
+          stringr::str_remove_all("Numerator.*\\. Denominator = |\\.") %>%
+          stringr::str_split("variable\\)") %>%
+          unlist() %>%
+          purrr::keep(~ stringr::str_detect(.x, "\\(calculated")) %>%
+          stringr::str_remove_all("\\(calculated|^.* - ") %>% ## this second group is for subtraction cases... not a great solution
+          stringr::str_trim()
 
-            result1 %>%
-              filter(calculated_variable == !!calculated_variable) %>%
-              pull(definition) %>%
-              stringr::str_extract_all("\\(.*?\\)") %>%
-              .[[1]] %>%
-              stringr::str_remove_all("\\(|\\)") %>%
-              paste0(collapse = ", ")
-            })
+        replacement_values_df = result1 %>%
+          dplyr::filter(calculated_variable %in% c(numerator_calculated_variables, denominator_calculated_variables)) %>%
+          dplyr::mutate(
+            calculated_variable = stringr::str_c(calculated_variable, " (calculated variable)"),
+            numerator = dplyr::if_else(calculated_variable %in% numerator_calculated_variables, 1, 0),
+            denominator = dplyr::if_else(calculated_variable %in% denominator_calculated_variables, 1, 0),
+            replacement = definition %>% stringr::str_remove_all("Sum of: |\\."))
 
-        for (i in 1:length(replacement_variables)) {
-          str_sub(
-            definition,
-            str_locate_all(definition, "calculated variable")[[1]][1,1],
-            str_locate_all(definition, "calculated variable")[[1]][1,2]) = replacement_variables[[i]]
-        }
-        return(definition)
-      }
+        replacement_values_named_vector = replacement_values_df %>%
+          dplyr::pull(replacement) %>%
+          purrr::set_names(replacement_values_df$calculated_variable %>% stringr::str_replace_all(c("\\(" = "\\\\(", "\\)" = "\\\\)")))
 
-    vectorized_custom_function = Vectorize(custom_function)
+        result2 = result1 %>%
+          dplyr::filter(calculated_variable == !!variable) %>%
+          dplyr::mutate(
+            definition = dplyr::if_else(
+              calculated_variable == !!variable,
+              definition %>% stringr::str_replace_all(replacement_values_named_vector),
+              definition)) })
 
-    #result2 =
-      result1 %>%
-      dplyr::filter(stringr::str_detect(definition, "calculated variable")) %>%
-      dplyr::mutate(definition = vectorized_custom_function(definition))
+    result3 = result1 %>%
+      dplyr::filter(!(calculated_variable %in% result2$calculated_variable)) %>%
+      dplyr::bind_rows(result2) %>%
+      dplyr::mutate(
+        calculated_variable = dplyr::if_else(
+          stringr::str_detect(calculated_variable, "percent$") & variable_type == "County",
+          stringr::str_c(calculated_variable, "_count_estimate"),
+          calculated_variable))
 
-
-
-    return(result)
+    return(result3)
 }
 
 utils::globalVariables(c(

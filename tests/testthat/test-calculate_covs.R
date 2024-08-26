@@ -1,23 +1,4 @@
-####----Load Test Data----####
-
-## Statistics for NJ Counties
-df = urbnindicators::compile_acs_data(
-  variables = urbnindicators::list_acs_variables(year = "2022"),
-  years = 2022,
-  geography = "county",
-  states = "NJ",
-  counties = NULL,
-  retain_moes = TRUE,
-  spatial = FALSE) %>%
-  urbnindicators::calculate_cvs()
-
-df = data %>% calculate_cvs()
-
-codebook = attr(df, "codebook")
-
 ####----TESTING----####
-
-codebook1 %>% View()
 
 ## raw estimate variable: employment_civilian_labor_force_employed
 ## se formula: margin of error / 1.645
@@ -27,10 +8,13 @@ codebook1 %>% View()
 ## expected se = 2128 / 1.645 = 1293.617
 ## expected cv = 1293.617 / 186469 * 100 = 0.6937437 = ~ .694
 
-expected_employed_labor_force_cv = .694
+
 test_that(
   "cv calculation for employment_civilian_labor_force_employed is correct",
-  { expect_equal(
+  {
+    expected_employed_labor_force_cv = .694
+
+    expect_equal(
     round(df %>%
       dplyr::filter(NAME == "Mercer County, New Jersey") %>%
       dplyr::select(matches("employment_civilian_labor_force_employed")) %>%

@@ -73,16 +73,24 @@ This package is under active development with frequent updates--check to
 ensure you have the most recent version installed!
 
 ## urbnindicators in action
+```{r, include = FALSE, echo = FALSE, message = FALSE, warning = FALSE, eval = TRUE}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(urbnindicators)
+library(ggplot2)
+library(urbnthemes) 
+set_urbn_defaults(style = "print")
+```
 
 ```{r example, fig.height = 5}
-suppressPackageStartupMessages({
-  library(dplyr)
-  library(tidyr)
-  library(stringr)
-  library(urbnindicators)
-  library(ggplot2)
-  library(urbnthemes) })
-set_urbn_defaults(style = "print")
+# library(dplyr)
+# library(tidyr)
+# library(stringr)
+# library(urbnindicators)
+# library(ggplot2)
+# library(urbnthemes) 
+# set_urbn_defaults(style = "print")
 
 acs_df = compile_acs_data(
   variables = NULL,

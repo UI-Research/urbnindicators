@@ -109,6 +109,8 @@ extract_definition_terms = function(.definition, .type) {
 #' @title Calculate Coefficients of Variation (CVs)
 #' @details Create CVs for all ACS estimates and derived indicators
 #' @param .data The dataset returned from \code{compile_acs_data()}.
+#'  The argument to this parameter must have an attribute named `codebook` (as is)
+#'  true of results from \code{compile_acs_data()}.
 #' @returns A modified dataframe that includes newly calculated indicators.
 #' @examples
 #' \dontrun{
@@ -122,28 +124,19 @@ extract_definition_terms = function(.definition, .type) {
 #' cvs = calculate_cvs(df) %>%
 #'  dplyr::select(matches("_cv$"))
 #' }
-
-## OUTSTANDING ISSUES
-## -- Percentages that rely on calculated variables (e.g., age_under_5_years_percent)
-##    do not have accurate numerators listed in the codebook
+#
+# df = compile_acs_data(
+#   variables = list_acs_variables(year = 2022),
+#   years = c(2022),
+#   geography = "county",
+#   states = "NJ",
+#   counties = NULL,
+#   spatial = FALSE)
 
 calculate_cvs = function(data) {
 
-  data = compile_acs_data(
-      variables = list_acs_variables(year = 2022),
-      years = c(2022),
-      geography = "county",
-      states = "NJ",
-      counties = NULL,
-      spatial = FALSE)
-
-  ## the attached to the default compile_acs_data() return
-  codebook = data %>%
-    attr("codebook")
-
-  codebook %>%
-
-    dplyr::filter(stringr::str_detect(calculated_variable, "age_under_5_years")) %>% View()
+  ## the codebook attached to the default compile_acs_data() return
+  codebook = data %>% attr("codebook")
 
   ## modified codebook prepared for calculating CVs
   codebook1 = codebook %>%
@@ -157,7 +150,7 @@ calculate_cvs = function(data) {
       denominator_variable_count = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_real_,
         variable_type %in% c("Metadata", "Sum") ~ NA_real_,
-        TRUE ~ stringr::str_extract(definition, "Denominator = .*\\.") %>% stringr::str_count(",") + 1),
+        TRUE ~ stringr::str_extract(definition, "Denominator = .*\\.") %>% stringr::str_count(",|-") + 1),
       numerator = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_character_,
         variable_type %in% c("Metadata") ~ NA_character_,
@@ -182,10 +175,6 @@ calculate_cvs = function(data) {
         numerator_variable_count > 1 & denominator_variable_count == 1 ~ "complex numerator percent",
         numerator_variable_count > 1 & denominator_variable_count > 1 ~ "complex numerator and complex denominator percent",
         TRUE ~ "unspecified"))
-
-  codebook1 %>%
-    dplyr::filter(str_detect(definition, "calculated")) %>%
-      View()
 
   simple_percent_no_calculated_variables_codebook = codebook1 %>%
     dplyr::filter(
@@ -239,6 +228,7 @@ calculate_cvs = function(data) {
       !(calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe")))
 
   df_cvs = data %>%
+    dplyr::select(means_transportation_work_bicycle_percent) %>%
     dplyr::mutate(
       ## derived sum variables - calculate MOEs that can be used in subsequent calculations
       dplyr::across(
@@ -269,7 +259,7 @@ calculate_cvs = function(data) {
         .fns = ~ se_simple(get(dplyr::cur_column() %>% paste0("_M"))),
         .names = "{.col}_cv"),
       ## percent variables with a denominator that doesn't have an MOE
-      ## these are treated as if there is no demoninator
+      ## these are treated as if there is no denominator
       dplyr::across(
         .cols = any_of(no_moe_codebook$calculated_variable),
         .fns = function(x) {
@@ -355,6 +345,3 @@ calculate_cvs = function(data) {
 
    return(df_cvs)
   }
-
-# df = calculate_cvs(data)
-
