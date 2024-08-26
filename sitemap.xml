@@ -7,8 +7,11 @@
 <url><loc>https://ui-research.github.io/urbnindicators/articles/urbnindicators.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/authors.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/index.html</loc></url>
+<url><loc>https://ui-research.github.io/urbnindicators/news/index.html</loc></url>
+<url><loc>https://ui-research.github.io/urbnindicators/reference/calculate_cvs.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/calculate_segregation_metrics.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/compile_acs_data.html</loc></url>
+<url><loc>https://ui-research.github.io/urbnindicators/reference/cv.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/filter_variables.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/generate_codebook.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/index.html</loc></url>
@@ -16,6 +19,10 @@
 <url><loc>https://ui-research.github.io/urbnindicators/reference/list_acs_variables.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/pipe.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/safe_divide.html</loc></url>
+<url><loc>https://ui-research.github.io/urbnindicators/reference/se_proportion_ratio.html</loc></url>
+<url><loc>https://ui-research.github.io/urbnindicators/reference/se_simple.html</loc></url>
+<url><loc>https://ui-research.github.io/urbnindicators/reference/se_sum.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/select_variables_by_name.html</loc></url>
+<url><loc>https://ui-research.github.io/urbnindicators/reference/urbnindicators-package.html</loc></url>
 </urlset>
 

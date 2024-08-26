@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9100</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9200</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,6 +37,7 @@
 <li><a class="dropdown-item" href="../articles/coefficients-of-variation.html">coefficients-of-variation</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -101,18 +102,15 @@ disability, at the county level, in New Jersey. So we load the variable
 index for the corresponding data year and look for variables with
 “Disability” in the <code>concept</code> field:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressPackageStartupMessages</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://walker-data.com/tidycensus/" class="external-link">tidycensus</a></span><span class="op">)</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stringr.tidyverse.org" class="external-link">stringr</a></span><span class="op">)</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span>  </span>
-<span><span class="op">}</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># library(urbnindicators)</span></span>
+<span><span class="co"># library(tidycensus)</span></span>
+<span><span class="co"># library(dplyr)</span></span>
+<span><span class="co"># library(stringr)</span></span>
+<span><span class="co"># library(ggplot2)  </span></span>
 <span></span>
-<span><span class="va">acs_codebook</span> <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/load_variables.html" class="external-link">load_variables</a></span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"acs5"</span>, year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span></span>
+<span><span class="va">acs_codebook</span> <span class="op">=</span> <span class="fu">load_variables</span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"acs5"</span>, year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span></span>
 <span><span class="co"># acs_codebook %&gt;% View() # not run</span></span>
-<span><span class="va">acs_codebook</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 28152</span></span>
+<span></span>
 <span><span class="va">acs_codebook</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">concept</span>, <span class="st">"Disability"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="op">)</span> </span>
@@ -141,7 +139,7 @@ that most respondents who are asked about their disability status will
 also have been asked about their sex and age. We then pass this to
 <code>tidycensus</code> as:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df_disability</span> <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">df_disability</span> <span class="op">=</span> <span class="fu">get_acs</span><span class="op">(</span></span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  state <span class="op">=</span> <span class="st">"NJ"</span>, </span>
 <span>  year <span class="op">=</span> <span class="fl">2022</span>,</span>
@@ -192,7 +190,6 @@ individuals who are disabled).</p>
 <span>  years <span class="op">=</span> <span class="fl">2022</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span>
-<span>  retain_moes <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  spatial <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; </span></span>
@@ -204,11 +201,22 @@ individuals who are disabled).</p>
 <span><span class="co">#&gt; which was developed around five-year ACS estimates for 2017-2021--</span></span>
 <span><span class="co">#&gt; remains accurate for their use cases. Evaluation of measures and</span></span>
 <span><span class="co">#&gt; geographies over time should be thoroughly quality checked.</span></span>
-<span><span class="co">#&gt;   |                                                                              |                                                                      |   0%  |                                                                              |                                                                      |   1%  |                                                                              |=                                                                     |   1%  |                                                                              |=                                                                     |   2%  |                                                                              |==                                                                    |   2%  |                                                                              |==                                                                    |   3%  |                                                                              |==                                                                    |   4%  |                                                                              |===                                                                   |   4%  |                                                                              |===                                                                   |   5%  |                                                                              |====                                                                  |   5%  |                                                                              |====                                                                  |   6%  |                                                                              |=====                                                                 |   7%  |                                                                              |=====                                                                 |   8%  |                                                                              |======                                                                |   8%  |                                                                              |======                                                                |   9%  |                                                                              |=======                                                               |  10%  |                                                                              |========                                                              |  11%  |                                                                              |========                                                              |  12%  |                                                                              |=========                                                             |  12%  |                                                                              |==============                                                        |  20%  |                                                                              |===================                                                   |  27%  |                                                                              |========================                                              |  34%  |                                                                              |=============================                                         |  42%  |                                                                              |==================================                                    |  49%  |                                                                              |=======================================                               |  56%  |                                                                              |============================================                          |  64%  |                                                                              |==================================================                    |  71%  |                                                                              |=======================================================               |  78%  |                                                                              |============================================================          |  86%  |                                                                              |=================================================================     |  93%  |                                                                              |======================================================================| 100%</span></span>
-<span><span class="co">#&gt; Getting data from the 2018-2022 5-year ACS</span></span>
+<span><span class="co">#&gt;   |                                                                              |                                                                      |   0%  |                                                                              |                                                                      |   1%  |                                                                              |=                                                                     |   1%  |                                                                              |=                                                                     |   2%  |                                                                              |==                                                                    |   2%  |                                                                              |==                                                                    |   3%  |                                                                              |=======                                                               |  11%  |                                                                              |=============                                                         |  18%  |                                                                              |==================                                                    |  25%  |                                                                              |=======================                                               |  33%  |                                                                              |===========================                                           |  38%  |                                                                              |===============================                                       |  45%  |                                                                              |=================================                                     |  47%  |                                                                              |===================================                                   |  49%  |                                                                              |========================================                              |  57%  |                                                                              |=============================================                         |  64%  |                                                                              |==================================================                    |  71%  |                                                                              |=======================================================               |  79%  |                                                                              |============================================================          |  86%  |                                                                              |=================================================================     |  93%  |                                                                              |======================================================================| 100%</span></span>
+<span><span class="co">#&gt; Warning: There were 3 warnings in `dplyr::mutate()`.</span></span>
+<span><span class="co">#&gt; The first warning was:</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> In argument: `numerator = dplyr::case_when(...)`.</span></span>
+<span><span class="co">#&gt; Caused by warning in `stri_replace_all_regex()`:</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> argument is not an atomic vector; coercing</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Run `dplyr::last_dplyr_warnings()` to see the 2 remaining warnings.</span></span>
+<span><span class="co">#&gt; Warning: There were 18 warnings in `dplyr::mutate()`.</span></span>
+<span><span class="co">#&gt; The first warning was:</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> In argument: `dplyr::across(...)`.</span></span>
+<span><span class="co">#&gt; Caused by warning in `sqrt()`:</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> NaNs produced</span></span>
+<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Run `dplyr::last_dplyr_warnings()` to see the 17 remaining warnings.</span></span>
 <span></span>
 <span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1]   21 1446</span></span></code></pre></div>
+<span><span class="co">#&gt; [1]   21 2263</span></span></code></pre></div>
 <p>While this call returns us the same 21 observations (one per county
 in NJ), it returns us some 1,300 columns. Even when we subset to those
 matching “disability”, we still have 79 columns (the same columns
@@ -219,7 +227,7 @@ one).</p>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"disability"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="op">)</span> <span class="co">## 79</span></span>
-<span><span class="co">#&gt; [1] 79</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 119</span></span></code></pre></div>
 <p>This is because <code>urbnindicators</code> makes the same
 <code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">tidycensus::get_acs()</a></code> query as illustrated above, along
 with many others. This reflects a design choice underlying
@@ -234,20 +242,20 @@ descriptive names (e.g.,
 and–importantly–that derived variables are included:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">GEOID</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"disability.*percent"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 21 × 2</span></span></span>
-<span><span class="co">#&gt;    GEOID disability_percent</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 34001             0.142 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 34003             0.083<span style="text-decoration: underline;">1</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 34005             0.116 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 34007             0.145 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 34009             0.150 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 34011             0.148 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 34013             0.117 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 34015             0.127 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 34017             0.086<span style="text-decoration: underline;">5</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 34019             0.087<span style="text-decoration: underline;">6</span></span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">GEOID</span>, <span class="fu">matches</span><span class="op">(</span><span class="st">"disability.*percent"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 21 × 3</span></span></span>
+<span><span class="co">#&gt;    GEOID disability_percent disability_percent_cv</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> 34001             0.142                  <span style="text-decoration: underline;">9</span>545.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> 34003             0.083<span style="text-decoration: underline;">1</span>                <span style="text-decoration: underline;">21</span>133.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> 34005             0.116                  <span style="text-decoration: underline;">4</span>108.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> 34007             0.145                 <span style="text-decoration: underline;">11</span>165.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> 34009             0.150                  <span style="text-decoration: underline;">4</span>736.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> 34011             0.148                  <span style="text-decoration: underline;">4</span>668.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> 34013             0.117                 <span style="text-decoration: underline;">21</span>042.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> 34015             0.127                 <span style="text-decoration: underline;">16</span>335.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> 34017             0.086<span style="text-decoration: underline;">5</span>                <span style="text-decoration: underline;">11</span>503.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> 34019             0.087<span style="text-decoration: underline;">6</span>                 <span style="text-decoration: underline;">9</span>255.</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 11 more rows</span></span></span></code></pre></div>
 <p>Indeed, the string-matching approach used above, with the pattern
 <code>select(matches("variable_of_interest.*percent$"))</code>, is key
@@ -287,8 +295,8 @@ was calculated? No problem:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">calculated_variable</span> <span class="op">==</span> <span class="st">"cost_burdened_30percentormore_incomeslessthan35000_percent"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">definition</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">calculated_variable</span> <span class="op">==</span> <span class="st">"cost_burdened_30percentormore_incomeslessthan35000_percent"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">pull</span><span class="op">(</span><span class="va">definition</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "Numerator = household_income_by_gross_rent_as_a_percentage_household_income_in_past_12_months_less_than_$10000_50_0_percent_more (B25074_009), household_income_by_gross_rent_as_a_percentage_household_income_in_past_12_months_$10000_$19999_50_0_percent_more (B25074_018), household_income_by_gross_rent_as_a_percentage_household_income_in_past_12_months_$20000_$34999_50_0_percent_more (B25074_027). Denominator = household_income_by_gross_rent_as_a_percentage_household_income_in_past_12_months_less_than_$10000 (B25074_002), household_income_by_gross_rent_as_a_percentage_household_income_in_past_12_months_$10000_$19999 (B25074_011), household_income_by_gross_rent_as_a_percentage_household_income_in_past_12_months_$20000_$34999 (B25074_020)."</span></span></code></pre></div>
 </div>
 <div class="section level2">
