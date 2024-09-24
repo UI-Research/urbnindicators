@@ -415,10 +415,6 @@ geographies over time should be thoroughly quality checked.\n")
 
   states = county_codes$state %>% unique
 
-  # county_codes %>% View()
-  #
-  # browser()
-
   suppressMessages({ suppressWarnings({
     ## some geographies are not available by state and can only be returned nationally
     if (geography %in% super_state_geographies) {

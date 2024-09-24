@@ -101,8 +101,8 @@ calculate_segregation_metrics = function(data, data_format, nesting_geography_ge
         unit = "GEOID",
         weight = "estimate",
         wide = T) %>%
-      dplyr::as_tibble() %>%
-      dplyr::select(GEOID, segregation_small_geography = ls, p_small_geography = p))
+      dplyr::as_tibble()) %>%
+      dplyr::select(GEOID, segregation_small_geography = ls, p_small_geography = p)
 
   small_segregation_results = data %>%
     dplyr::select(GEOID) %>%
