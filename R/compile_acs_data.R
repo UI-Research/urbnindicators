@@ -135,6 +135,12 @@ internal_compute_acs_variables = function(.data) {
           .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("owner", "renter_owner") )),
           .names = "{.col}_percent"),
 
+        ## units in structure
+        dplyr::across(
+          .cols = c(dplyr::matches("^units_in_structure"), -dplyr::matches("universe|householder")),
+          .fns = ~ safe_divide(.x, units_in_structure_universe),
+          .names = "{.col}_percent"),
+
         ## units in structure, both tenures
         ## (sums)
         dplyr::across( ## summing renter- and owner-occupied estimates

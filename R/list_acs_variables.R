@@ -222,11 +222,15 @@ list_acs_variables = function(year = "2022") {
       ## race-specific tables, just remove the "_", a la: select_variables(variable_name = "B18101")
 
     ####----HOUSING---####
+
       ## TENURE (by race)
       select_variables("B25003"),
 
       ## TENURE BY OCCUPANTS PER ROOM
       select_variables("B25014"),
+
+      ## UNITS IN STRUCTURE
+      select_variables("B25024"),
 
       ## TENURE BY UNITS IN STRUCTURE
       select_variables("B25032"),
