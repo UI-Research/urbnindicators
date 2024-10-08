@@ -8,5 +8,5 @@ inst/doc
 *.csv
 /doc/
 /Meta/
-.rds
+*.rds
 /inst

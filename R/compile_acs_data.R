@@ -85,11 +85,11 @@ internal_compute_acs_variables = function(.data) {
       ####----AGE----####
         ## creating combined, male and female counts by age group named, e.g., age_15_17_years
         dplyr::across(
-          .cols = dplyr::matches("sex_by_age_female_.*years$"),
+          .cols = dplyr::matches("sex_by_age_female_.*years($|_over$)"),
           .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("female", "male")),
           .names =  "{stringr::str_replace(string = .col, pattern = 'sex_by_age_female_', replacement = 'age_')}"),
         dplyr::across(
-          .cols = dplyr::matches("^age.*years$"),
+          .cols = dplyr::matches("^age.*years($|_over$)"),
           .fns = ~ safe_divide(.x, sex_by_age_universe),
           .names =  "{.col}_percent")) %>%
 
@@ -100,7 +100,7 @@ internal_compute_acs_variables = function(.data) {
             rowSums(dplyr::select(., age_under_5_years, age_5_9_years, age_10_14_years, age_15_17_years)),
             sex_by_age_universe),
           age_over_64_percent = safe_divide(
-            rowSums(dplyr::select(., dplyr::matches("age_(6(5|7)|7|8).*_years$"))),
+            rowSums(dplyr::select(., dplyr::matches("age_(6(5|7)|7|8).*_years($|_over$)"))),
             sex_by_age_universe),
 
       ####----DISABILITY----####

@@ -1,19 +1,17 @@
 # message("Update test data prior to testing, as needed.")
 #
-df = compile_acs_data(
-  variables = NULL,
-  years = c(2022),
-  geography = "tract",
-  states = c("CA", "TX"),
-  counties = NULL,
-  spatial = FALSE)
-
-codebook = attr(df, "codebook")
-
-saveRDS(object = df, file = file.path("inst", "test-data", "test_data_2024-08-24.rds"))
-saveRDS(codebook, file = file.path("inst", "test-data", "codebook_2024-08-24.rds"))
-
-df %>% dplyr::select(dplyr::matches("mobile")) %>% colnames()
+# df = compile_acs_data(
+#   variables = NULL,
+#   years = c(2022),
+#   geography = "tract",
+#   states = c("CA", "TX"),
+#   counties = NULL,
+#   spatial = FALSE)
+#
+# codebook = attr(df, "codebook")
+#
+# saveRDS(object = df, file = file.path("inst", "test-data", "test_data_2024-08-24.rds"))
+# saveRDS(codebook, file = file.path("inst", "test-data", "codebook_2024-08-24.rds"))
 
 ####----Tests----####
 # All percentages have no values greater than one and no values less than zero
