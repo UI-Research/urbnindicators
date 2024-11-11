@@ -324,6 +324,7 @@ internal_compute_acs_variables = function(.data) {
 #' @export
 #' @importFrom magrittr %>%
 
+
 compile_acs_data = function(
     variables = NULL,
     years = c(2022),
@@ -437,25 +438,39 @@ geographies over time should be thoroughly quality checked.\n")
           dplyr::mutate(data_source_year = .x))
     } else {
       ## for those geographies that can (or must) be returned by state:
-      ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for data from each state
+      ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for
+      ## data from each state, by county if applicable,
       ## and then combine the resulting dataframes together into a single dataframe
       df_raw_estimates = purrr::map_dfr(
         states,
-        function (state) {
+        function(state) {
           purrr::map_dfr(
             ## when year is a vector with length > 1 (i.e., there are multiple years)
             ## loop over each item in the vector (and this approach also works for a single year)
             years,
-            ~ tidycensus::get_acs(
-                geography = geography,
-                variables = variables,
-                year = as.numeric(.x),
-                state = state,
-                ## this argument is ignored when a query cannot be made at the county level
-                county = county_codes %>% dplyr::filter(state == !!state) %>% dplyr::pull(county),
-                survey = "acs5",
-                output = "wide") %>%
-              dplyr::mutate(data_source_year = .x))})}
+            function(year) {
+              if (geography %in% c("tract", "county")) {
+                result = purrr::map_dfr(
+                  county_codes %>% dplyr::filter(state == !!state) %>% dplyr::pull(county),
+                  ~ tidycensus::get_acs(
+                    geography = geography,
+                    variables = variables,
+                    year = as.numeric(year),
+                    state = state,
+                    county = .x,
+                    survey = "acs5",
+                    output = "wide")) %>%
+                  dplyr::mutate(data_source_year = year) } else {
+
+                result = tidycensus::get_acs(
+                  geography = geography,
+                  variables = variables,
+                  year = as.numeric(year),
+                  state = state,
+                  survey = "acs5",
+                  output = "wide") %>%
+                  dplyr::mutate(data_source_year = year)}})})
+      }
     moes = df_raw_estimates %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$"))
   })})
 
