@@ -474,7 +474,6 @@ geographies over time should be thoroughly quality checked.\n")
     ## join geometries, calculate population density, drop geometry attribute if spatial == FALSE
     dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one") %>%
     dplyr::mutate(population_density_land_sq_kilometer = safe_divide(total_population_universe, area_land_sq_kilometer)) %>%
-    {if (spatial == FALSE) sf::st_drop_geometry(.) else sf::st_as_sf(.) } %>%
     dplyr::left_join(
       .,
       moes %>%
@@ -485,14 +484,13 @@ geographies over time should be thoroughly quality checked.\n")
   codebook = generate_codebook(.data = df_calculated_estimates)
   attr(df_calculated_estimates, "codebook") = codebook
 
-  df_cvs = calculate_cvs(df_calculated_estimates)
+  df_cvs = calculate_cvs(df_calculated_estimates) %>%
+    {if (spatial == FALSE) sf::st_drop_geometry(.) else sf::st_as_sf(.) }
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
   attr(df_cvs, "codebook") = codebook
 
-  final_df = df_cvs
-
-  return(final_df)
+  return(df_cvs)
 }
 
 utils::globalVariables(c(
