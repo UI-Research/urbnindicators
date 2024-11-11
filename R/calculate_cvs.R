@@ -60,7 +60,6 @@ se_proportion_ratio = function(
     stop("Only one of a margin of error or a standard error can be provided for the numerator and denominator.")
   }
 
-  !is.null(moe_numerator)
   if (!is.null(moe_numerator)) { se_numerator = purrr::map_dbl(moe_numerator, se_simple) }
   if (!is.null(moe_denominator)) { se_denominator = purrr::map_dbl(moe_denominator, se_simple) }
 
@@ -228,6 +227,7 @@ calculate_cvs = function(.df) {
       !(calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe")))
 
   df_cvs = .df %>%
+    sf::st_drop_geometry() %>%
     dplyr::mutate(
       ## derived sum variables - calculate MOEs that can be used in subsequent calculations
       dplyr::across(
