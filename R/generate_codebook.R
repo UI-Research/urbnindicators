@@ -20,7 +20,8 @@
 #' @importFrom magrittr %>%
 
 generate_codebook = function(.data)  {
-    # .data = data
+    .data = .data %>%
+      sf::st_drop_geometry()
     ####----Variable Crosswalk----####
     expression_list = rlang::enexpr(list_acs_variables) %>% as.list()
     list_acs_expression = expression_list[[2]][[4]][[3]]
@@ -455,7 +456,6 @@ generate_codebook = function(.data)  {
     result2 = purrr::map_dfr(
       result1 %>% dplyr::filter(stringr::str_detect(definition, "calculated variable")) %>% dplyr::pull(calculated_variable),
       function(variable) {
-        # variable = "means_transportation_work_car_truck_van_percent"
         numerator_calculated_variables = result1 %>%
           dplyr::filter(calculated_variable == !!variable) %>%
           dplyr::pull(definition) %>%

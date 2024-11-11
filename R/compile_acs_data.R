@@ -456,7 +456,6 @@ geographies over time should be thoroughly quality checked.\n")
                 survey = "acs5",
                 output = "wide") %>%
               dplyr::mutate(data_source_year = .x))})}
-
     moes = df_raw_estimates %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$"))
   })})
 
