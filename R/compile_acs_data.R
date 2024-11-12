@@ -361,6 +361,15 @@ geographies over time should be thoroughly quality checked.\n")
   if ((geography %>% tolower) %in% c("block", "block group")) {
     stop("Block and block group geographies are not supported at this time.") }
 
+
+  ## warn user -- county-by-county queries are slow and should be used if only
+  ## one or a few counties are desired
+  if (is.null(counties)) {
+warning(
+"County-level queries can be slow for more than a few counties. Omit the county parameter
+if you are interested in more than five counties; filter to your desired counties after
+this function returns.")}
+
   super_state_geographies = c(
     "us", "region", "division", "metropolitan/micropolitan statistical area",
     "metropolitan statistical area/micropolitan statistical area",
@@ -423,6 +432,7 @@ geographies over time should be thoroughly quality checked.\n")
   states = county_codes$state %>% unique
 
   suppressMessages({ suppressWarnings({
+
     ## some geographies are not available by state and can only be returned nationally
     if (geography %in% super_state_geographies) {
       df_raw_estimates = purrr::map_dfr(
@@ -436,10 +446,32 @@ geographies over time should be thoroughly quality checked.\n")
             survey = "acs5",
             output = "wide") %>%
           dplyr::mutate(data_source_year = .x))
-    } else {
-      ## for those geographies that can (or must) be returned by state:
+
+    } else if (is.null(counties)) {
+      ## for those geographies that can (or must) be returned by state, but where
+      ## we do not need to query individual counties:
+      ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for data from each state
+      ## and then combine the resulting dataframes together into a single dataframe
+      df_raw_estimates = purrr::map_dfr(
+        states,
+        function (state) {
+          purrr::map_dfr(
+            ## when year is a vector with length > 1 (i.e., there are multiple years)
+            ## loop over each item in the vector (and this approach also works for a single year)
+            years,
+            ~ tidycensus::get_acs(
+              geography = geography,
+              variables = variables,
+              year = as.numeric(.x),
+              state = state,
+              ## this argument is ignored when a query cannot be made at the county level
+              survey = "acs5",
+              output = "wide") %>%
+              dplyr::mutate(data_source_year = .x))})} else {
+
+      ## for queries that must be returned by county within state
       ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for
-      ## data from each state, by county if applicable,
+      ## data from each state, by county,
       ## and then combine the resulting dataframes together into a single dataframe
       df_raw_estimates = purrr::map_dfr(
         states,
