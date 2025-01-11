@@ -64,7 +64,7 @@ And there's more in the works. Future updates will include:
 Install the development version of urbnindicators from
 [GitHub](https://github.com/) with:
 
-``` r
+```{r}
 # install.packages("renv")
 renv::install("UI-Research/urbnindicators")
 ```
@@ -74,7 +74,7 @@ ensure you have the most recent version installed!
 
 ## urbnindicators in action
 
-```{r example, fig.height = 5}
+```{r, eval = TRUE, include = FALSE, message = FALSE, warning = FALSE, echo = FALSE}
 suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
@@ -83,6 +83,16 @@ suppressPackageStartupMessages({
   library(ggplot2)
   library(urbnthemes) })
 set_urbn_defaults(style = "print")
+```
+
+
+```{r example, fig.height = 5}
+# library(dplyr)
+# library(tidyr)
+# library(stringr)
+# library(urbnindicators)
+# library(ggplot2)
+# library(urbnthemes)
 
 acs_df = compile_acs_data(
   variables = NULL,
