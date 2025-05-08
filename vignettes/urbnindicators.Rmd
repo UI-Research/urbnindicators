@@ -54,8 +54,7 @@ suppressPackageStartupMessages({
   library(tidycensus)
   library(dplyr)
   library(stringr)
-  library(ggplot2)  
-  library(urbnthemes)
+  library(ggplot2)
 })
 ```
 
@@ -162,7 +161,7 @@ df_urbnindicators %>%
   sf::st_as_sf() %>%
   ggplot() +
     geom_sf(aes(fill = disability_percent)) +
-    theme_urbn_map() +
+    urbnthemes::theme_urbn_map() +
     scale_fill_continuous(labels = scales::percent, trans = "reverse") +
     labs(
       title = "Disability rates appear higher in southern NJ",
