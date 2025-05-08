@@ -560,4 +560,4 @@ utils::globalVariables(c(
   "employment_civilian_labor_force_universe", "health_insurance_coverage_status_type_by_employment_status_universe",
   "health_insurance_coverage_status_covered_percent",
   "health_insurance_coverage_status_type_by_employment_status_in_labor_force", "state_code",
-  "county_code", "county_fips", "state_name"))
+  "county_code", "county_fips", "state_name", "county"))

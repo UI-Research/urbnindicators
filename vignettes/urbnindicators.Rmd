@@ -19,6 +19,16 @@ knitr::opts_chunk$set(
   out.width = "100%")
 ```
 
+```{r setup}
+library(urbnindicators)
+library(tidycensus)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+library(urbnthemes)
+```
+
 This vignette is organized into three parts:
 
 1.  We illustrate a typical workflow for obtaining American Community
@@ -47,17 +57,6 @@ common pitfalls without realizing they've made an error(s).
 Here's a typical `tidycensus` workflow:
 
 ### Identify variables to query
-
-```{r, include = FALSE, message = FALSE, warning = FALSE, echo = FALSE}
-suppressPackageStartupMessages({
-  library(urbnindicators)
-  library(tidycensus)
-  library(dplyr)
-  library(stringr)
-  library(ggplot2)  
-  library(urbnthemes)
-})
-```
 
 We load the built-in codebook and search for our construct of interest
 (disability). This leaves us 500 variables to choose from.
