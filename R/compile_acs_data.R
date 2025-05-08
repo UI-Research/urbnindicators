@@ -355,6 +355,7 @@ compile_acs_data = function(
   ## warn user -- county-by-county queries are slow and should be used if only
   ## one or a few counties are desired
   if (!any(is.null(counties))) {
+
 warning(
 "County-level queries can be slow for more than a few counties. Omit the county parameter
 if you are interested in more than five counties; filter to your desired counties after
