@@ -2,7 +2,6 @@
 <url><loc>https://ui-research.github.io/urbnindicators/404.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/LICENSE-text.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/LICENSE.html</loc></url>
-<url><loc>https://ui-research.github.io/urbnindicators/articles/coefficients-of-variation.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/articles/index.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/articles/urbnindicators.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/authors.html</loc></url>
@@ -17,6 +16,7 @@
 <url><loc>https://ui-research.github.io/urbnindicators/reference/index.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/internal_compute_acs_variables.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/list_acs_variables.html</loc></url>
+<url><loc>https://ui-research.github.io/urbnindicators/reference/make_pretty_names.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/pipe.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/safe_divide.html</loc></url>
 <url><loc>https://ui-research.github.io/urbnindicators/reference/se_proportion_ratio.html</loc></url>
