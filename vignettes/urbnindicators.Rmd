@@ -19,6 +19,10 @@ knitr::opts_chunk$set(
   out.width = "100%")
 ```
 
+```{r setup}
+library(urbnindicators)
+```
+
 This vignette is organized into three parts:
 
 1.  We illustrate a typical workflow for obtaining American Community
@@ -55,6 +59,7 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(stringr)
   library(ggplot2)
+  library(urbnthemes)
 })
 ```
 
