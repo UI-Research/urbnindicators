@@ -2,7 +2,7 @@
 % Please edit documentation in R/calculate_cvs.R
 \name{calculate_cvs}
 \alias{calculate_cvs}
-\title{Calculate Coefficients of Variation (CVs)}
+\title{Calculate coefficients of variation}
 \usage{
 calculate_cvs(.df)
 }
@@ -15,7 +15,7 @@ true of results from \code{compile_acs_data()}.}
 A modified dataframe that includes newly calculated indicators.
 }
 \description{
-Calculate Coefficients of Variation (CVs)
+Calculate coefficients of variation
 }
 \details{
 Create CVs for all ACS estimates and derived indicators

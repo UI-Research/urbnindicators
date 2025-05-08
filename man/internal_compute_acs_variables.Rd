@@ -31,3 +31,4 @@ df = compile_acs_data(
 internal_compute_acs_variables(.data = df)
 }
 }
+\keyword{internal}

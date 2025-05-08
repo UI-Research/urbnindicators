@@ -105,7 +105,7 @@ extract_definition_terms = function(.definition, .type) {
     stringr::str_replace_all(" ,", ",")
 }
 
-#' @title Calculate Coefficients of Variation (CVs)
+#' @title Calculate coefficients of variation
 #' @details Create CVs for all ACS estimates and derived indicators
 #' @param .df The dataset returned from \code{compile_acs_data()}.
 #'  The argument to this parameter must have an attribute named `codebook` (as is)

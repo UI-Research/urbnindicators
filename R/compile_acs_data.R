@@ -30,6 +30,7 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' internal_compute_acs_variables(.data = df)
 #' }
 #' @importFrom magrittr %>%
+#' @keywords internal
 internal_compute_acs_variables = function(.data) {
   .data %>%
     dplyr::mutate(
@@ -324,7 +325,6 @@ internal_compute_acs_variables = function(.data) {
 #' @export
 #' @importFrom magrittr %>%
 
-
 compile_acs_data = function(
     variables = NULL,
     years = c(2022),
@@ -334,15 +334,6 @@ compile_acs_data = function(
     spatial = FALSE) {
 
   options(tigris_use_cache = FALSE)
-
-message("\n
-Variable names and geographies for ACS data products can change between years.
-Changes to geographies are particularly significant across decades
-(e.g., from 2019 to 2020), but these changes can occur in any year.\n
-Users should ensure that the logic embedded in this function--
-which was developed around five-year ACS estimates for 2017-2021--
-remains accurate for their use cases. Evaluation of measures and
-geographies over time should be thoroughly quality checked.\n")
 
   ## default values for the variables and states arguments.
   if (length(variables) == 0) { variables = list_acs_variables(year = years[1]) }
@@ -360,6 +351,14 @@ geographies over time should be thoroughly quality checked.\n")
   ## tracts and larger are supported
   if ((geography %>% tolower) %in% c("block", "block group")) {
     stop("Block and block group geographies are not supported at this time.") }
+
+  ## warn user -- county-by-county queries are slow and should be used if only
+  ## one or a few counties are desired
+  if (!any(is.null(counties))) {
+warning(
+"County-level queries can be slow for more than a few counties. Omit the county parameter
+if you are interested in more than five counties; filter to your desired counties after
+this function returns.")}
 
   super_state_geographies = c(
     "us", "region", "division", "metropolitan/micropolitan statistical area",
@@ -423,6 +422,7 @@ geographies over time should be thoroughly quality checked.\n")
   states = county_codes$state %>% unique
 
   suppressMessages({ suppressWarnings({
+
     ## some geographies are not available by state and can only be returned nationally
     if (geography %in% super_state_geographies) {
       df_raw_estimates = purrr::map_dfr(
@@ -436,10 +436,32 @@ geographies over time should be thoroughly quality checked.\n")
             survey = "acs5",
             output = "wide") %>%
           dplyr::mutate(data_source_year = .x))
-    } else {
-      ## for those geographies that can (or must) be returned by state:
+
+    } else if (is.null(counties)) {
+      ## for those geographies that can (or must) be returned by state, but where
+      ## we do not need to query individual counties:
+      ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for data from each state
+      ## and then combine the resulting dataframes together into a single dataframe
+      df_raw_estimates = purrr::map_dfr(
+        states,
+        function (state) {
+          purrr::map_dfr(
+            ## when year is a vector with length > 1 (i.e., there are multiple years)
+            ## loop over each item in the vector (and this approach also works for a single year)
+            years,
+            ~ tidycensus::get_acs(
+              geography = geography,
+              variables = variables,
+              year = as.numeric(.x),
+              state = state,
+              ## this argument is ignored when a query cannot be made at the county level
+              survey = "acs5",
+              output = "wide") %>%
+              dplyr::mutate(data_source_year = .x))})} else {
+
+      ## for queries that must be returned by county within state
       ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for
-      ## data from each state, by county if applicable,
+      ## data from each state, by county,
       ## and then combine the resulting dataframes together into a single dataframe
       df_raw_estimates = purrr::map_dfr(
         states,
@@ -500,8 +522,10 @@ geographies over time should be thoroughly quality checked.\n")
   codebook = generate_codebook(.data = df_calculated_estimates)
   attr(df_calculated_estimates, "codebook") = codebook
 
-  df_cvs = calculate_cvs(df_calculated_estimates) %>%
-    {if (spatial == FALSE) . else dplyr::right_join(., geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
+  suppressWarnings({
+    df_cvs = calculate_cvs(df_calculated_estimates) %>%
+      {if (spatial == FALSE) . else dplyr::right_join(., geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
+  })
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
   attr(df_cvs, "codebook") = codebook

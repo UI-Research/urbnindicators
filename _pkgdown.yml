@@ -3,3 +3,23 @@ template:
   bootstrap: 5
 development:
   mode: auto
+reference:
+- title: Acquire data
+  contents:
+  - compile_acs_data
+  - calculate_segregation_metrics
+- title: Measuring error
+  contents:
+  - se_simple
+  - se_sum
+  - se_proportion_ratio
+  - cv
+  - calculate_cvs
+- title: Document data
+  contents:
+  - generate_codebook
+- title: Helper functions
+  contents:
+  - safe_divide
+  - select_variables_by_name
+  - filter_variables

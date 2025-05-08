@@ -10,3 +10,5 @@ inst/doc
 /Meta/
 *.rds
 /inst
+inst/test-data
+testing_variables_over_time.qmd
