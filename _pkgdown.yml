@@ -23,3 +23,5 @@ reference:
   - safe_divide
   - select_variables_by_name
   - filter_variables
+  - list_acs_variables
+  - make_pretty_names
