@@ -21,6 +21,12 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(urbnindicators)
+library(tidycensus)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+library(urbnthemes)
 ```
 
 This vignette is organized into three parts:
@@ -51,17 +57,6 @@ common pitfalls without realizing they've made an error(s).
 Here's a typical `tidycensus` workflow:
 
 ### Identify variables to query
-
-```{r, include = FALSE, message = FALSE, warning = FALSE, echo = FALSE}
-suppressPackageStartupMessages({
-  library(urbnindicators)
-  library(tidycensus)
-  library(dplyr)
-  library(stringr)
-  library(ggplot2)
-  library(urbnthemes)
-})
-```
 
 We load the built-in codebook and search for our construct of interest
 (disability). This leaves us 500 variables to choose from.
@@ -166,7 +161,7 @@ df_urbnindicators %>%
   sf::st_as_sf() %>%
   ggplot() +
     geom_sf(aes(fill = disability_percent)) +
-    urbnthemes::theme_urbn_map() +
+    theme_urbn_map() +
     scale_fill_continuous(labels = scales::percent, trans = "reverse") +
     labs(
       title = "Disability rates appear higher in southern NJ",

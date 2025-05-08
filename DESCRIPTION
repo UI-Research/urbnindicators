@@ -29,8 +29,11 @@ Imports:
 Suggests:
     ggplot2,
     knitr,
+    remotes,
     rmarkdown,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    scales,
+    urbnthemes (>= 0.0.2)
 Remotes: 
     UrbanInstitute/urbnthemes
 RoxygenNote: 7.3.2
