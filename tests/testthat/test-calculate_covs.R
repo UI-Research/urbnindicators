@@ -1,89 +1,86 @@
-####----TESTING----####
-
-df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
-codebook = readRDS(system.file("test-data", "codebook_2025-05-13.rds", package = "urbnindicators"))
-
-test_that(
-  "No CV has missing values for all observation",
+testthat::test_that(
+  "No CV has missing values for all observations",
   {
     ## Statistics for CA and TX tracts
     df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
 
     measure_level_quality = df %>%
-      select( matches("_CV$")) %>%
-      tidyr::pivot_longer(everything()) %>%
-      arrange(desc(value)) %>%
-      mutate(
-        flag = case_when(
+      dplyr::select(dplyr::matches("_CV$")) %>%
+      tidyr::pivot_longer(dplyr::everything()) %>%
+      dplyr::arrange(dplyr::desc(value)) %>%
+      dplyr::mutate(
+        flag = dplyr::case_when(
           is.na(value) ~ NA,
           value > 1000 ~ "1000+",
           value > 100 ~ "100+",
           value > 30 ~ "30+",
           TRUE ~ "<=30")) %>%
-      group_by(name, flag) %>%
-      summarize(
-        count = n()) %>%
-      group_by(name) %>%
-      mutate(
+      dplyr::group_by(name, flag) %>%
+      dplyr::summarize(
+        count = dplyr::n()) %>%
+      dplyr::group_by(name) %>%
+      dplyr::mutate(
         total = sum(count),
         percent_missing = count / total) %>%
-      ungroup()
+      dplyr::ungroup()
 
-    expect_lt(
+    testthat::expect_lt(
       measure_level_quality %>%
-        slice(1) %>%
-        pull(percent_missing), 1) }
+        dplyr::slice(1) %>%
+        dplyr::pull(percent_missing), 1) }
   )
 
-test_that(
+testthat::test_that(
   "All measures have at least some values with modest CVs",
   {
     ## Statistics for CA and TX tracts
     df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
 
     measure_level_quality = df %>%
-      select( matches("_CV$")) %>%
-      tidyr::pivot_longer(everything()) %>%
-      arrange(desc(value)) %>%
-      mutate(
-        flag = case_when(
+      dplyr::select(dplyr::matches("_CV$")) %>%
+      tidyr::pivot_longer(dplyr::everything()) %>%
+      dplyr::arrange(dplyr::desc(value)) %>%
+      dplyr::mutate(
+        flag = dplyr::case_when(
           is.na(value) ~ NA,
           value > 1000 ~ "1000+",
           value > 100 ~ "100+",
           value > 30 ~ "30+",
           TRUE ~ "<=30")) %>%
-      group_by(name, flag) %>%
-      summarize(
-        count = n()) %>%
-      group_by(name) %>%
-      mutate(
+      dplyr::group_by(name, flag) %>%
+      dplyr::summarize(
+        count = dplyr::n()) %>%
+      dplyr::group_by(name) %>%
+      dplyr::mutate(
         total = sum(count),
         percent_missing = count / total) %>%
-      ungroup()
+      dplyr::ungroup()
 
-    expect_gt(
+    testthat::expect_gt(
       measure_level_quality %>%
-        filter(flag == "<=30") %>%
+        dplyr::filter(flag == "<=30") %>%
         nrow(), 0) }
 )
 
-measures_with_modest_cvs = measure_level_quality %>%
-  filter(flag == "<=30", count >= 1) %>%
-  distinct(name) %>%
-  pull(name)
+testthat::test_that(
+  "There is a CV for every variable that has an MOE (or for which one can be calculated)",
+  {
+    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
+    moes = df %>%
+      dplyr::select(dplyr::matches("_M$")) %>%
+      colnames() %>%
+      stringr::str_remove("_M$")
+    cvs = df %>%
+      dplyr::select(matches("_CV$")) %>%
+      colnames() %>%
+      stringr::str_remove("_CV$")
 
-all_measures = measure_level_quality %>%
-  distinct(name) %>%
-  pull(name)
+    testthat::expect_equal(
+      moes[!moes %in% cvs] %>% length(),
+      3) ## there are three controlled variables for which MOEs are not provided by Census
+  }
+)
 
-all_measures[!(all_measures %in% measures_with_modest_cvs)]
-
-measure_level_quality %>%
-  filter(name == "sex_female_percent_CV")
-
-df %>%
-  count(sex_female_percent_CV)
-  select(GEOID, sex_female_percent_CV, sex_male_percent_CV)
 
 ## raw estimate variable: employment_civilian_labor_force_employed
 ## se formula: margin of error / 1.645

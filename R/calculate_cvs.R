@@ -233,7 +233,7 @@ calculate_cvs = function(.df) {
     purrr::map_chr(~ .x %>% dplyr::pull(variable_class) %>% unique())
   variable_classes = variable_class_groups %>%
     purrr::map(~ .x %>% dplyr::pull(calculated_variable)) %>%
-    setNames(variable_class_names)
+    stats::setNames(variable_class_names)
 
   ## derived sum variables - calculate MOEs that can be used in subsequent calculations
   ## for example: age_10_14_years
@@ -272,7 +272,7 @@ calculate_cvs = function(.df) {
           ## this effectively returns error calculations for the underlying variable
           ## under the assumption that the `1 - ` operation has no effect on the calculation
           ## of error
-          if (current_column %in% variables_classes[["one minus percentage"]]) {
+          if (current_column %in% variable_classes[["one minus percentage"]]) {
             current_column = codebook1 %>%
               dplyr::filter(calculated_variable == current_column) %>%
               dplyr::pull(definition) %>%
@@ -324,26 +324,10 @@ calculate_cvs = function(.df) {
           ## for simple percent variables with one numerator, one denominator:
           if (current_column %in% variable_classes[["simple percent, no calculated variables"]]) {
             SE = se_proportion_ratio(
-              estimate_numerator = get(
-                simple_percent_no_calculated_variables_codebook %>%
-                  dplyr::filter(calculated_variable == current_column) %>%
-                  dplyr::pull(numerator)),
-              estimate_denominator = get(
-                simple_percent_no_calculated_variables_codebook %>%
-                  dplyr::filter(calculated_variable == current_column) %>%
-                  dplyr::pull(denominator)),
-              moe_numerator = get(
-                simple_percent_no_calculated_variables_codebook %>%
-                  dplyr::filter(calculated_variable == current_column) %>%
-                  dplyr::pull(numerator) %>%
-                  stringr::str_remove_all("_count_estimate") %>%
-                  paste0("_M")),
-              moe_denominator = get(
-                simple_percent_no_calculated_variables_codebook %>%
-                  dplyr::filter(calculated_variable == current_column) %>%
-                  dplyr::pull(denominator) %>%
-                  stringr::str_remove_all("_count_estimate") %>%
-                  paste0("_M"))) }
+              estimate_numerator = get(numerator_estimate_variables),
+              estimate_denominator = get(denominator_estimate_variables),
+              moe_numerator = get(numerator_moe_variables),
+              moe_denominator = get(denominator_moe_variables)) }
 
           ## for percents with summed/subtracted numerators, one denominator
           if (current_column %in% variable_classes[["numerator sum percent"]]) {
@@ -368,7 +352,7 @@ calculate_cvs = function(.df) {
                 purrr::map(denominator_estimate_variables, ~ .df %>% dplyr::pull(.x)))) }
 
           ## for percents with summed numerators and summed denominators
-          if (current_column %in% variables_classes[["numerator and denominator sum percent"]]) {
+          if (current_column %in% variable_classes[["numerator and denominator sum percent"]]) {
             SE = se_proportion_ratio(
               estimate_numerator = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables))),
               estimate_denominator = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables))),
@@ -395,11 +379,11 @@ calculate_cvs = function(.df) {
           se = .x),
         .names = "{.col %>% stringr::str_remove('_SE')}_CV"))
 
-  moe_variables = df_cvs6 %>%
+  moe_variables = df_cvs1 %>%
     dplyr::select(dplyr::matches("_M$")) %>%
     colnames() %>%
     stringr::str_remove("_M$")
-  se_variables = df_cvs6 %>%
+  se_variables = df_cvs1 %>%
     dplyr::select(dplyr::matches("_SE$")) %>%
     colnames() %>%
     stringr::str_remove("_SE$")
@@ -414,9 +398,9 @@ calculate_cvs = function(.df) {
   # moe_variables = df_cvs %>% select(matches("_M$")) %>% colnames() %>% str_remove("_M$")
   # se_variables = df_cvs %>% select(matches("_SE$")) %>% colnames() %>% str_remove("_SE$")
 
-  # ## should be none
+  # # ## should be none
   # se_variables[!se_variables %in% moe_variables]
-  # ## should be three--the controlled variables that don't have margins of error
+  # # ## should be three--the controlled variables that don't have margins of error
   # moe_variables[!moe_variables %in% se_variables]
 
   return(df_cvs)
@@ -425,4 +409,4 @@ calculate_cvs = function(.df) {
 utils::globalVariables(c(
   "calculated_variable", "numerator_variable_count", "denominator_variable_count",
   "no_moe_flag", "calculated_variable_dependency_flag", "numerator", "denominator",
-  "observation", "type", "estimate", "moe"))
+  "observation", "type", "estimate", "moe", "variable_class"))

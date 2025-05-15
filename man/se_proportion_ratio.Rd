@@ -36,5 +36,5 @@ A pooled 90\% standard error
 Calculate a pooled standard error for a proportion or ratio
 }
 \details{
-For an estimate derived using division--whether the resulting estimate is a proportion or a ratio--calculate the pooled standard error.
+For an estimate derived using division--whether the resulting estimate is a proportion or a ratio--calculate the pooled standard error. While there are convenience parameters that support both SEs and MOEs for the numerator and denominator, only one of these--either SEs or MOEs--can be supplied--the other must be left NULL.
 }

@@ -531,6 +531,8 @@ this function returns.")}
   ## attach the codebook as an attribute named "codebook" to the returned dataset
   attr(df_cvs, "codebook") = codebook
 
+  if (isTRUE(spatial)) { df_cvs = sf::st_as_sf(df_cvs) }
+
   return(df_cvs)
 }
 
