@@ -1,4 +1,90 @@
 ####----TESTING----####
+
+df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
+codebook = readRDS(system.file("test-data", "codebook_2025-05-13.rds", package = "urbnindicators"))
+
+test_that(
+  "No CV has missing values for all observation",
+  {
+    ## Statistics for CA and TX tracts
+    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
+
+    measure_level_quality = df %>%
+      select( matches("_CV$")) %>%
+      tidyr::pivot_longer(everything()) %>%
+      arrange(desc(value)) %>%
+      mutate(
+        flag = case_when(
+          is.na(value) ~ NA,
+          value > 1000 ~ "1000+",
+          value > 100 ~ "100+",
+          value > 30 ~ "30+",
+          TRUE ~ "<=30")) %>%
+      group_by(name, flag) %>%
+      summarize(
+        count = n()) %>%
+      group_by(name) %>%
+      mutate(
+        total = sum(count),
+        percent_missing = count / total) %>%
+      ungroup()
+
+    expect_lt(
+      measure_level_quality %>%
+        slice(1) %>%
+        pull(percent_missing), 1) }
+  )
+
+test_that(
+  "All measures have at least some values with modest CVs",
+  {
+    ## Statistics for CA and TX tracts
+    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
+
+    measure_level_quality = df %>%
+      select( matches("_CV$")) %>%
+      tidyr::pivot_longer(everything()) %>%
+      arrange(desc(value)) %>%
+      mutate(
+        flag = case_when(
+          is.na(value) ~ NA,
+          value > 1000 ~ "1000+",
+          value > 100 ~ "100+",
+          value > 30 ~ "30+",
+          TRUE ~ "<=30")) %>%
+      group_by(name, flag) %>%
+      summarize(
+        count = n()) %>%
+      group_by(name) %>%
+      mutate(
+        total = sum(count),
+        percent_missing = count / total) %>%
+      ungroup()
+
+    expect_gt(
+      measure_level_quality %>%
+        filter(flag == "<=30") %>%
+        nrow(), 0) }
+)
+
+measures_with_modest_cvs = measure_level_quality %>%
+  filter(flag == "<=30", count >= 1) %>%
+  distinct(name) %>%
+  pull(name)
+
+all_measures = measure_level_quality %>%
+  distinct(name) %>%
+  pull(name)
+
+all_measures[!(all_measures %in% measures_with_modest_cvs)]
+
+measure_level_quality %>%
+  filter(name == "sex_female_percent_CV")
+
+df %>%
+  count(sex_female_percent_CV)
+  select(GEOID, sex_female_percent_CV, sex_male_percent_CV)
+
 ## raw estimate variable: employment_civilian_labor_force_employed
 ## se formula: margin of error / 1.645
 ## cv formula: se / estimate * 100
