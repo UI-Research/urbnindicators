@@ -17,13 +17,15 @@ knitr::opts_chunk$set(
 ```
 
 **urbnindicators** makes a number of opinionated design choices about
-what data to select from the ACS API, how to process it, what relevant
-derived variables to calculate, and even which types of geographies to
-support. "Opinionated" doesn't mean that these decisions are the best
-ones for every user or use-case, but these decisions are designed to
-either speed or improve the accuracy of a particular (and relatively
-common) workflow and use-case involving a large set of variables common
-across social science applications.
+what data to select from the Census Bureau API, how to process it, what
+relevant derived variables to calculate, and even which types of
+geographies to support.
+
+"Opinionated" doesn't mean that these decisions are the best ones for
+every user or use-case, but these decisions are designed to either speed
+or improve the accuracy of a particular (and relatively common) workflow
+and use-case involving a large set of variables common across social
+science applications.
 
 ## Design choices
 
@@ -66,8 +68,8 @@ across social science applications.
     comprehensive and easier to work with.
 
 -   **Return a very large, wide dataset.** The underlying
-    `library(tidycensus)` interface to the ACS API can return a single
-    variable or table, and often this is how users employ it.
+    `library(tidycensus)` interface to the Census Bureau API can return
+    a single variable or table, and often this is how users employ it.
     Conversely, it's common to want dozens or perhaps even hundreds of
     variables--this is the use case around which
     `library(urbnindicators)` was designed. Queries at small geographies

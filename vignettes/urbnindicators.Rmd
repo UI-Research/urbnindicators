@@ -13,6 +13,7 @@ editor_options:
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   warning = FALSE,
+  message = FALSE,
   collapse = TRUE,
   dpi = 1000,
   comment = "#>",
@@ -66,7 +67,8 @@ acs_codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
 
 acs_codebook %>%
   dplyr::filter(stringr::str_detect(concept, "Disability")) %>% 
-  head()
+  head() %>%
+  reactable::reactable()
 ```
 
 Let's imagine we're interested in calculating the share of individuals
@@ -86,8 +88,8 @@ the individuals for whom disability status is available.
 
 Putting these challenges aside, let's imagine we select the table of
 variables prefixed "B18101", for "Sex by Age by Disability". We think
-that most respondents who are asked about their disability status will
-also have been asked about their sex and age. We then pass this to
+that most respondents who respond about their disability status will
+also have responded about their sex and age. We then pass this to
 `tidycensus` as:
 
 ```{r}
@@ -100,7 +102,7 @@ df_disability = get_acs(
   table = "B18101")
 
 df_disability %>% dim()
-df_disability %>% colnames()
+df_disability %>% colnames() %>% head()
 ```
 
 This returns us 21 observations–one for each county in NJ--along with an
@@ -174,11 +176,14 @@ df_urbnindicators %>%
 There's a lot happening behind the scenes, so it's important to
 understand what each variable represents and how it was calculated.
 `urbnindicators` includes a codebook as an attribute of the dataframe
-returned from `compile_acs_data()`.
+returned from `compile_acs_data()`. View and navigate through the [full codebook
+here](Codebook.html).
 
 ```{r}
 df_urbnindicators %>%
-  attr("codebook")
+  attr("codebook") %>%
+  head(20) %>%
+  reactable::reactable()
 ```
 
 The codebook specifies the variable type and provides a definition of
@@ -191,7 +196,8 @@ divide two count variables.
 ```{r}
 df_urbnindicators %>%
   attr("codebook") %>%
-  filter(str_detect(calculated_variable, "public_assistance"))
+  filter(str_detect(calculated_variable, "public_assistance")) %>%
+  reactable::reactable()
 ```
 
 The most common convention is that a percent variable is calculated by
@@ -203,22 +209,24 @@ But other derived variables are more complex, such as those for commute
 mode. Here, we've aggregated three counts representing different types
 of individual motor vehicle transportation to create the numerator,
 while the denominator is the table universe minus individuals who work
-from home. This allows us say something along the lines of: "Of
-individuals who commute to work, XX% use a motor vehicle as their
-primary commute mode."
+from home. 
 
 ```{r}
 df_urbnindicators %>%
   attr("codebook") %>%
-  filter(str_detect(calculated_variable, "means.*motor_vehicle"))
+  filter(str_detect(calculated_variable, "means.*motor_vehicle")) %>%
+  reactable::reactable()
 ```
+
+This allows us say something along the lines of: "Of individuals who commute to work, 
+XX% use a motor vehicle as their primary commute mode."
 
 ## So What's the Value Add?
 
 Hopefully the process above has illustrated some of the advantages,
 which fall into two buckets: efficiency and reliability.
 
-1.  Efficiency:
+1.  Speed:
 
     1.  Sensible decisions about variable and table selection eliminate
         the need to hunt for the right variables.
@@ -230,7 +238,7 @@ which fall into two buckets: efficiency and reliability.
     3.  Query multiple years and/or multiple states in a single function
         call-- no need to loop over your desired years or states.
 
-2.  Reliability:
+2.  Accuracy:
 
     1.  Alphanumeric variable codes (e.g., `B18101_001`) are replaced
         with meaningful variable names (e.g.,
@@ -240,6 +248,12 @@ which fall into two buckets: efficiency and reliability.
     2.  Data are returned with a codebook that documents how variables
         were created and what they represent.
 
-    3.  Behind-the-scenes quality checks help to ensure that
-        calculations are correct (though users still should verify
-        results themselves!).
+    3.  Behind-the-scenes quality checks help to ensure (though do not guarantee) that
+        calculations are correct, though users still should verify results themselves.
+    
+    4.  Both straight-from-the-ACS and derived variables include margins of error
+        and coefficients of variation that enable users to conduct statistical 
+        significance testing and can inform other data quality decision-making,
+        such as whether to suppress certain observations or whether data should be
+        aggregated--across geographies or across variables, or both--to improve the
+        accuracy of estimates.

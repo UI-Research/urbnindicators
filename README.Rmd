@@ -30,9 +30,10 @@ v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/li
 
 # Overview
 
-The goal of **`urbnindicators`** is to provide users with analysis-ready
-data from the American Community Survey (ACS). With a single function
-call, you get:
+**urbnindicators** aims to provide users with analysis-ready data from
+the American Community Survey (ACS).
+
+With a single function call, you get:
 
 -   Hundreds of standardized variables, such as percentages, in addition
     to the raw count variables used to produce them.
@@ -49,6 +50,9 @@ call, you get:
 
 -   Built-in quality checks to help ensure that calculated variables are
     accurate.
+
+-   Margins of error and coefficients of variation for (virtually) all
+    variables.
 
 # Installation
 
@@ -74,17 +78,15 @@ library(ggplot2)
 library(urbnthemes)
 ```
 
-```{r example, warning = FALSE, message = F}
-set_urbn_defaults(style = "print")
+## Obtain data
 
-acs_df = compile_acs_data(
-  years = c(2017, 2022),
-  geography = "county",
-  states = "NJ",
-  counties = NULL,
-  spatial = FALSE) 
-
-plot_data = acs_df %>% 
+```{r, warning = FALSE, message = F}
+plot_data = compile_acs_data(
+    years = c(2017, 2022),
+    geography = "county",
+    states = "NJ",
+    counties = NULL,
+    spatial = FALSE)  %>% 
   transmute(
     county_name = NAME %>% str_remove(" County, New Jersey"), 
     race_personofcolor_percent, 
@@ -101,7 +103,11 @@ dumbbell_data = plot_data %>%
     names_from = data_source_year, 
     values_from = race_personofcolor_percent, 
     names_prefix = "year_")
+```
 
+## Plot data
+
+```{r, warning = FALSE, message = F}
 ggplot() +
   geom_segment(
     data = dumbbell_data,
@@ -157,13 +163,31 @@ ggplot() +
   coord_flip()
 ```
 
+# Learn More
+
+A growing number of vignettes aim to support users in effectively using
+this package. These vignettes include:
+
+-   A package overview to help users [**Get
+    Started**](urbnindicators.html).
+
+-   An interactive version of the package's
+    [**Codebook**](codebook.html)so that prospective users can know what
+    to expect.
+
+-   A brief description of the package's [**Design
+    Philosophy**](design-philosophy.html)to clarify the use-cases that
+    `urbnindicators` is built to support.
+
+-   An illustration of how [Quantified Survey
+    Error](quantified-survey-error.html) can improve inference making.
+
 # Credits
 
 This package is built on top of and enormously indebted to
 `library(tidycensus)`, which provides the core functionality for
-accessing the Census Bureau API.
-
-For users who want additional variables, `library(tidycensus)` exposes
-the entire range of pre-tabulated variables available from the ACS, as
-well as access to ACS microdata and other Census Bureau datasets. Learn
-more here: <https://walker-data.com/tidycensus/index.html>.
+accessing the Census Bureau API. For users who want additional
+variables, `library(tidycensus)` exposes the entire range of
+pre-tabulated variables available from the ACS and provides access to
+ACS microdata and other Census Bureau datasets. Learn more here:
+<https://walker-data.com/tidycensus/index.html>.
