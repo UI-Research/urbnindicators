@@ -1,25 +1,24 @@
 # message("Update test data prior to testing, as needed.")
-#
 # df = compile_acs_data(
 #   variables = NULL,
 #   years = c(2022),
 #   geography = "tract",
-#   states = c("CA", "TX"),
+#   states = c("TX"),
 #   counties = NULL,
 #   spatial = FALSE)
 #
 # codebook = attr(df, "codebook")
 #
-# saveRDS(object = df, file = file.path("inst", "test-data", "test_data_2024-08-24.rds"))
-# saveRDS(codebook, file = file.path("inst", "test-data", "codebook_2024-08-24.rds"))
+# saveRDS(object = df, file = file.path("inst", "test-data", "test_data_2025-05-13.rds"))
+# saveRDS(codebook, file = file.path("inst", "test-data", "codebook_2025-05-13.rds"))
 
 ####----Tests----####
 # All percentages have no values greater than one and no values less than zero
 testthat::test_that(
   "All percentages have no values greater than one and no values less than zero",
   {
-    ## Statistics for CA and TX Tracts
-    df = readRDS(system.file("test-data", "test_data_2024-08-24.rds", package = "urbnindicators"))
+    ## Statistics for CA and TX tracts
+    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
 
     percentage_outliers_maxima = df %>%
       dplyr::select(dplyr::matches("percent$")) %>%
@@ -46,7 +45,7 @@ testthat::test_that(
   "All measures have meaningful values",
   {
     ## Statistics for CA and TX Tracts
-    df = readRDS(system.file("test-data", "test_data_2024-08-24.rds", package = "urbnindicators"))
+    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
 
     summary_statistics = df %>%
       dplyr::select(GEOID, matches("percent$")) %>%
@@ -72,7 +71,7 @@ testthat::test_that(
   "All percentages are distinct",
   {
     ## Statistics for CA and TX Tracts
-    df = readRDS(system.file("test-data", "test_data_2024-08-24.rds", package = "urbnindicators"))
+    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
 
     duplicates = purrr::map_dfr(
       colnames(df %>% dplyr::select(dplyr::matches("percent$"))),

@@ -2,7 +2,7 @@
 % Please edit documentation in R/calculate_cvs.R
 \name{se_proportion_ratio}
 \alias{se_proportion_ratio}
-\title{Calculate a pooled standard  for a proportion or ratio estimate}
+\title{Calculate a pooled standard error for a proportion or ratio}
 \usage{
 se_proportion_ratio(
   estimate_numerator,
@@ -33,8 +33,8 @@ se_proportion_ratio(
 A pooled 90\% standard error
 }
 \description{
-Calculate a pooled standard  for a proportion or ratio estimate
+Calculate a pooled standard error for a proportion or ratio
 }
 \details{
-For an estimate derived by dividing multiple estimates, calculate the pooled standard error
+For an estimate derived using division--whether the resulting estimate is a proportion or a ratio--calculate the pooled standard error. While there are convenience parameters that support both SEs and MOEs for the numerator and denominator, only one of these--either SEs or MOEs--can be supplied--the other must be left NULL.
 }

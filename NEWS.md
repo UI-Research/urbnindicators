@@ -1,5 +1,8 @@
 # urbnindicators (development version)
 
+## v0.0.0.9301 
+* Significantly overhauled calculations of coefficients of variation
+
 ## v0.0.0.9300 
 * Adding `make_pretty_names()`
 * Reorganizing References

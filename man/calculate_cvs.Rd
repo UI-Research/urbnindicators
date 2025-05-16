@@ -30,6 +30,6 @@ df = compile_acs_data(
   counties = NULL,
   spatial = FALSE)
 cvs = calculate_cvs(df) \%>\%
- dplyr::select(matches("_cv$"))
+ dplyr::select(matches("_CV$"))
 }
 }
