@@ -31,6 +31,7 @@ Imports:
 Suggests:
     ggplot2,
     knitr,
+    reactable,
     remotes,
     rmarkdown,
     testthat (>= 3.0.0),
