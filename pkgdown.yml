@@ -3,7 +3,7 @@ pkgdown: 2.1.2
 pkgdown_sha: ~
 articles:
   urbnindicators: urbnindicators.html
-last_built: 2025-05-08T20:11Z
+last_built: 2025-05-16T01:45Z
 urls:
   reference: https://ui-research.github.io/urbnindicators/reference
   article: https://ui-research.github.io/urbnindicators/articles
