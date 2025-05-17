@@ -34,8 +34,9 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/codebook.html">codebook</a></li>
+<li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
+    <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Quantified Survey Errors and Accurate Inference-Making</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -53,8 +54,9 @@
 
 
 
-
-<div class="row">
+<script src="urbnindicators_files/core-js-2.5.3/shim.min.js"></script><script src="urbnindicators_files/react-18.2.0/react.min.js"></script><script src="urbnindicators_files/react-18.2.0/react-dom.min.js"></script><script src="urbnindicators_files/reactwidget-2.0.0/react-tools.js"></script><link href="urbnindicators_files/htmltools-fill-0.5.8.1/fill.css" rel="stylesheet">
+<script src="urbnindicators_files/htmlwidgets-1.6.4/htmlwidgets.js"></script><link href="urbnindicators_files/reactable-0.4.4/reactable.css" rel="stylesheet">
+<script src="urbnindicators_files/reactable-binding-0.4.4/reactable.js"></script><div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>urbnindicators</h1>
@@ -70,27 +72,10 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://walker-data.com/tidycensus/" class="external-link">tidycensus</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     filter, lag</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stringr.tidyverse.org" class="external-link">stringr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://scales.r-lib.org" class="external-link">scales</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/UrbanInstitute/urbnthemes" class="external-link">urbnthemes</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Setting Mac/Linux options...</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Attaching package: 'urbnthemes'</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:ggplot2':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     geom_bar, geom_col, scale_color_discrete, scale_color_gradientn,</span></span>
-<span><span class="co">#&gt;     scale_color_ordinal, scale_colour_discrete, scale_colour_gradientn,</span></span>
-<span><span class="co">#&gt;     scale_colour_ordinal, scale_fill_discrete, scale_fill_gradientn,</span></span>
-<span><span class="co">#&gt;     scale_fill_ordinal</span></span></code></pre></div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/UrbanInstitute/urbnthemes" class="external-link">urbnthemes</a></span><span class="op">)</span></span></code></pre></div>
 <p>This vignette is organized into three parts:</p>
 <ol style="list-style-type: decimal">
 <li><p>We illustrate a typical workflow for obtaining American Community
@@ -126,17 +111,10 @@ interest (disability). This leaves us 500 variables to choose from.</p>
 <span></span>
 <span><span class="va">acs_codebook</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">concept</span>, <span class="st">"Disability"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 4</span></span></span>
-<span><span class="co">#&gt;   name       label                                             concept geography</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                             <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> B10052_001 Estimate!!Total:                                  Disabi… tract    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> B10052_002 Estimate!!Total:!!With any disability:            Disabi… tract    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> B10052_003 Estimate!!Total:!!With any disability:!!Grandpar… Disabi… tract    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> B10052_004 Estimate!!Total:!!With any disability:!!Grandpar… Disabi… tract    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> B10052_005 Estimate!!Total:!!With any disability:!!Grandpar… Disabi… tract    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> B10052_006 Estimate!!Total:!!With any disability:!!Grandpar… Disabi… tract</span></span></code></pre></div>
-<p>Let’s imagine we’re interested in calculating the share of
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">reactable</span><span class="fu">::</span><span class="fu"><a href="https://glin.github.io/reactable/reference/reactable.html" class="external-link">reactable</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="reactable html-widget html-fill-item" id="htmlwidget-ac96cb3ee4656e2e9ec3" style="width:auto;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-ac96cb3ee4656e2e9ec3">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"name":["B10052_001","B10052_002","B10052_003","B10052_004","B10052_005","B10052_006"],"label":["Estimate!!Total:","Estimate!!Total:!!With any disability:","Estimate!!Total:!!With any disability:!!Grandparent responsible for own grandchildren under 18 years:","Estimate!!Total:!!With any disability:!!Grandparent responsible for own grandchildren under 18 years:!!30 to 59 years","Estimate!!Total:!!With any disability:!!Grandparent responsible for own grandchildren under 18 years:!!60 years and over","Estimate!!Total:!!With any disability:!!Grandparent not responsible for own grandchildren under 18 years"],"concept":["Disability Status of Grandparents Living With Own Grandchildren Under 18 Years by Responsibility for Own Grandchildren and Age of Grandparent","Disability Status of Grandparents Living With Own Grandchildren Under 18 Years by Responsibility for Own Grandchildren and Age of Grandparent","Disability Status of Grandparents Living With Own Grandchildren Under 18 Years by Responsibility for Own Grandchildren and Age of Grandparent","Disability Status of Grandparents Living With Own Grandchildren Under 18 Years by Responsibility for Own Grandchildren and Age of Grandparent","Disability Status of Grandparents Living With Own Grandchildren Under 18 Years by Responsibility for Own Grandchildren and Age of Grandparent","Disability Status of Grandparents Living With Own Grandchildren Under 18 Years by Responsibility for Own Grandchildren and Age of Grandparent"],"geography":["tract","tract","tract","tract","tract","tract"]},"columns":[{"id":"name","name":"name","type":"character"},{"id":"label","name":"label","type":"character"},{"id":"concept","name":"concept","type":"character"},{"id":"geography","name":"geography","type":"character"}],"dataKey":"ff9fa261ac94f7275c7e85d896fe52c1"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script><p>Let’s imagine we’re interested in calculating the share of
 individuals with a disability; this requires only two variables
 (conceptually): the number of people with a disability and the number of
 all people.</p>
@@ -152,8 +130,8 @@ health insurance coverage status) may be available only for a subset of
 the individuals for whom disability status is available.</p>
 <p>Putting these challenges aside, let’s imagine we select the table of
 variables prefixed “B18101”, for “Sex by Age by Disability”. We think
-that most respondents who are asked about their disability status will
-also have been asked about their sex and age. We then pass this to
+that most respondents who respond about their disability status will
+also have responded about their sex and age. We then pass this to
 <code>tidycensus</code> as:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_disability</span> <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs</a></span><span class="op">(</span></span>
@@ -163,28 +141,12 @@ also have been asked about their sex and age. We then pass this to
 <span>  output <span class="op">=</span> <span class="st">"wide"</span>,</span>
 <span>  survey <span class="op">=</span> <span class="st">"acs5"</span>,</span>
 <span>  table <span class="op">=</span> <span class="st">"B18101"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Getting data from the 2018-2022 5-year ACS</span></span>
-<span><span class="co">#&gt; Loading ACS5 variables for 2022 from table B18101. To cache this dataset for faster access to ACS tables in the future, run this function with `cache_table = TRUE`. You only need to do this once per ACS dataset.</span></span>
 <span></span>
 <span><span class="va">df_disability</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 21 80</span></span>
-<span><span class="va">df_disability</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt;  [1] "GEOID"       "NAME"        "B18101_001E" "B18101_001M" "B18101_002E"</span></span>
-<span><span class="co">#&gt;  [6] "B18101_002M" "B18101_003E" "B18101_003M" "B18101_004E" "B18101_004M"</span></span>
-<span><span class="co">#&gt; [11] "B18101_005E" "B18101_005M" "B18101_006E" "B18101_006M" "B18101_007E"</span></span>
-<span><span class="co">#&gt; [16] "B18101_007M" "B18101_008E" "B18101_008M" "B18101_009E" "B18101_009M"</span></span>
-<span><span class="co">#&gt; [21] "B18101_010E" "B18101_010M" "B18101_011E" "B18101_011M" "B18101_012E"</span></span>
-<span><span class="co">#&gt; [26] "B18101_012M" "B18101_013E" "B18101_013M" "B18101_014E" "B18101_014M"</span></span>
-<span><span class="co">#&gt; [31] "B18101_015E" "B18101_015M" "B18101_016E" "B18101_016M" "B18101_017E"</span></span>
-<span><span class="co">#&gt; [36] "B18101_017M" "B18101_018E" "B18101_018M" "B18101_019E" "B18101_019M"</span></span>
-<span><span class="co">#&gt; [41] "B18101_020E" "B18101_020M" "B18101_021E" "B18101_021M" "B18101_022E"</span></span>
-<span><span class="co">#&gt; [46] "B18101_022M" "B18101_023E" "B18101_023M" "B18101_024E" "B18101_024M"</span></span>
-<span><span class="co">#&gt; [51] "B18101_025E" "B18101_025M" "B18101_026E" "B18101_026M" "B18101_027E"</span></span>
-<span><span class="co">#&gt; [56] "B18101_027M" "B18101_028E" "B18101_028M" "B18101_029E" "B18101_029M"</span></span>
-<span><span class="co">#&gt; [61] "B18101_030E" "B18101_030M" "B18101_031E" "B18101_031M" "B18101_032E"</span></span>
-<span><span class="co">#&gt; [66] "B18101_032M" "B18101_033E" "B18101_033M" "B18101_034E" "B18101_034M"</span></span>
-<span><span class="co">#&gt; [71] "B18101_035E" "B18101_035M" "B18101_036E" "B18101_036M" "B18101_037E"</span></span>
-<span><span class="co">#&gt; [76] "B18101_037M" "B18101_038E" "B18101_038M" "B18101_039E" "B18101_039M"</span></span></code></pre></div>
+<span><span class="va">df_disability</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "GEOID"       "NAME"        "B18101_001E" "B18101_001M" "B18101_002E"</span></span>
+<span><span class="co">#&gt; [6] "B18101_002M"</span></span></code></pre></div>
 <p>This returns us 21 observations–one for each county in NJ–along with
 an intimidating 80 columns with meaningless names along the lines of
 <code>B18101_039E</code>.</p>
@@ -232,7 +194,7 @@ geographies.</p>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span>
 <span>  spatial <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   |                                                                              |                                                                      |   0%  |                                                                              |                                                                      |   1%  |                                                                              |=                                                                     |   1%  |                                                                              |=                                                                     |   2%  |                                                                              |==                                                                    |   2%  |                                                                              |==                                                                    |   3%  |                                                                              |==                                                                    |   4%  |                                                                              |===                                                                   |   4%  |                                                                              |===                                                                   |   5%  |                                                                              |====                                                                  |   5%  |                                                                              |====                                                                  |   6%  |                                                                              |=====                                                                 |   6%  |                                                                              |=====                                                                 |   7%  |                                                                              |=====                                                                 |   8%  |                                                                              |======                                                                |   8%  |                                                                              |======                                                                |   9%  |                                                                              |=======                                                               |  10%  |                                                                              |=======                                                               |  11%  |                                                                              |========                                                              |  11%  |                                                                              |========                                                              |  12%  |                                                                              |=========                                                             |  12%  |                                                                              |=========                                                             |  13%  |                                                                              |==========                                                            |  14%  |                                                                              |==========                                                            |  15%  |                                                                              |===========                                                           |  15%  |                                                                              |===========                                                           |  16%  |                                                                              |============                                                          |  17%  |                                                                              |============                                                          |  18%  |                                                                              |=============                                                         |  18%  |                                                                              |=============                                                         |  19%  |                                                                              |==============                                                        |  20%  |                                                                              |==============                                                        |  21%  |                                                                              |===============                                                       |  21%  |                                                                              |===============                                                       |  22%  |                                                                              |================                                                      |  22%  |                                                                              |================                                                      |  23%  |                                                                              |=================                                                     |  24%  |                                                                              |=================                                                     |  25%  |                                                                              |==================                                                    |  25%  |                                                                              |==================                                                    |  26%  |                                                                              |===================                                                   |  27%  |                                                                              |===================                                                   |  28%  |                                                                              |====================                                                  |  28%  |                                                                              |====================                                                  |  29%  |                                                                              |=====================                                                 |  30%  |                                                                              |======================                                                |  31%  |                                                                              |======================                                                |  32%  |                                                                              |=======================                                               |  32%  |                                                                              |=======================                                               |  33%  |                                                                              |========================                                              |  34%  |                                                                              |========================                                              |  35%  |                                                                              |=========================                                             |  35%  |                                                                              |=========================                                             |  36%  |                                                                              |==========================                                            |  37%  |                                                                              |==========================                                            |  38%  |                                                                              |===========================                                           |  38%  |                                                                              |===========================                                           |  39%  |                                                                              |============================                                          |  39%  |                                                                              |=============================                                         |  41%  |                                                                              |=============================                                         |  42%  |                                                                              |===============================                                       |  44%  |                                                                              |===============================                                       |  45%  |                                                                              |=====================================                                 |  53%  |                                                                              |======================================                                |  54%  |                                                                              |========================================                              |  57%  |                                                                              |=================================================                     |  71%  |                                                                              |==================================================                    |  72%  |                                                                              |===================================================                   |  72%  |                                                                              |===================================================                   |  73%  |                                                                              |=====================================================                 |  76%  |                                                                              |=========================================================             |  82%  |                                                                              |==========================================================            |  82%  |                                                                              |==========================================================            |  83%  |                                                                              |============================================================          |  86%  |                                                                              |=============================================================         |  87%  |                                                                              |================================================================      |  92%  |                                                                              |======================================================================| 100%</span></span></code></pre></div>
+<span><span class="co">#&gt; Downloading: 45 kB     Downloading: 45 kB     Downloading: 45 kB     Downloading: 45 kB     Downloading: 53 kB     Downloading: 53 kB     Downloading: 78 kB     Downloading: 78 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 140 kB     Downloading: 140 kB     Downloading: 150 kB     Downloading: 150 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 260 kB     Downloading: 260 kB     Downloading: 280 kB     Downloading: 280 kB     Downloading: 360 kB     Downloading: 360 kB     Downloading: 390 kB     Downloading: 390 kB     Downloading: 420 kB     Downloading: 420 kB     Downloading: 620 kB     Downloading: 620 kB     Downloading: 780 kB     Downloading: 780 kB     Downloading: 800 kB     Downloading: 800 kB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.6 MB     Downloading: 2.6 MB     Downloading: 2.6 MB     Downloading: 2.6 MB     Downloading: 4.2 MB     Downloading: 4.2 MB     Downloading: 5.9 MB     Downloading: 5.9 MB     Downloading: 7.5 MB     Downloading: 7.5 MB     Downloading: 9.2 MB     Downloading: 9.2 MB     Downloading: 11 MB     Downloading: 11 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="analyze-or-visualize-data">Analyze or visualize data<a class="anchor" aria-label="anchor" href="#analyze-or-visualize-data"></a>
@@ -258,25 +220,15 @@ geographies.</p>
 <p>There’s a lot happening behind the scenes, so it’s important to
 understand what each variable represents and how it was calculated.
 <code>urbnindicators</code> includes a codebook as an attribute of the
-dataframe returned from <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>.</p>
+dataframe returned from <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>. View and
+navigate through the <a href="Codebook.html">full codebook here</a>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 868 × 3</span></span></span>
-<span><span class="co">#&gt;    calculated_variable                     variable_type definition             </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> total_population_universe               Count         This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> public_assistance_universe              Count         This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> public_assistance_received              Count         This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> snap_universe                           Count         This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> snap_received                           Count         This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> household_income_quintile_upper_limit_1 Quintile ($)  This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> household_income_quintile_upper_limit_2 Quintile ($)  This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> household_income_quintile_upper_limit_3 Quintile ($)  This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> household_income_quintile_upper_limit_4 Quintile ($)  This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> household_income_quintile_upper_limit_5 Quintile ($)  This is a raw ACS esti…</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 858 more rows</span></span></span></code></pre></div>
-<p>The codebook specifies the variable type and provides a definition of
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">20</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">reactable</span><span class="fu">::</span><span class="fu"><a href="https://glin.github.io/reactable/reference/reactable.html" class="external-link">reactable</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="reactable html-widget html-fill-item" id="htmlwidget-e5c8c404fe174e4c81bd" style="width:auto;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-e5c8c404fe174e4c81bd">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"calculated_variable":["total_population_universe","public_assistance_universe","public_assistance_received","snap_universe","snap_received","household_income_quintile_upper_limit_1","household_income_quintile_upper_limit_2","household_income_quintile_upper_limit_3","household_income_quintile_upper_limit_4","household_income_quintile_upper_limit_5","household_income_quintile_mean_1","household_income_quintile_mean_2","household_income_quintile_mean_3","household_income_quintile_mean_4","household_income_quintile_mean_5","household_income_quintile_mean_6","household_income_quintile_share_aggregate_1","household_income_quintile_share_aggregate_2","household_income_quintile_share_aggregate_3","household_income_quintile_share_aggregate_4"],"variable_type":["Count","Count","Count","Count","Count","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)","Quintile ($)"],"definition":["This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate.","This is a raw ACS estimate."]},"columns":[{"id":"calculated_variable","name":"calculated_variable","type":"character"},{"id":"variable_type","name":"variable_type","type":"character"},{"id":"definition","name":"definition","type":"character"}],"dataKey":"9c1d00b062909b6b570c0aac9070abf0"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script><p>The codebook specifies the variable type and provides a definition of
 how the variable was calculated. Most (though not all) variables that
 are directly available from the ACS are count variables, such as the
 number of people receiving public assistance. Many of the variables that
@@ -285,14 +237,10 @@ where we divide two count variables.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"public_assistance"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 3</span></span></span>
-<span><span class="co">#&gt;   calculated_variable                variable_type definition                   </span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                              <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                        </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> public_assistance_universe         Count         This is a raw ACS estimate.  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> public_assistance_received         Count         This is a raw ACS estimate.  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> public_assistance_received_percent Percent       Numerator = public_assistanc…</span></span></code></pre></div>
-<p>The most common convention is that a percent variable is calculated
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"public_assistance"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">reactable</span><span class="fu">::</span><span class="fu"><a href="https://glin.github.io/reactable/reference/reactable.html" class="external-link">reactable</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="reactable html-widget html-fill-item" id="htmlwidget-36aa3d2a04d42bbc2145" style="width:auto;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-36aa3d2a04d42bbc2145">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"calculated_variable":["public_assistance_universe","public_assistance_received","public_assistance_received_percent"],"variable_type":["Count","Count","Percent"],"definition":["This is a raw ACS estimate.","This is a raw ACS estimate.","Numerator = public_assistance_received (B19058_002). Denominator = public_assistance_universe (B19058_001)."]},"columns":[{"id":"calculated_variable","name":"calculated_variable","type":"character"},{"id":"variable_type","name":"variable_type","type":"character"},{"id":"definition","name":"definition","type":"character"}],"dataKey":"06324bfdb7742995a9331d1a7a1d612e"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script><p>The most common convention is that a percent variable is calculated
 by dividing a count variable (e.g.,
 <code>public_assistance_received</code>) by the universe variable for
 the corresponding table (e.g.,
@@ -301,17 +249,16 @@ the corresponding table (e.g.,
 commute mode. Here, we’ve aggregated three counts representing different
 types of individual motor vehicle transportation to create the
 numerator, while the denominator is the table universe minus individuals
-who work from home. This allows us say something along the lines of: “Of
-individuals who commute to work, XX% use a motor vehicle as their
-primary commute mode.”</p>
+who work from home.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"means.*motor_vehicle"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 3</span></span></span>
-<span><span class="co">#&gt;   calculated_variable                             variable_type definition      </span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> means_transportation_work_motor_vehicle_percent Percent       Numerator = mea…</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"means.*motor_vehicle"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">reactable</span><span class="fu">::</span><span class="fu"><a href="https://glin.github.io/reactable/reference/reactable.html" class="external-link">reactable</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="reactable html-widget html-fill-item" id="htmlwidget-febe03efa1a2d8d52a86" style="width:auto;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-febe03efa1a2d8d52a86">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"calculated_variable":["means_transportation_work_motor_vehicle_percent"],"variable_type":["Percent"],"definition":["Numerator = means_transportation_work_car_truck_van (B08301_002), means_transportation_work_taxicab (B08301_016), means_transportation_work_motorcycle (B08301_017). Denominator = means_transportation_work_universe (B08301_001) - means_transportation_work_worked_from_home (B08301_021)."]},"columns":[{"id":"calculated_variable","name":"calculated_variable","type":"character"},{"id":"variable_type","name":"variable_type","type":"character"},{"id":"definition","name":"definition","type":"character"}],"dataKey":"52555624c8b1a5187056f59f1a46ee27"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script><p>This allows us say something along the lines of: “Of individuals who
+commute to work, XX% use a motor vehicle as their primary commute
+mode.”</p>
 </div>
 </div>
 <div class="section level2">
@@ -321,7 +268,7 @@ primary commute mode.”</p>
 which fall into two buckets: efficiency and reliability.</p>
 <ol style="list-style-type: decimal">
 <li>
-<p>Efficiency:</p>
+<p>Speed:</p>
 <ol style="list-style-type: decimal">
 <li><p>Sensible decisions about variable and table selection eliminate
 the need to hunt for the right variables.</p></li>
@@ -333,7 +280,7 @@ call– no need to loop over your desired years or states.</p></li>
 </ol>
 </li>
 <li>
-<p>Reliability:</p>
+<p>Accuracy:</p>
 <ol style="list-style-type: decimal">
 <li><p>Alphanumeric variable codes (e.g., <code>B18101_001</code>) are
 replaced with meaningful variable names (e.g.,
@@ -341,9 +288,15 @@ replaced with meaningful variable names (e.g.,
 confusion and error.</p></li>
 <li><p>Data are returned with a codebook that documents how variables
 were created and what they represent.</p></li>
-<li><p>Behind-the-scenes quality checks help to ensure that calculations
-are correct (though users still should verify results
-themselves!).</p></li>
+<li><p>Behind-the-scenes quality checks help to ensure (though do not
+guarantee) that calculations are correct, though users still should
+verify results themselves.</p></li>
+<li><p>Both straight-from-the-ACS and derived variables include margins
+of error and coefficients of variation that enable users to conduct
+statistical significance testing and can inform other data quality
+decision-making, such as whether to suppress certain observations or
+whether data should be aggregated–across geographies or across
+variables, or both–to improve the accuracy of estimates.</p></li>
 </ol>
 </li>
 </ol>

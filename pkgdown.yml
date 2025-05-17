@@ -4,8 +4,9 @@ pkgdown_sha: ~
 articles:
   codebook: codebook.html
   design-philosophy: design-philosophy.html
+  quantified-survey-error: quantified-survey-error.html
   urbnindicators: urbnindicators.html
-last_built: 2025-05-16T01:56Z
+last_built: 2025-05-17T01:05Z
 urls:
   reference: https://ui-research.github.io/urbnindicators/reference
   article: https://ui-research.github.io/urbnindicators/articles

@@ -34,8 +34,9 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/codebook.html">codebook</a></li>
+<li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
+    <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Quantified Survey Errors and Accurate Inference-Making</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -67,13 +68,14 @@
     
     
 <p><strong>urbnindicators</strong> makes a number of opinionated design
-choices about what data to select from the ACS API, how to process it,
-what relevant derived variables to calculate, and even which types of
-geographies to support. “Opinionated” doesn’t mean that these decisions
-are the best ones for every user or use-case, but these decisions are
-designed to either speed or improve the accuracy of a particular (and
-relatively common) workflow and use-case involving a large set of
-variables common across social science applications.</p>
+choices about what data to select from the Census Bureau API, how to
+process it, what relevant derived variables to calculate, and even which
+types of geographies to support.</p>
+<p>“Opinionated” doesn’t mean that these decisions are the best ones for
+every user or use-case, but these decisions are designed to either speed
+or improve the accuracy of a particular (and relatively common) workflow
+and use-case involving a large set of variables common across social
+science applications.</p>
 <div class="section level2">
 <h2 id="design-choices">Design choices<a class="anchor" aria-label="anchor" href="#design-choices"></a>
 </h2>
@@ -112,10 +114,10 @@ Many variables in the codebook have their original API names included in
 their definitions, but we plan to continue to expand this documentation
 to make it more comprehensive and easier to work with.</p></li>
 <li><p><strong>Return a very large, wide dataset.</strong> The
-underlying <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code> interface to the ACS API can
-return a single variable or table, and often this is how users employ
-it. Conversely, it’s common to want dozens or perhaps even hundreds of
-variables–this is the use case around which
+underlying <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code> interface to the Census
+Bureau API can return a single variable or table, and often this is how
+users employ it. Conversely, it’s common to want dozens or perhaps even
+hundreds of variables–this is the use case around which
 <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> was designed. Queries at small
 geographies can be slow, but the result is a dataset containing
 everything you could want (hopefully) and more (likely). If you’re just
