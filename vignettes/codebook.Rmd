@@ -1,5 +1,5 @@
 ---
-title: "codebook"
+title: "The urbnindicators Codebook"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{codebook}
@@ -9,6 +9,8 @@ vignette: >
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
   collapse = TRUE,
   comment = "#>")
 ```
