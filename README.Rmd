@@ -84,9 +84,7 @@ library(urbnthemes)
 plot_data = compile_acs_data(
     years = c(2017, 2022),
     geography = "county",
-    states = "NJ",
-    counties = NULL,
-    spatial = FALSE)  %>% 
+    states = "NJ")  %>% 
   transmute(
     county_name = NAME %>% str_remove(" County, New Jersey"), 
     race_personofcolor_percent, 
@@ -129,14 +127,16 @@ ggplot() +
     x = 21.5, 
     label = "State mean (2017)", 
     fontface = "bold.italic", 
-    color = palette_urbn_main[1]) +
+    color = palette_urbn_main[1],
+    size = 9 / .pt) +
   annotate(
     "text", 
     y = .47,  
     x = 21.5, 
     label = "State mean (2022)", 
     fontface = "bold.italic", 
-    color = palette_urbn_main[2]) +
+    color = palette_urbn_main[2],
+    size = 9 / .pt) +
   geom_hline(
     yintercept = state_averages[1], 
     linetype = "dashed", 
@@ -160,7 +160,8 @@ ggplot() +
     breaks = c(0, .25, .50, .75, 1.0),
     limits = c(0, .75),
     labels = scales::percent) +
-  coord_flip()
+  coord_flip() +
+  theme_urbn_print()
 ```
 
 # Learn More
@@ -169,18 +170,19 @@ A growing number of vignettes aim to support users in effectively using
 this package. These vignettes include:
 
 -   A package overview to help users [**Get
-    Started**](urbnindicators.html).
+    Started**](articles/urbnindicators.html).
 
 -   An interactive version of the package's
-    [**Codebook**](codebook.html)so that prospective users can know what
-    to expect.
+    [**Codebook**](articles/codebook.html)so that prospective users can
+    know what to expect.
 
 -   A brief description of the package's [**Design
-    Philosophy**](design-philosophy.html)to clarify the use-cases that
-    `urbnindicators` is built to support.
+    Philosophy**](articles/design-philosophy.html)to clarify the
+    use-cases that `urbnindicators` is built to support.
 
--   An illustration of how [Quantified Survey
-    Error](quantified-survey-error.html) can improve inference making.
+-   An illustration of how [**Quantifying Survey
+    Error**](articles/quantified-survey-error.html) can improve
+    inference making.
 
 # Credits
 

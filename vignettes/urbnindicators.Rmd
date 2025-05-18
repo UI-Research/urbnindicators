@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
   out.width = "100%")
 ```
 
-```{r setup}
+```{r setup, echo = FALSE}
 library(urbnindicators)
 library(tidycensus)
 library(dplyr)
@@ -35,27 +35,25 @@ This vignette is organized into three parts:
 1.  We illustrate a typical workflow for obtaining American Community
     Survey (ACS) data using `library(tidycensus)`.
 
-2.  We show how `urbnindicators` can produce similar outputs, but with
+2.  We show how `library(urbnindicators)` can produce similar outputs, but with
     much less code and effort.
 
-3.  We highlight how `urbnindicators` provides metadata and improves the
+3.  We highlight how `library(urbnindicators)` provides metadata and improves the
     quality and reliability of the analysis process.
 
 ## A Typical Workflow
 
 [**tidycensus**](https://walker-data.com/tidycensus/index.html) provides
 a suite of functions for working with ACS data in R. In fact,
-`urbnindicators` is built on top of `tidycensus`, and we highly
-encourage those who are unfamiliar to explore `tidycensus` before using
-`urbnindicators`.
+`library(urbnindicators)` is built on top of `library(tidycensus)`, and we highly
+encourage those who are unfamiliar to explore `library(tidycensus)` before using
+`library(urbnindicators)`.
 
 While `tidycensus` is versatile and allows users to access many more
 datasets (and variables within those datasets) than does
-`urbnindicators`, it can require a significant amount of knowledge and
+`library(urbnindicators)`, it can require a significant amount of knowledge and
 time to support a robust analysis, leading many users to fall into
 common pitfalls without realizing they've made an error(s).
-
-Here's a typical `tidycensus` workflow:
 
 ### Identify variables to query
 
@@ -90,7 +88,7 @@ Putting these challenges aside, let's imagine we select the table of
 variables prefixed "B18101", for "Sex by Age by Disability". We think
 that most respondents who respond about their disability status will
 also have responded about their sex and age. We then pass this to
-`tidycensus` as:
+`library(tidycensus)` as:
 
 ```{r}
 df_disability = get_acs(
@@ -102,7 +100,7 @@ df_disability = get_acs(
   table = "B18101")
 
 df_disability %>% dim()
-df_disability %>% colnames() %>% head()
+df_disability %>% colnames() %>% head(5)
 ```
 
 This returns us 21 observations–one for each county in NJ--along with an
@@ -121,22 +119,22 @@ especially when measures are required from distinct tables, this
 workflow is burdensome and creates significant surface area for
 undetected errors. To acquire data for multiple years, or for multiple
 different types of geographies, also requires repeated calls to
-`get_acs()`.
+`tidycensus::get_acs()`.
 
 At the same time, many analysts will be overwhelmed by and unsure how to
-combine the margins of error that are returned by `get_acs()`, opting
+combine the margins of error that are returned by `tidycensus::get_acs()`, opting
 simply to drop this critical information from their analysis as they go
 about calculating "% Disabled".
 
 ## Using urbnindicators
 
-`urbnindicators` abstracts the workflow above behind the scenes. Instead
+`library(urbnindicators)` abstracts the workflow above behind the scenes. Instead
 of a call to `tidycensus::get_acs()`, a call to
 `urbnindicators::compile_acs_data()` returns a dataset of both raw ACS
 measures and derived estimates (such as the share of all individuals who
-are disabled). And that dataset includes a range of measures–spanning
+are disabled). And that dataset includes a range of measures–-spanning
 things such as health insurance, employment, housing costs, and race and
-ethnicity–not just one variable or table from the ACS.
+ethnicity–-not just one variable or table from the ACS.
 
 ### Acquire data
 
@@ -144,9 +142,12 @@ It's as simple as the call below. Note that you can provide a vector of
 years and/or states if you want data over different time periods or
 geographies.
 
-```{r}
+Note that selecting more geographic units--either by selecting a `geography` option
+comprising more units, by selecting more states, or selecting more years--can significantly
+increase the query time. A tract-level query of the entire US can take 30+ minutes.
+
+```{r, message = FALSE, warning = FALSE}
 df_urbnindicators = urbnindicators::compile_acs_data(
-  variables = NULL,
   years = 2022,
   geography = "county",
   states = "NJ",
@@ -160,7 +161,6 @@ And now we're ready to analyze or plot our data. Simplistically:
 ```{r}
 df_urbnindicators %>%
   select(matches("disability.*percent$"), geometry) %>%
-  sf::st_as_sf() %>%
   ggplot() +
     geom_sf(aes(fill = disability_percent)) +
     theme_urbn_map() +
@@ -175,9 +175,9 @@ df_urbnindicators %>%
 
 There's a lot happening behind the scenes, so it's important to
 understand what each variable represents and how it was calculated.
-`urbnindicators` includes a codebook as an attribute of the dataframe
-returned from `compile_acs_data()`. View and navigate through the [full codebook
-here](Codebook.html).
+`library(urbnindicators)` includes a codebook as an attribute of the dataframe
+returned from `urbnindicators::compile_acs_data()`. View and navigate through the [full codebook
+here](articles/codebook.html).
 
 ```{r}
 df_urbnindicators %>%
@@ -190,7 +190,7 @@ The codebook specifies the variable type and provides a definition of
 how the variable was calculated. Most (though not all) variables that
 are directly available from the ACS are count variables, such as the
 number of people receiving public assistance. Many of the variables that
-are calculated by `urbnindicators` are percent variables, where we
+are calculated by `library(urbnindicators)` are percent variables, where we
 divide two count variables.
 
 ```{r}
@@ -203,9 +203,7 @@ df_urbnindicators %>%
 The most common convention is that a percent variable is calculated by
 dividing a count variable (e.g., `public_assistance_received`) by the
 universe variable for the corresponding table (e.g.,
-`public_assistance_universe`).
-
-But other derived variables are more complex, such as those for commute
+`public_assistance_universe`). But other derived variables are more complex, such as those for commute
 mode. Here, we've aggregated three counts representing different types
 of individual motor vehicle transportation to create the numerator,
 while the denominator is the table universe minus individuals who work
