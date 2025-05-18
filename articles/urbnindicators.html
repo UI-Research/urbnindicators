@@ -36,7 +36,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
-    <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Quantified Survey Errors and Accurate Inference-Making</a></li>
+    <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -68,22 +68,14 @@
 
     
     
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://walker-data.com/tidycensus/" class="external-link">tidycensus</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stringr.tidyverse.org" class="external-link">stringr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://scales.r-lib.org" class="external-link">scales</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/UrbanInstitute/urbnthemes" class="external-link">urbnthemes</a></span><span class="op">)</span></span></code></pre></div>
 <p>This vignette is organized into three parts:</p>
 <ol style="list-style-type: decimal">
 <li><p>We illustrate a typical workflow for obtaining American Community
 Survey (ACS) data using <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code>.</p></li>
-<li><p>We show how <code>urbnindicators</code> can produce similar
-outputs, but with much less code and effort.</p></li>
-<li><p>We highlight how <code>urbnindicators</code> provides metadata
-and improves the quality and reliability of the analysis
+<li><p>We show how <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> can produce
+similar outputs, but with much less code and effort.</p></li>
+<li><p>We highlight how <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> provides
+metadata and improves the quality and reliability of the analysis
 process.</p></li>
 </ol>
 <div class="section level2">
@@ -91,22 +83,22 @@ process.</p></li>
 </h2>
 <p><a href="https://walker-data.com/tidycensus/index.html" class="external-link"><strong>tidycensus</strong></a>
 provides a suite of functions for working with ACS data in R. In fact,
-<code>urbnindicators</code> is built on top of <code>tidycensus</code>,
-and we highly encourage those who are unfamiliar to explore
-<code>tidycensus</code> before using <code>urbnindicators</code>.</p>
+<code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> is built on top of
+<code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code>, and we highly encourage those who are
+unfamiliar to explore <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code> before using
+<code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code>.</p>
 <p>While <code>tidycensus</code> is versatile and allows users to access
 many more datasets (and variables within those datasets) than does
-<code>urbnindicators</code>, it can require a significant amount of
-knowledge and time to support a robust analysis, leading many users to
-fall into common pitfalls without realizing they’ve made an
+<code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code>, it can require a significant
+amount of knowledge and time to support a robust analysis, leading many
+users to fall into common pitfalls without realizing they’ve made an
 error(s).</p>
-<p>Here’s a typical <code>tidycensus</code> workflow:</p>
 <div class="section level3">
 <h3 id="identify-variables-to-query">Identify variables to query<a class="anchor" aria-label="anchor" href="#identify-variables-to-query"></a>
 </h3>
 <p>We load the built-in codebook and search for our construct of
 interest (disability). This leaves us 500 variables to choose from.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">acs_codebook</span> <span class="op">=</span> <span class="fu">tidycensus</span><span class="fu">::</span><span class="fu"><a href="https://walker-data.com/tidycensus/reference/load_variables.html" class="external-link">load_variables</a></span><span class="op">(</span>dataset <span class="op">=</span> <span class="st">"acs5"</span>, year <span class="op">=</span> <span class="fl">2022</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">acs_codebook</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
@@ -132,9 +124,9 @@ the individuals for whom disability status is available.</p>
 variables prefixed “B18101”, for “Sex by Age by Disability”. We think
 that most respondents who respond about their disability status will
 also have responded about their sex and age. We then pass this to
-<code>tidycensus</code> as:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df_disability</span> <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs</a></span><span class="op">(</span></span>
+<code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code> as:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">df_disability</span> <span class="op">=</span> <span class="fu">get_acs</span><span class="op">(</span></span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  state <span class="op">=</span> <span class="st">"NJ"</span>, </span>
 <span>  year <span class="op">=</span> <span class="fl">2022</span>,</span>
@@ -144,9 +136,8 @@ also have responded about their sex and age. We then pass this to
 <span></span>
 <span><span class="va">df_disability</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/dim.html" class="external-link">dim</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 21 80</span></span>
-<span><span class="va">df_disability</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "GEOID"       "NAME"        "B18101_001E" "B18101_001M" "B18101_002E"</span></span>
-<span><span class="co">#&gt; [6] "B18101_002M"</span></span></code></pre></div>
+<span><span class="va">df_disability</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "GEOID"       "NAME"        "B18101_001E" "B18101_001M" "B18101_002E"</span></span></code></pre></div>
 <p>This returns us 21 observations–one for each county in NJ–along with
 an intimidating 80 columns with meaningless names along the lines of
 <code>B18101_039E</code>.</p>
@@ -163,23 +154,25 @@ especially when measures are required from distinct tables, this
 workflow is burdensome and creates significant surface area for
 undetected errors. To acquire data for multiple years, or for multiple
 different types of geographies, also requires repeated calls to
-<code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs()</a></code>.</p>
+<code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">tidycensus::get_acs()</a></code>.</p>
 <p>At the same time, many analysts will be overwhelmed by and unsure how
 to combine the margins of error that are returned by
-<code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs()</a></code>, opting simply to drop this critical information
-from their analysis as they go about calculating “% Disabled”.</p>
+<code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">tidycensus::get_acs()</a></code>, opting simply to drop this critical
+information from their analysis as they go about calculating “%
+Disabled”.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="using-urbnindicators">Using urbnindicators<a class="anchor" aria-label="anchor" href="#using-urbnindicators"></a>
 </h2>
-<p><code>urbnindicators</code> abstracts the workflow above behind the
-scenes. Instead of a call to <code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">tidycensus::get_acs()</a></code>, a call
-to <code><a href="../reference/compile_acs_data.html">urbnindicators::compile_acs_data()</a></code> returns a dataset of
+<p><code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> abstracts the workflow above
+behind the scenes. Instead of a call to
+<code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">tidycensus::get_acs()</a></code>, a call to
+<code><a href="../reference/compile_acs_data.html">urbnindicators::compile_acs_data()</a></code> returns a dataset of
 both raw ACS measures and derived estimates (such as the share of all
 individuals who are disabled). And that dataset includes a range of
-measures–spanning things such as health insurance, employment, housing
-costs, and race and ethnicity–not just one variable or table from the
+measures–-spanning things such as health insurance, employment, housing
+costs, and race and ethnicity–-not just one variable or table from the
 ACS.</p>
 <div class="section level3">
 <h3 id="acquire-data">Acquire data<a class="anchor" aria-label="anchor" href="#acquire-data"></a>
@@ -187,31 +180,33 @@ ACS.</p>
 <p>It’s as simple as the call below. Note that you can provide a vector
 of years and/or states if you want data over different time periods or
 geographies.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<p>Note that selecting more geographic units–either by selecting a
+<code>geography</code> option comprising more units, by selecting more
+states, or selecting more years–can significantly increase the query
+time. A tract-level query of the entire US can take 30+ minutes.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op">=</span> <span class="fu">urbnindicators</span><span class="fu">::</span><span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
-<span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  years <span class="op">=</span> <span class="fl">2022</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span>
 <span>  spatial <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Downloading: 45 kB     Downloading: 45 kB     Downloading: 45 kB     Downloading: 45 kB     Downloading: 53 kB     Downloading: 53 kB     Downloading: 78 kB     Downloading: 78 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 110 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 140 kB     Downloading: 140 kB     Downloading: 150 kB     Downloading: 150 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 260 kB     Downloading: 260 kB     Downloading: 280 kB     Downloading: 280 kB     Downloading: 360 kB     Downloading: 360 kB     Downloading: 390 kB     Downloading: 390 kB     Downloading: 420 kB     Downloading: 420 kB     Downloading: 620 kB     Downloading: 620 kB     Downloading: 780 kB     Downloading: 780 kB     Downloading: 800 kB     Downloading: 800 kB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 1.1 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.3 MB     Downloading: 2.6 MB     Downloading: 2.6 MB     Downloading: 2.6 MB     Downloading: 2.6 MB     Downloading: 4.2 MB     Downloading: 4.2 MB     Downloading: 5.9 MB     Downloading: 5.9 MB     Downloading: 7.5 MB     Downloading: 7.5 MB     Downloading: 9.2 MB     Downloading: 9.2 MB     Downloading: 11 MB     Downloading: 11 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB</span></span></code></pre></div>
+<span><span class="co">#&gt; Downloading: 46 kB     Downloading: 46 kB     Downloading: 46 kB     Downloading: 46 kB     Downloading: 70 kB     Downloading: 70 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 120 kB     Downloading: 140 kB     Downloading: 140 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 190 kB     Downloading: 220 kB     Downloading: 220 kB     Downloading: 360 kB     Downloading: 360 kB     Downloading: 360 kB     Downloading: 360 kB     Downloading: 360 kB     Downloading: 360 kB     Downloading: 2 MB     Downloading: 2 MB     Downloading: 3.7 MB     Downloading: 3.7 MB     Downloading: 5.3 MB     Downloading: 5.3 MB     Downloading: 7 MB     Downloading: 7 MB     Downloading: 8.6 MB     Downloading: 8.6 MB     Downloading: 10 MB     Downloading: 10 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB     Downloading: 12 MB</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="analyze-or-visualize-data">Analyze or visualize data<a class="anchor" aria-label="anchor" href="#analyze-or-visualize-data"></a>
 </h3>
 <p>And now we’re ready to analyze or plot our data. Simplistically:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"disability.*percent$"</span><span class="op">)</span>, <span class="va">geometry</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sf.html" class="external-link">st_as_sf</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">disability_percent</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/pkg/urbnthemes/man/theme_urbn_map.html" class="external-link">theme_urbn_map</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_colour_continuous.html" class="external-link">scale_fill_continuous</a></span><span class="op">(</span>labels <span class="op">=</span> <span class="fu">scales</span><span class="fu">::</span><span class="va"><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">percent</a></span>, trans <span class="op">=</span> <span class="st">"reverse"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>  <span class="fu">select</span><span class="op">(</span><span class="fu">matches</span><span class="op">(</span><span class="st">"disability.*percent$"</span><span class="op">)</span>, <span class="va">geometry</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">disability_percent</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">scale_fill_continuous</span><span class="op">(</span>labels <span class="op">=</span> <span class="fu">scales</span><span class="fu">::</span><span class="va"><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">percent</a></span>, trans <span class="op">=</span> <span class="st">"reverse"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>    <span class="fu">labs</span><span class="op">(</span></span>
 <span>      title <span class="op">=</span> <span class="st">"Disability rates appear higher in southern NJ"</span>,</span>
 <span>      subtitle <span class="op">=</span> <span class="st">"Disability rates by county, NJ, 2018-2022 ACS"</span>,</span>
-<span>      fill <span class="op">=</span> <span class="st">"Population with an ACS-defined disability (%)"</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_wrap.html" class="external-link">str_wrap</a></span><span class="op">(</span><span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span>      fill <span class="op">=</span> <span class="st">"Population with an ACS-defined disability (%)"</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">str_wrap</span><span class="op">(</span><span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="urbnindicators_files/figure-html/unnamed-chunk-5-1.png" width="100%"></p>
 </div>
 <div class="section level3">
@@ -219,10 +214,11 @@ geographies.</p>
 </h3>
 <p>There’s a lot happening behind the scenes, so it’s important to
 understand what each variable represents and how it was calculated.
-<code>urbnindicators</code> includes a codebook as an attribute of the
-dataframe returned from <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>. View and
-navigate through the <a href="Codebook.html">full codebook here</a>.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> includes a codebook as an attribute
+of the dataframe returned from
+<code><a href="../reference/compile_acs_data.html">urbnindicators::compile_acs_data()</a></code>. View and navigate
+through the <a href="articles/codebook.html">full codebook here</a>.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">20</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
@@ -232,28 +228,27 @@ navigate through the <a href="Codebook.html">full codebook here</a>.</p>
 how the variable was calculated. Most (though not all) variables that
 are directly available from the ACS are count variables, such as the
 number of people receiving public assistance. Many of the variables that
-are calculated by <code>urbnindicators</code> are percent variables,
-where we divide two count variables.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+are calculated by <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> are percent
+variables, where we divide two count variables.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"public_assistance"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu">str_detect</span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"public_assistance"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">reactable</span><span class="fu">::</span><span class="fu"><a href="https://glin.github.io/reactable/reference/reactable.html" class="external-link">reactable</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="reactable html-widget html-fill-item" id="htmlwidget-36aa3d2a04d42bbc2145" style="width:auto;height:auto;"></div>
 <script type="application/json" data-for="htmlwidget-36aa3d2a04d42bbc2145">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"calculated_variable":["public_assistance_universe","public_assistance_received","public_assistance_received_percent"],"variable_type":["Count","Count","Percent"],"definition":["This is a raw ACS estimate.","This is a raw ACS estimate.","Numerator = public_assistance_received (B19058_002). Denominator = public_assistance_universe (B19058_001)."]},"columns":[{"id":"calculated_variable","name":"calculated_variable","type":"character"},{"id":"variable_type","name":"variable_type","type":"character"},{"id":"definition","name":"definition","type":"character"}],"dataKey":"06324bfdb7742995a9331d1a7a1d612e"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script><p>The most common convention is that a percent variable is calculated
 by dividing a count variable (e.g.,
 <code>public_assistance_received</code>) by the universe variable for
-the corresponding table (e.g.,
-<code>public_assistance_universe</code>).</p>
-<p>But other derived variables are more complex, such as those for
-commute mode. Here, we’ve aggregated three counts representing different
-types of individual motor vehicle transportation to create the
-numerator, while the denominator is the table universe minus individuals
-who work from home.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+the corresponding table (e.g., <code>public_assistance_universe</code>).
+But other derived variables are more complex, such as those for commute
+mode. Here, we’ve aggregated three counts representing different types
+of individual motor vehicle transportation to create the numerator,
+while the denominator is the table universe minus individuals who work
+from home.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"means.*motor_vehicle"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu">str_detect</span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"means.*motor_vehicle"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">reactable</span><span class="fu">::</span><span class="fu"><a href="https://glin.github.io/reactable/reference/reactable.html" class="external-link">reactable</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="reactable html-widget html-fill-item" id="htmlwidget-febe03efa1a2d8d52a86" style="width:auto;height:auto;"></div>
 <script type="application/json" data-for="htmlwidget-febe03efa1a2d8d52a86">{"x":{"tag":{"name":"Reactable","attribs":{"data":{"calculated_variable":["means_transportation_work_motor_vehicle_percent"],"variable_type":["Percent"],"definition":["Numerator = means_transportation_work_car_truck_van (B08301_002), means_transportation_work_taxicab (B08301_016), means_transportation_work_motorcycle (B08301_017). Denominator = means_transportation_work_universe (B08301_001) - means_transportation_work_worked_from_home (B08301_021)."]},"columns":[{"id":"calculated_variable","name":"calculated_variable","type":"character"},{"id":"variable_type","name":"variable_type","type":"character"},{"id":"definition","name":"definition","type":"character"}],"dataKey":"52555624c8b1a5187056f59f1a46ee27"},"children":[]},"class":"reactR_markup"},"evals":[],"jsHooks":[]}</script><p>This allows us say something along the lines of: “Of individuals who
