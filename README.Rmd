@@ -169,18 +169,19 @@ A growing number of vignettes aim to support users in effectively using
 this package. These vignettes include:
 
 -   A package overview to help users [**Get
-    Started**](urbnindicators.html).
+    Started**](articles/urbnindicators.html).
 
 -   An interactive version of the package's
-    [**Codebook**](codebook.html)so that prospective users can know what
-    to expect.
+    [**Codebook**](articles/codebook.html)so that prospective users can
+    know what to expect.
 
 -   A brief description of the package's [**Design
-    Philosophy**](design-philosophy.html)to clarify the use-cases that
-    `urbnindicators` is built to support.
+    Philosophy**](articles/design-philosophy.html)to clarify the
+    use-cases that `urbnindicators` is built to support.
 
--   An illustration of how [Quantified Survey
-    Error](quantified-survey-error.html) can improve inference making.
+-   An illustration of how [**Quantifying Survey
+    Error**](articles/quantified-survey-error.html) can improve
+    inference making.
 
 # Credits
 
