@@ -3,22 +3,14 @@
 #' other forms of publication.
 #' @param .data A data.frame--or something coercible thereto--or a character vector containing
 #' variables/variable names that will be converted more publication-appropriate formats.
+#' @param .case Capitalization scheme of resulting variable names. One of "title", "sentence", or "upper".
 #' @examples
 #' \dontrun{
-#' df %>% make_pretty_names()
+#' "race_personofcolor_percent" %>% make_pretty_names()
 #' }
 #' @export
 #' @importFrom magrittr %>%
-
-df = compile_acs_data(
-  variables = list_acs_variables(year = 2022),
-  years = c(2022),
-  geography = "county",
-  states = "NJ",
-  counties = NULL,
-  spatial = FALSE)
-
-make_pretty_names = function(.data) {
+make_pretty_names = function(.data, .case = "title") {
 
   names_mapping = c(
     "_" = " ",
@@ -30,6 +22,7 @@ make_pretty_names = function(.data) {
     "twoormore" = "two or more",
     "includingotherrace" = "including other race",
     "excludingotherrace" = "excluding other race",
+    "personofcolor" = "person of color",
     "0 50 less" = ".5 or fewer",
     "0 51 1 00" = ".51 to 1",
     "1 00 less" = "1 or fewer",
@@ -91,5 +84,11 @@ make_pretty_names = function(.data) {
           stringr::str_trim())
   }
 
-  return(result)
+  output = switch(
+    .case,
+    title = dplyr::rename_with(result, stringr::str_to_title),
+    sentence = dplyr::rename_with(result, stringr::str_to_sentence),
+    upper = dplyr::rename_withs(result, stringr::str_to_upper))
+
+  return(output)
 }

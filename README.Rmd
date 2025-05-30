@@ -106,12 +106,9 @@ set_urbn_defaults(style = "print")
 # set_urbn_defaults(style = "print")
 
 acs_df = compile_acs_data(
-  variables = NULL,
-  years = c(2017, 2022),
-  geography = "county",
-  states = "NJ",
-  counties = NULL,
-  spatial = FALSE) %>% 
+    years = c(2018, 2023),
+    geography = "county",
+    states = "NJ") %>% 
   transmute(
     county_name = NAME %>% str_remove(" County, New Jersey"), 
     race_personofcolor_percent, 
@@ -134,9 +131,9 @@ acs_df %>%
     geom_segment(
       data = dumbbell_data,
       aes(
-        x = reorder(county_name, year_2017),
-        y = year_2017,
-        yend = year_2022),
+        x = reorder(county_name, year_2018),
+        y = year_2018,
+        yend = year_2023),
       color = palette_urbn_main[7],
       linewidth = 1) +
     geom_point(
@@ -148,24 +145,24 @@ acs_df %>%
       "text", 
       y = .31,  
       x = 21.5, 
-      label = "State mean (2017)", 
+      label = "State mean (2018)", 
       fontface = "bold.italic", 
       color = palette_urbn_main[1]) +
     annotate(
       "text", 
       y = .47,  
       x = 21.5, 
-      label = "State mean (2022)", 
+      label = "State mean (2023)", 
       fontface = "bold.italic", 
       color = palette_urbn_main[2]) +
     geom_hline(yintercept = state_averages[1], linetype = "dashed", color = palette_urbn_main[1]) +
     geom_hline(yintercept = state_averages[2], linetype = "dashed", color = palette_urbn_main[2]) +
     labs(
-      title = "Change in NJ Counties' Racial Composition, 2017 to 2022",
+      title = "Change in NJ Counties' Racial Composition, 2018 to 2023",
       subtitle = paste0(
         "On average, counties in NJ saw a ", 
         round((state_averages[2] - state_averages[1]), digits = 3) * 100, 
-        " pecentage point increase in the share of the population who are people of color from 2017 to 2022.") %>%
+        " pecentage point increase in the share of the population who are people of color from 2018 to 2023.") %>%
         str_wrap(120), 
       x = "County", 
       y = "Share of population who are people of color",
