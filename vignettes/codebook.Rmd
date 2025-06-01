@@ -1,0 +1,34 @@
+---
+title: "The urbnindicators Codebook"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{codebook}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  collapse = TRUE,
+  comment = "#>")
+```
+
+```{r setup}
+library(urbnindicators)
+```
+
+```{r}
+df = compile_acs_data(year = 2023, geography = "us")
+codebook = attr(df, "codebook")
+
+reactable::reactable(
+  codebook %>% 
+    dplyr::rename(
+      Variable = calculated_variable, 
+      Type = variable_type, 
+      Definition = definition), 
+  filterable = TRUE)
+```
+

@@ -2,7 +2,7 @@
 % Please edit documentation in R/generate_codebook.R
 \name{generate_codebook}
 \alias{generate_codebook}
-\title{Document variables from \code{urbnindicators::compile_acs_data()}}
+\title{Document variables from \code{compile_acs_data()}}
 \usage{
 generate_codebook(.data)
 }

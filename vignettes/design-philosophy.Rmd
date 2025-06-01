@@ -1,0 +1,85 @@
+---
+title: "Design Philosophy"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{design-philosophy}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>")
+```
+
+**urbnindicators** makes a number of opinionated design choices about
+what data to select from the Census Bureau API, how to process it, what
+relevant derived variables to calculate, and even which types of
+geographies to support.
+
+"Opinionated" doesn't mean that these decisions are the best ones for
+every user or use-case, but these decisions are designed to either speed
+or improve the accuracy of a particular (and relatively common) workflow
+and use-case involving a large set of variables common across social
+science applications.
+
+## Design choices
+
+-   **Support geographies from the tract level and up**. Block groups
+    are not supported at present because the margins of error for block
+    group-level estimates are often so large as to make the estimates
+    meaningless. We may consider adding support for block groups in the
+    future (open an issue in GitHub if this is of interest).
+
+-   **Support five-year estimates only.** One-year estimates bring
+    similar margin of error challenges, even for relatively
+    larger-population geographies, such as tracts, zip codes, and even
+    some places and counties. We may consider adding support for them in
+    the future (open an issue in GitHub if this is of interest).
+
+-   **Support only a subset of ACS variables.** Pre-calculated ACS
+    estimates cover tens of thousands of different variables. But, in
+    our work, only a small fraction of these is used frequently. We've
+    tried to select those common variables to return by default,
+    cognizant that at present, every additional variable returned
+    results in a slower query. Open an issue in GitHub if you'd like to
+    see additional variables added to the default set.
+
+-   **Rename all variables.** The default variable names returned by the
+    ACS API are not human-friendly. Not only is it challenging to
+    determine what a given variable represents when you're looking at a
+    name like `B01001_001E`, but when you're looking at a dozen or a
+    hundred such variables, it's very easy to accidentally misinterpret
+    or mis-select the variable(s) you want. For these reasons, we apply
+    more meaningful names to every returned variable, while retaining
+    consistency of variable names from within the same table so that
+    it's easy to select and operate on sets of interrelated variables.
+    The downside of this approach is that the default API variable names
+    are used in other publications, and that you will find no
+    documentation anywhere (apart from the codebook returned by this
+    package!) of a variable named, for example,
+    `race_personofcolor_percent`. Many variables in the codebook have
+    their original API names included in their definitions, but we plan
+    to continue to expand this documentation to make it more
+    comprehensive and easier to work with.
+
+-   **Return a very large, wide dataset.** The underlying
+    `library(tidycensus)` interface to the Census Bureau API can return
+    a single variable or table, and often this is how users employ it.
+    Conversely, it's common to want dozens or perhaps even hundreds of
+    variables--this is the use case around which
+    `library(urbnindicators)` was designed. Queries at small geographies
+    can be slow, but the result is a dataset containing everything you
+    could want (hopefully) and more (likely). If you're just looking for
+    one, or a few, variables, `library(tidycensus)` is probably a better
+    approach, and you can still use functions like
+    `urbnindicators::select_variables_by_name()`,
+    `urbnindicators::filter_variables()`, and
+    `urbnindicators::list_acs_variables()` to select and sensibly name
+    variables returned from `library(tidycensus)`. In the future, we'll
+    add caching options so that you don't have to repeatedly make the
+    same queries and can instead read results in from a local directory.

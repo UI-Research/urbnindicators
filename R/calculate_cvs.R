@@ -11,30 +11,57 @@ se_simple = function(moe) {
 
 #' @title Calculate a pooled standard error for a summed or subtracted estimate
 #' @details For an estimate derived by adding or subtracting multiple estimates, calculate the pooled standard error
-#' @param ... The unquoted names of the margin of error variables to be added or subtracted
+#' @param ... The unquoted names of the margin of error and corresponding estimate variables to be added or subtracted
 #' @returns A pooled 90% standard error
 se_sum = function(...) {
   dots = list(...)
 
-  ## depending on how / where this is called, the dots may be a list of lists
-  ## where the top-level list is unneeded and only has a length of one
-  if (length(dots) == 1) { dots = dots[[1]] }
+  moes = dots[[1]] %>%
+    as.data.frame() %>%
+    stats::setNames(paste0("x", seq_along(.))) %>%
+    dplyr::mutate(
+      observation = dplyr::row_number(),
+      type = "moe")
+  estimates = dots[[2]] %>%
+    as.data.frame() %>%
+    stats::setNames(paste0("x", seq_along(.))) %>%
+    dplyr::mutate(
+      observation = dplyr::row_number(),
+      type = "estimate")
 
-  ## convert margins of error to standard errors
-  ## square each standard error
-  ## sum (rowwise) standard errors
-  ## take the square root of the summed standard errors
-  se = dots %>%
+  data_long = rbind(moes, estimates) %>%
+    janitor::clean_names() %>%
+    tidyr::pivot_longer(
+      cols = -c(observation, type),
+      names_to = "name",
+      values_to = "value")  %>%
+    tidyr::pivot_wider(
+      names_from = type,
+      values_from = value)
+
+  ## if there are multiple zero-estimate observations that are summed,
+  ## Census recommends taking only the largest MOE corresponding to these estimates:
+  se =
+    dplyr::bind_rows(
+      data_long %>% dplyr::filter(estimate != 0),
+      data_long %>%
+        dplyr::filter(estimate == 0) %>%
+        dplyr::arrange(dplyr::desc(moe)) %>%
+        dplyr::group_by(observation) %>%
+        dplyr::slice(1) %>%
+        dplyr::ungroup()) %>%
+    dplyr::group_split(observation) %>%
+    purrr::map(~ .x %>% dplyr::pull(moe)) %>%
     purrr::map(se_simple) %>%
     purrr::map(~ .x ^2) %>%
-    purrr::pmap_dbl(sum) %>%
+    purrr::map(sum) %>%
     purrr::map_dbl(sqrt)
 
   return(se)
 }
 
-#' @title Calculate a pooled standard  for a proportion or ratio estimate
-#' @details For an estimate derived by dividing multiple estimates, calculate the pooled standard error
+#' @title Calculate a pooled standard error for a proportion or ratio
+#' @details For an estimate derived using division--whether the resulting estimate is a proportion or a ratio--calculate the pooled standard error. While there are convenience parameters that support both SEs and MOEs for the numerator and denominator, only one of these--either SEs or MOEs--can be supplied--the other must be left NULL.
 #' @param estimate_numerator The estimate of the numerator
 #' @param estimate_denominator The estimate of the denominator
 #' @param moe_numerator The margin of error of the numerator
@@ -89,8 +116,8 @@ cv = function(estimate, se) {
   cv = se / estimate * 100
 
   ## when the estimate is zero, this produces an infinite value
-  ## replacing this with a zero
-  cv = dplyr::if_else(is.infinite(cv), 0, cv)
+  ## replacing this with an NA value
+  cv = dplyr::if_else(is.infinite(cv), NA, cv)
 
   return(cv)
 }
@@ -102,10 +129,10 @@ extract_definition_terms = function(.definition, .type) {
     stringr::str_remove_all("Numerator = |Denominator = |Sum of: |\\.") %>%
     stringr::str_remove_all("\\(.*?\\)") %>%
     stringr::str_trim() %>% stringr::str_squish() %>%
-    stringr::str_replace_all(" ,", ",")
+    stringr::str_replace_all(c(" ," = ",", " -" = ","))
 }
 
-#' @title Calculate Coefficients of Variation (CVs)
+#' @title Calculate coefficients of variation
 #' @details Create CVs for all ACS estimates and derived indicators
 #' @param .df The dataset returned from \code{compile_acs_data()}.
 #'  The argument to this parameter must have an attribute named `codebook` (as is)
@@ -121,18 +148,11 @@ extract_definition_terms = function(.definition, .type) {
 #'   counties = NULL,
 #'   spatial = FALSE)
 #' cvs = calculate_cvs(df) %>%
-#'  dplyr::select(matches("_cv$"))
+#'  dplyr::select(matches("_CV$"))
 #' }
-#
-# df = compile_acs_data(
-#   variables = list_acs_variables(year = 2022),
-#   years = c(2022),
-#   geography = "county",
-#   states = "NJ",
-#   counties = NULL,
-#   spatial = FALSE)
 
 calculate_cvs = function(.df) {
+  warning("Coefficients of variation and related, calculated measures of error such as margins of error and standard errors are experimental features and should be used with great caution. Such measures are respectively suffixed with `_CV`, `_M`, and `_SE`.")
 
   ## the codebook attached to the default compile_acs_data() return
   codebook = .df %>% attr("codebook")
@@ -142,11 +162,11 @@ calculate_cvs = function(.df) {
     dplyr::distinct(calculated_variable, .keep_all = TRUE) %>%
     dplyr::filter(!stringr::str_detect(calculated_variable, "_M$")) %>%
     dplyr::mutate(
-      numerator_variable_count = dplyr::case_when(
+      numerator_count = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_real_,
         variable_type %in% c("Metadata") ~ NA_real_,
         TRUE ~ stringr::str_extract(definition, "Numerator = .*\\.") %>% stringr::str_count(",") + 1),
-      denominator_variable_count = dplyr::case_when(
+      denominator_count = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_real_,
         variable_type %in% c("Metadata", "Sum") ~ NA_real_,
         TRUE ~ stringr::str_extract(definition, "Denominator = .*\\.") %>% stringr::str_count(",|-") + 1),
@@ -161,7 +181,7 @@ calculate_cvs = function(.df) {
         TRUE ~ extract_definition_terms(definition, .type = "Denominator")),
       ## these variables do not have associated MOEs when returned from the Census API
       no_moe_flag = dplyr::case_when(
-        denominator %in% c("sex_by_age_universe", "race_universe") ~ 1,
+        denominator %in% c("sex_by_age_universe", "race_universe", "total_population_universe") ~ 1,
         TRUE ~ 0),
       calculated_variable_dependency_flag = dplyr::if_else(
         stringr::str_detect(definition, "calculated variable"), 1, 0),
@@ -169,182 +189,224 @@ calculate_cvs = function(.df) {
         definition == "This is a raw ACS estimate." ~ "raw",
         stringr::str_detect(definition, "minus") ~ "minus",
         stringr::str_detect(definition, "sum") & variable_type == "Sum" ~ "sum",
-        numerator_variable_count == 1 & denominator_variable_count == 1 ~ "simple percent",
-        numerator_variable_count == 1 & denominator_variable_count > 1 ~ "complex denominator percent",
-        numerator_variable_count > 1 & denominator_variable_count == 1 ~ "complex numerator percent",
-        numerator_variable_count > 1 & denominator_variable_count > 1 ~ "complex numerator and complex denominator percent",
-        TRUE ~ "unspecified"))
+        numerator_count == 1 & denominator_count == 1 ~ "simple percent",
+        numerator_count == 1 & denominator_count > 1 ~ "complex denominator percent",
+        numerator_count > 1 & denominator_count == 1 ~ "complex numerator percent",
+        numerator_count > 1 & denominator_count > 1 ~ "complex numerator and complex denominator percent",
+        TRUE ~ "unspecified"),
+      variable_class = dplyr::case_when(
+        ## for example: snap_received_percent
+        variable_type == "Percent" & numerator_count == 1 & denominator_count == 1 &
+          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "simple percent, no calculated variables",
+        ## for example: disability_percent
+        variable_type == "Percent" & numerator_count > 1 & denominator_count == 1 &
+          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "numerator sum percent",
+        ## for example: means_transportation_work_bicycle_percent
+        variable_type == "Percent" & numerator_count == 1 & denominator_count > 1 &
+          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "denominator sum percent",
+        ## for example: cost_burdened_30percentormore_allincomes_percent
+        variable_type == "Percent" & numerator_count > 1 & denominator_count > 1 &
+          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "numerator and denominator sum percent",
+        ## for example: age_10_14_years
+        variable_type == "Sum" & calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "sum",
+        ## percents where there's no MOE for the denominator
+        ## for example: sex_female_percent
+        no_moe_flag == 1 & variable_type == "Percent" ~ "no MOE denominator",
+        calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe") ~ "no MOE count",
+        ## basic SE calculations with se_simple
+        ## for example: snap_universe
+        stringr::str_detect(definition, "This is a raw ACS estimate.") ~ "raw",
+        moe_type == "minus" ~ "one minus percentage",
+        TRUE ~ "non-ACS variable"))
 
-  simple_percent_no_calculated_variables_codebook = codebook1 %>%
-    dplyr::filter(
-      variable_type == "Percent",
-      numerator_variable_count == 1,
-      denominator_variable_count == 1,
-      !stringr::str_detect(definition, "calculated variable"),
-      no_moe_flag == 0)
+  ## all variables for which to calculate CVs
+  cv_variables = codebook1 %>%
+    dplyr::filter(!variable_class %in% c("non-ACS variable", "no MOE count")) %>%
+    dplyr::pull(calculated_variable)
 
-  numerator_sum_codebook = codebook1 %>%
-    dplyr::filter(
-      variable_type == "Percent",
-      numerator_variable_count > 1,
-      denominator_variable_count == 1,
-      !stringr::str_detect(definition, "calculated variable"),
-      no_moe_flag == 0)
+  ## a named list of of variables, with each list element named by the
+  ## variable class it encompasses
+  variable_class_groups = codebook1 %>%
+    dplyr::filter(calculated_variable %in% cv_variables) %>%
+    dplyr::group_split(variable_class)
+  variable_class_names = variable_class_groups %>%
+    purrr::map_chr(~ .x %>% dplyr::pull(variable_class) %>% unique())
+  variable_classes = variable_class_groups %>%
+    purrr::map(~ .x %>% dplyr::pull(calculated_variable)) %>%
+    stats::setNames(variable_class_names)
 
-  denominator_sum_codebook = codebook1 %>%
-    dplyr::filter(
-      variable_type == "Percent",
-      numerator_variable_count == 1,
-      denominator_variable_count > 1,
-      !stringr::str_detect(definition, "calculated variable"),
-      no_moe_flag == 0)
-
-  numerator_denominator_sum_codebook = codebook1 %>%
-    dplyr::filter(
-      variable_type == "Percent",
-      numerator_variable_count > 1,
-      denominator_variable_count > 1,
-      !stringr::str_detect(definition, "calculated variable"),
-      no_moe_flag == 0)
-
-  summed_variable_codebook = codebook1 %>%
-    dplyr::filter(
-      variable_type == "Sum",
-      !stringr::str_detect(definition, "calculated variable"),
-      no_moe_flag == 0)
-
-  calculated_variables_dependencies_codebook = codebook1 %>%
-    dplyr::filter(calculated_variable_dependency_flag == 1)
-
-  ## percents where there's no MOE for the denominator
-  no_moe_codebook = codebook1 %>%
-    dplyr::filter(no_moe_flag == 1, variable_type == "Percent")
-
-  ## simple SE calculation variables
-  raw_variables_codebook = codebook1 %>%
-    dplyr::filter(
-      stringr::str_detect(definition, "This is a raw ACS estimate."),
-      !(calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe")))
-
-  df_cvs = .df %>%
+  ## derived sum variables - calculate MOEs that can be used in subsequent calculations
+  ## for example: age_10_14_years
+  df_cvs1 = .df %>%
     sf::st_drop_geometry() %>%
     dplyr::mutate(
-      ## derived sum variables - calculate MOEs that can be used in subsequent calculations
       dplyr::across(
-        .cols = dplyr::any_of(summed_variable_codebook$calculated_variable),
+        .cols = dplyr::any_of(variable_classes$sum),
         .fns = function(x) {
           current_column = dplyr::cur_column()
 
-          numerator_variables = codebook1 %>%
+          numerator_estimate_variables = codebook1 %>%
             dplyr::filter(calculated_variable == current_column) %>%
             dplyr::pull(numerator) %>%
             stringr::str_remove_all("_count_estimate") %>%
             stringr::str_split(", ") %>%
-            unlist() %>%
+            unlist()
+
+          numerator_moe_variables = numerator_estimate_variables %>%
             paste0("_M")
 
-          se = se_sum(purrr::map(numerator_variables, ~ .df %>% dplyr::pull(.x)))
-          moe = se * 1.645
+          moe = se_sum(
+            purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
+            purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))) * 1.645
 
           return(moe) },
         .names = "{.col}_M"),
+
+      ## count variables
       ## raw ACS variables
       dplyr::across(
-        .cols = dplyr::any_of(c(
-          ## true raw ACS variables
-          raw_variables_codebook$calculated_variable %>% stringr::str_remove("_count_estimate"),
-          ## summed raw ACS variables with derived MOEs calculated above
-          summed_variable_codebook$calculated_variable)),
-        .fns = ~ se_simple(get(dplyr::cur_column() %>% paste0("_M"))),
-        .names = "{.col}_cv"),
-      ## percent variables with a denominator that doesn't have an MOE
-      ## these are treated as if there is no denominator
-      dplyr::across(
-        .cols = dplyr::any_of(no_moe_codebook$calculated_variable),
+        .cols = dplyr::any_of(cv_variables),
         .fns = function(x) {
+
           current_column = dplyr::cur_column()
+          ## this effectively returns error calculations for the underlying variable
+          ## under the assumption that the `1 - ` operation has no effect on the calculation
+          ## of error
+          if (current_column %in% variable_classes[["one minus percentage"]]) {
+            current_column = codebook1 %>%
+              dplyr::filter(calculated_variable == current_column) %>%
+              dplyr::pull(definition) %>%
+              stringr::str_remove_all("One minus |\\.") }
 
-          numerator_variables = codebook1 %>%
+          ## variable metadata from the codebook
+          codebook_variable = codebook1 %>%
             dplyr::filter(calculated_variable == current_column) %>%
-            dplyr::pull(numerator) %>%
-            stringr::str_remove_all("_count_estimate") %>%
-            stringr::str_split(", ") %>%
-            unlist() %>%
-            paste0("_M")
+            dplyr::mutate(
+              dplyr::across(
+                .cols = c(numerator, denominator),
+                .fns = ~ .x %>%
+                  stringr::str_remove_all("_count_estimate") %>%
+                  stringr::str_split(", ")))
+          numerator_estimate_variables = codebook_variable %>%
+            dplyr::pull(numerator) %>% unlist()
+          numerator_moe_variables = numerator_estimate_variables %>%
+            stringr::str_c("_M")
+          denominator_estimate_variables = codebook_variable %>%
+            dplyr::pull(denominator) %>% unlist()
+          denominator_moe_variables = denominator_estimate_variables %>%
+            stringr::str_c("_M")
 
-          se = se_sum(purrr::map(numerator_variables, ~ .df %>% dplyr::pull(.x)))
+          ## for variables where we already have an MOE, this is simple:
+          if (current_column %in% c(variable_classes$raw, variable_classes$sum) %>% stringr::str_remove("_count_estimate")) {
+            SE = se_simple(get(dplyr::cur_column() %>% paste0("_M"))) }
 
-          return(se) },
-        .names = "{.col}_cv"),
-      ## simple percent variables: one numerator, one denominator
+          ## for percent variables with a denominator that doesn't have an MOE
+          ## these are directly assigned the CV of the numerator and then we back-calculate
+          ## values for the SE and MOE from the CV
+          if (current_column %in% variable_classes[["no MOE denominator"]]) {
+            estimate_numerator = purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))
+            estimate_moe = purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x))
+            ## in the case that there are multiple numerator variables, we need to
+            ## calculate the pooled SE of the numerator -- otherwise we just directly
+            ## calculate the SE
+            if (length(numerator_estimate_variables) > 1) {
+              se_numerator = se_sum(
+                estimate_moe,
+                estimate_numerator) } else {
+              se_numerator = se_simple(estimate_moe %>% unlist) }
+
+            ## this is a CV -- we rename these accordingly in a following step
+            ## this is consolidated here for brevity
+            SE = cv(
+              estimate = purrr::pmap_dbl(estimate_numerator, sum),
+              se = se_numerator) }
+
+          ## for simple percent variables with one numerator, one denominator:
+          if (current_column %in% variable_classes[["simple percent, no calculated variables"]]) {
+            SE = se_proportion_ratio(
+              estimate_numerator = get(numerator_estimate_variables),
+              estimate_denominator = get(denominator_estimate_variables),
+              moe_numerator = get(numerator_moe_variables),
+              moe_denominator = get(denominator_moe_variables)) }
+
+          ## for percents with summed/subtracted numerators, one denominator
+          if (current_column %in% variable_classes[["numerator sum percent"]]) {
+            SE = se_proportion_ratio(
+              estimate_numerator = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables))),
+              estimate_denominator = get(denominator_estimate_variables),
+              se_numerator = se_sum(
+                purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
+                purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))),
+              se_denominator = se_simple(
+                purrr::map(denominator_moe_variables, ~ .df %>% dplyr::pull(.x)) %>% unlist())) }
+
+          ## for percents with one numerator, summed/subtracted denominators
+          if (current_column %in% variable_classes[["denominator sum percent"]]) {
+            SE = se_proportion_ratio(
+              estimate_numerator = get(numerator_estimate_variables),
+              estimate_denominator = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables))),
+              se_numerator = se_simple(
+                purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)) %>% unlist()),
+              se_denominator = se_sum(
+                purrr::map(denominator_moe_variables, ~ .df %>% dplyr::pull(.x)),
+                purrr::map(denominator_estimate_variables, ~ .df %>% dplyr::pull(.x)))) }
+
+          ## for percents with summed numerators and summed denominators
+          if (current_column %in% variable_classes[["numerator and denominator sum percent"]]) {
+            SE = se_proportion_ratio(
+              estimate_numerator = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables))),
+              estimate_denominator = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables))),
+              se_numerator = se_sum(
+                purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
+                purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))),
+              se_denominator = se_sum(
+                purrr::map(denominator_moe_variables, ~ .df %>% dplyr::pull(.x)),
+                purrr::map(denominator_estimate_variables, ~ .df %>% dplyr::pull(.x)))) }
+
+          return(SE) },
+        .names = "{.col}_SE")) %>%
+    ## these variables are initially (above) named as if they're SEs, but in reality
+    ## they're CVs, so we rename accordingly
+    dplyr::rename_with(
+      .cols = variable_classes[["no MOE denominator"]] %>% stringr::str_c("_SE"),
+      .fn = ~ .x %>% stringr::str_replace("_SE$", "_CV")) %>%
+    dplyr::mutate(
+      ## create coefficients of variation from standard errors
       dplyr::across(
-        .cols = dplyr::any_of(simple_percent_no_calculated_variables_codebook$calculated_variable),
-        .fns = function(x) {
-          current_column = dplyr::cur_column()
-
-          se_proportion_ratio(
-            estimate_numerator = get(
-              simple_percent_no_calculated_variables_codebook %>%
-                dplyr::filter(calculated_variable == current_column) %>%
-                dplyr::pull(numerator)),
-            estimate_denominator = get(
-              simple_percent_no_calculated_variables_codebook %>%
-                dplyr::filter(calculated_variable == current_column) %>%
-                dplyr::pull(denominator)),
-            moe_numerator = get(
-              simple_percent_no_calculated_variables_codebook %>%
-                dplyr::filter(calculated_variable == current_column) %>%
-                dplyr::pull(numerator) %>%
-                stringr::str_remove_all("_count_estimate") %>%
-                paste0("_M")),
-            moe_denominator = get(
-              simple_percent_no_calculated_variables_codebook %>%
-                dplyr::filter(calculated_variable == current_column) %>%
-                dplyr::pull(denominator) %>%
-                stringr::str_remove_all("_count_estimate") %>%
-                paste0("_M"))) },
-        .names = "{.col}_cv"),
-      ## percents with summed/subtracted numerators, one denominator
-      dplyr::across(
-        .cols = dplyr::any_of(numerator_sum_codebook$calculated_variable),
-        .fns = function(x) {
-          current_column = dplyr::cur_column()
-
-          numerator_variables = codebook1 %>%
-            dplyr::filter(calculated_variable == current_column) %>%
-            dplyr::pull(numerator) %>%
-            stringr::str_remove_all("_count_estimate") %>%
-            stringr::str_split(", ") %>%
-            unlist() %>%
-            paste0("_M")
-
-          denominator_variables = codebook1 %>%
-            dplyr::filter(calculated_variable == current_column) %>%
-            dplyr::pull(denominator) %>%
-            stringr::str_remove_all("_count_estimate") %>%
-            stringr::str_split(", ") %>%
-            unlist() %>%
-            paste0("_M")
-
-          se = se_proportion_ratio(
-            estimate_numerator = rowSums(dplyr::select(., dplyr::all_of(numerator_variables))),
-            estimate_denominator = get(denominator_variables),
-            se_numerator = se_sum(purrr::map(numerator_variables, ~ .df %>% dplyr::pull(.x))),
-            se_denominator = se_sum(purrr::map(denominator_variables, ~ .df %>% dplyr::pull(.x))))
-
-          return(se) },
-        .names = "{.col}_cv"),
-      ## convert all "_cv" suffixed columns to true coefficients of variation
-      ## (preceding calculations yield standard errors)
-      dplyr::across(
-        .cols = dplyr::matches("_cv$"),
+        .cols = dplyr::matches("_SE$"),
         .fns = ~ cv(
-          estimate = get(dplyr::cur_column() %>% stringr::str_remove("_cv$")),
-          se = .x)))
+          estimate = get(dplyr::cur_column() %>% stringr::str_remove("_SE$")),
+          se = .x),
+        .names = "{.col %>% stringr::str_remove('_SE')}_CV"))
 
-   return(df_cvs)
+  moe_variables = df_cvs1 %>%
+    dplyr::select(dplyr::matches("_M$")) %>%
+    colnames() %>%
+    stringr::str_remove("_M$")
+  se_variables = df_cvs1 %>%
+    dplyr::select(dplyr::matches("_SE$")) %>%
+    colnames() %>%
+    stringr::str_remove("_SE$")
+
+  df_cvs = df_cvs1 %>%
+    dplyr::mutate(
+      dplyr::across(
+        .cols = dplyr::all_of(se_variables[!se_variables %in% moe_variables] %>% stringr::str_c("_SE")),
+        .fns = ~ .x * 1.645,
+        .names = "{.col %>% stringr::str_remove('_SE$')}_M"))
+
+  # moe_variables = df_cvs %>% select(matches("_M$")) %>% colnames() %>% str_remove("_M$")
+  # se_variables = df_cvs %>% select(matches("_SE$")) %>% colnames() %>% str_remove("_SE$")
+
+  # # ## should be none
+  # se_variables[!se_variables %in% moe_variables]
+  # # ## should be three--the controlled variables that don't have margins of error
+  # moe_variables[!moe_variables %in% se_variables]
+
+  return(df_cvs)
 }
 
 utils::globalVariables(c(
   "calculated_variable", "numerator_variable_count", "denominator_variable_count",
-  "no_moe_flag", "calculated_variable_dependency_flag", "numerator", "denominator"))
+  "no_moe_flag", "calculated_variable_dependency_flag", "numerator", "denominator",
+  "observation", "type", "estimate", "moe", "variable_class"))

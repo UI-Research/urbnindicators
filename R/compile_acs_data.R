@@ -30,6 +30,7 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' internal_compute_acs_variables(.data = df)
 #' }
 #' @importFrom magrittr %>%
+#' @keywords internal
 internal_compute_acs_variables = function(.data) {
   .data %>%
     dplyr::mutate(
@@ -324,7 +325,6 @@ internal_compute_acs_variables = function(.data) {
 #' @export
 #' @importFrom magrittr %>%
 
-
 compile_acs_data = function(
     variables = NULL,
     years = c(2022),
@@ -334,15 +334,6 @@ compile_acs_data = function(
     spatial = FALSE) {
 
   options(tigris_use_cache = FALSE)
-
-message("\n
-Variable names and geographies for ACS data products can change between years.
-Changes to geographies are particularly significant across decades
-(e.g., from 2019 to 2020), but these changes can occur in any year.\n
-Users should ensure that the logic embedded in this function--
-which was developed around five-year ACS estimates for 2017-2021--
-remains accurate for their use cases. Evaluation of measures and
-geographies over time should be thoroughly quality checked.\n")
 
   ## default values for the variables and states arguments.
   if (length(variables) == 0) { variables = list_acs_variables(year = years[1]) }
@@ -361,10 +352,10 @@ geographies over time should be thoroughly quality checked.\n")
   if ((geography %>% tolower) %in% c("block", "block group")) {
     stop("Block and block group geographies are not supported at this time.") }
 
-
   ## warn user -- county-by-county queries are slow and should be used if only
   ## one or a few counties are desired
-  if (is.null(counties)) {
+  if (!any(is.null(counties))) {
+
 warning(
 "County-level queries can be slow for more than a few counties. Omit the county parameter
 if you are interested in more than five counties; filter to your desired counties after
@@ -532,11 +523,15 @@ this function returns.")}
   codebook = generate_codebook(.data = df_calculated_estimates)
   attr(df_calculated_estimates, "codebook") = codebook
 
-  df_cvs = calculate_cvs(df_calculated_estimates) %>%
-    {if (spatial == FALSE) . else dplyr::right_join(., geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
+  suppressWarnings({
+    df_cvs = calculate_cvs(df_calculated_estimates) %>%
+      {if (spatial == FALSE) . else dplyr::right_join(., geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
+  })
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
   attr(df_cvs, "codebook") = codebook
+
+  if (isTRUE(spatial)) { df_cvs = sf::st_as_sf(df_cvs) }
 
   return(df_cvs)
 }
@@ -567,4 +562,4 @@ utils::globalVariables(c(
   "employment_civilian_labor_force_universe", "health_insurance_coverage_status_type_by_employment_status_universe",
   "health_insurance_coverage_status_covered_percent",
   "health_insurance_coverage_status_type_by_employment_status_in_labor_force", "state_code",
-  "county_code", "county_fips", "state_name"))
+  "county_code", "county_fips", "state_name", "county"))

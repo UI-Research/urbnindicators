@@ -1,4 +1,4 @@
-#' @title Document variables from \code{urbnindicators::compile_acs_data()}
+#' @title Document variables from \code{compile_acs_data()}
 #' @description Define how variables produced via \code{urbnindicators::compile_acs_data()}
 #' are calculated.
 #' @details Generates a tibble of variable names and definitions that describe

@@ -7,7 +7,7 @@
 se_sum(...)
 }
 \arguments{
-\item{...}{The unquoted names of the margin of error variables to be added or subtracted}
+\item{...}{The unquoted names of the margin of error and corresponding estimate variables to be added or subtracted}
 }
 \value{
 A pooled 90\% standard error
