@@ -30,6 +30,7 @@ Imports:
     lifecycle
 Suggests:
     ggplot2,
+    gridExtra,
     knitr,
     reactable,
     remotes,
@@ -41,7 +42,7 @@ Remotes:
     UrbanInstitute/urbnthemes
 RoxygenNote: 7.3.2
 URL: https://ui-research.github.io/urbnindicators/
-VignetteBuilder: knitr
+VignetteBuilder: knitr, rmarkdown
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 License: GPL (>= 3) + file LICENSE

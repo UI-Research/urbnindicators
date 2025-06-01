@@ -105,7 +105,8 @@ list_acs_variables = function(year = "2022") {
   ## variable metadata follows a different naming convention (issue IDed in 2013;
   ## possibly other years as well), but the variables are (seemingly) the same
   ## underlying variables
-  census_codebook = tidycensus::load_variables(year = 2022, dataset = "acs5")
+  suppressWarnings({suppressMessages({
+    census_codebook = tidycensus::load_variables(year = 2022, dataset = "acs5")})})
 
   select_variables = purrr::partial(select_variables_by_name, census_codebook = census_codebook)
 

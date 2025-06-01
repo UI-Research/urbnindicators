@@ -4,11 +4,13 @@
 \alias{make_pretty_names}
 \title{Pretty-ify variable names}
 \usage{
-make_pretty_names(.data)
+make_pretty_names(.data, .case = "title")
 }
 \arguments{
 \item{.data}{A data.frame--or something coercible thereto--or a character vector containing
-variables/variable names that will be converted to more publication-appropriate formats.}
+variables/variable names that will be converted more publication-appropriate formats.}
+
+\item{.case}{Capitalization scheme of resulting variable names. One of "title", "sentence", or "upper".}
 }
 \description{
 Variable names are lower-case and underscore-separated. This converts
@@ -18,8 +20,6 @@ plots and tables.
 }
 \examples{
 \dontrun{
-# df = compile_acs_data(
-
-df \%>\% make_pretty_names()
+"race_personofcolor_percent" \%>\% make_pretty_names()
 }
 }
