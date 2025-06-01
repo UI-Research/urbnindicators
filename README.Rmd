@@ -76,11 +76,11 @@ library(stringr)
 library(urbnindicators)
 library(ggplot2)
 library(urbnthemes)
+set_urbn_defaults(style = "print")
 ```
 
-## Obtain data
-
-```{r, warning = FALSE, message = F}
+## Obtain Data
+```{r, warning = FALSE, message = FALSE}
 plot_data = compile_acs_data(
     years = c(2017, 2022),
     geography = "county",
@@ -103,9 +103,8 @@ dumbbell_data = plot_data %>%
     names_prefix = "year_")
 ```
 
-## Plot data
-
-```{r, warning = FALSE, message = F}
+## Plot Data
+```{r, warning = FALSE, message = FALSE}
 ggplot() +
   geom_segment(
     data = dumbbell_data,
@@ -160,8 +159,7 @@ ggplot() +
     breaks = c(0, .25, .50, .75, 1.0),
     limits = c(0, .75),
     labels = scales::percent) +
-  coord_flip() +
-  theme_urbn_print()
+  coord_flip()
 ```
 
 # Learn More
@@ -170,14 +168,14 @@ A growing number of vignettes aim to support users in effectively using
 this package. These vignettes include:
 
 -   A package overview to help users [**Get
-    Started**](articles/urbnindicators.html).
+    Started**] (articles/urbnindicators.html).
 
 -   An interactive version of the package's
-    [**Codebook**](articles/codebook.html)so that prospective users can
+    [**Codebook**](articles/codebook.html) so that prospective users can
     know what to expect.
 
 -   A brief description of the package's [**Design
-    Philosophy**](articles/design-philosophy.html)to clarify the
+    Philosophy**](articles/design-philosophy.html) to clarify the
     use-cases that `urbnindicators` is built to support.
 
 -   An illustration of how [**Quantifying Survey
