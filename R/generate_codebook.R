@@ -39,7 +39,8 @@ generate_codebook = function(.data)  {
         clean_variable_name = y %>% stringr::str_remove("_$")) %>%
       dplyr::filter(clean_variable_name != "")
 
-    census_variables = tidycensus::load_variables(year = 2022, dataset = "acs5")
+    suppressMessages({suppressWarnings({
+      census_variables = tidycensus::load_variables(year = 2022, dataset = "acs5")})})
 
     raw_variable_codes = list_acs_expression %>%
       as.character() %>%

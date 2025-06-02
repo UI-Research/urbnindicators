@@ -523,10 +523,10 @@ this function returns.")}
   codebook = generate_codebook(.data = df_calculated_estimates)
   attr(df_calculated_estimates, "codebook") = codebook
 
-  suppressWarnings({
+  suppressMessages({suppressWarnings({
     df_cvs = calculate_cvs(df_calculated_estimates) %>%
       {if (spatial == FALSE) . else dplyr::right_join(., geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
-  })
+  })})
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
   attr(df_cvs, "codebook") = codebook

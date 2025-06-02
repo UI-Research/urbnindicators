@@ -172,7 +172,7 @@ make_pretty_names = function(.data, .case = "title") {
     .case,
     title = dplyr::rename_with(result, stringr::str_to_title),
     sentence = dplyr::rename_with(result, stringr::str_to_sentence),
-    upper = dplyr::rename_withs(result, stringr::str_to_upper))
+    upper = dplyr::rename_with(result, stringr::str_to_upper))
 
   return(output)
 }
