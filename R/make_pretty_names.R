@@ -12,7 +12,7 @@
 #' }
 #' @export
 #' @importFrom magrittr %>%
-make_pretty_names = function(.data, .case = "title") {
+function(.data, .case = "title") {
   names_mapping = c(
     "_" = " ",
     "universe" = "(universe)",
@@ -142,7 +142,7 @@ make_pretty_names = function(.data, .case = "title") {
     "40 44" = "40-44",
     "45 59" = "45-59",
     "60 89" = "60-89"
-    )
+  )
 
   if (! (is.data.frame(.data) | is.character(.data))) {
     stop("The `.data` argument must be either a data.frame (or coercible thereto)
@@ -156,6 +156,12 @@ make_pretty_names = function(.data, .case = "title") {
       stringr::str_trim() %>%
       stringr::str_to_title() %>%
       stringr::str_replace_all(capitalization_spacing_other_fixes)
+
+    output = switch(
+      .case,
+      title = result %>% stringr::str_to_title(),
+      sentence = result %>% stringr::str_to_sentence(),
+      upper = result %>% stringr::str_to_upper())
   }
 
   if (is.data.frame(.data)) {
@@ -166,15 +172,13 @@ make_pretty_names = function(.data, .case = "title") {
           stringr::str_trim() %>%
           stringr::str_to_title() %>%
           stringr::str_replace_all(capitalization_spacing_other_fixes))
-  }
 
-  output = switch(
-    .case,
-    title = dplyr::rename_with(result, stringr::str_to_title),
-    sentence = dplyr::rename_with(result, stringr::str_to_sentence),
-    upper = dplyr::rename_with(result, stringr::str_to_upper))
+    output = switch(
+      .case,
+      title = dplyr::rename_with(result, stringr::str_to_title),
+      sentence = dplyr::rename_with(result, stringr::str_to_sentence),
+      upper = dplyr::rename_with(result, stringr::str_to_upper)) }
+
 
   return(output)
 }
-
-
