@@ -70,14 +70,6 @@
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     filter, lag</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stringr.tidyverse.org" class="external-link">stringr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span>
@@ -217,13 +209,6 @@ first-pass code is functional. We can do this as so:</p>
 <span>  <span class="co">## urbnindicators also systematically drops all "_E" suffices, which denote "ESTIMATE"</span></span>
 <span>  <span class="co">## variables</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename_with</a></span><span class="op">(</span>cols <span class="op">=</span> <span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html" class="external-link">everything</a></span><span class="op">(</span><span class="op">)</span>, <span class="op">~</span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="va">.x</span>, <span class="st">"_E"</span><span class="op">)</span><span class="op">)</span> </span>
-<span><span class="co">#&gt; Getting data from the 2019-2023 5-year ACS</span></span>
-<span><span class="co">#&gt; Warning: <span style="color: #00BBBB;">•</span> You have not set a Census API key. Users without a key are limited to 500</span></span>
-<span><span class="co">#&gt; queries per day and may experience performance limitations.</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> For best results, get a Census API key at</span></span>
-<span><span class="co">#&gt; http://api.census.gov/data/key_signup.html and then supply the key to the</span></span>
-<span><span class="co">#&gt; `census_api_key()` function to use it throughout your tidycensus session.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once per session.</span></span></span>
 <span></span>
 <span><span class="va">sample_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -263,12 +248,15 @@ users should call <code><a href="../reference/compile_acs_data.html">compile_acs
 selection term they develop during this stage does not select any of the
 variables that are already returned by
 <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>.</p>
+<p>Note the use of <code><a href="../reference/safe_divide.html">urbnindicators::safe_divide()</a></code>, which is
+a normal division operation except that when the denominator is zero, it
+returns <code>0</code> rather than <code>NaN</code>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sample_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
 <span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">across</a></span><span class="op">(</span></span>
 <span>      .cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"household_type"</span><span class="op">)</span>, <span class="op">-</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"universe"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>      .fns <span class="op">=</span> <span class="op">~</span> <span class="va">.x</span> <span class="op">/</span> <span class="va">household_type_universe</span>,</span>
+<span>      .fns <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="../reference/safe_divide.html">safe_divide</a></span><span class="op">(</span><span class="va">.x</span>, <span class="va">household_type_universe</span><span class="op">)</span>,</span>
 <span>      .names <span class="op">=</span> <span class="st">"{.col}_percent"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="co">## just to print out a subset of our results</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span>
@@ -375,7 +363,42 @@ side effects, by integrating their proposed changes into the codebase
 exploring both the data and codebook.</p>
 </div>
 <div class="section level2">
-<h2 id="open-the-pr">7: Open the PR<a class="anchor" aria-label="anchor" href="#open-the-pr"></a>
+<h2 id="quality-check-results">7: Quality Check Results<a class="anchor" aria-label="anchor" href="#quality-check-results"></a>
+</h2>
+<p>There are a few strategies for quality-checking the results of a
+series of variables:</p>
+<ol style="list-style-type: decimal">
+<li><p>Compare to a published benchmark value. This works well for
+derived variables, such as percentages, that are reported by the Census
+Bureau in the Subject Tables (tables prefixed with an <code>S</code>)
+but that are not directly available via the detailed tables (prefixed
+with a <code>B</code> or <code>C</code>). However, for this series of
+variables, there are not counterpart percentages reported as part of the
+subject tables. (An example of one of multiple reasons that
+<code>urbnindicators</code> exclusively uses data from the detailed
+tables.)</p></li>
+<li><p>Manually compute a benchmark value. This works well for all those
+derived variables that aren’t reported in any Census Bureau product.
+Identify the relevant numerator and denominator variables (in the case
+of a derived percentage) and manually calculate the derived variable,
+then compare the manually-computed benchmark to the
+programmatically-calculated version. This seems very simple for our
+example here, where each derived variable is a given variable divided by
+the table universe, but with more complex variables–e.g., where a
+numerator is a summed variable itself–this is a very useful quality
+check.</p></li>
+<li><p>Plot a histogram of the computed variable(s) (if multiple
+variables in a series, use <code><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">pivot_longer()</a></code> to turn the
+dataframe long, then use <code>facet_wrap()</code> to plot each
+histogram side-by-side. Check for unexpected spikes and outlier
+values.</p></li>
+<li><p>Check for missingness. Generally, derived variables should have
+low or no missingness, so any substantial number of missing observations
+may be an indication that a calculation has gone awry.</p></li>
+</ol>
+</div>
+<div class="section level2">
+<h2 id="open-the-pr">8: Open the PR<a class="anchor" aria-label="anchor" href="#open-the-pr"></a>
 </h2>
 <p>Once users are satisfied with the proposed code (and/or have noted
 any issues), they should click on their branch in the GitHub repository
