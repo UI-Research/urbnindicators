@@ -13,8 +13,9 @@ editor_options:
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
-)
+  comment = "#>",
+  warning = FALSE,
+  message = FALSE)
 ```
 
 ```{r setup}
@@ -187,12 +188,16 @@ and ensure that the selection term they develop during this stage does
 not select any of the variables that are already returned by
 `compile_acs_data()`.
 
+Note the use of `urbnindicators::safe_divide()`, which is a normal
+division operation except that when the denominator is zero, it returns
+`0` rather than `NaN`.
+
 ```{r}
 sample_data %>%
   dplyr::transmute(
     dplyr::across(
       .cols = c(dplyr::matches("household_type"), -dplyr::matches("universe")),
-      .fns = ~ .x / household_type_universe,
+      .fns = ~ safe_divide(.x, household_type_universe),
       .names = "{.col}_percent")) %>%
   ## just to print out a subset of our results
   head() %>% select(1:3)
@@ -267,7 +272,41 @@ done by calling `devtools::load_all()` in the console), and then calling
 `compile_acs_data()` in a scratch file and interactively exploring both
 the data and codebook.
 
-## 7: Open the PR
+## 7: Quality Check Results
+
+There are a few strategies for quality-checking the results of a series
+of variables:
+
+1.  Compare to a published benchmark value. This works well for derived
+    variables, such as percentages, that are reported by the Census
+    Bureau in the Subject Tables (tables prefixed with an `S`) but that
+    are not directly available via the detailed tables (prefixed with a
+    `B` or `C`). However, for this series of variables, there are not
+    counterpart percentages reported as part of the subject tables. (An
+    example of one of multiple reasons that `urbnindicators` exclusively
+    uses data from the detailed tables.)
+
+2.  Manually compute a benchmark value. This works well for all those
+    derived variables that aren't reported in any Census Bureau product.
+    Identify the relevant numerator and denominator variables (in the
+    case of a derived percentage) and manually calculate the derived
+    variable, then compare the manually-computed benchmark to the
+    programmatically-calculated version. This seems very simple for our
+    example here, where each derived variable is a given variable
+    divided by the table universe, but with more complex variables–e.g.,
+    where a numerator is a summed variable itself–this is a very useful
+    quality check.
+
+3.  Plot a histogram of the computed variable(s) (if multiple variables
+    in a series, use `pivot_longer()` to turn the dataframe long, then
+    use `facet_wrap()` to plot each histogram side-by-side. Check for
+    unexpected spikes and outlier values.
+
+4.  Check for missingness. Generally, derived variables should have low
+    or no missingness, so any substantial number of missing observations
+    may be an indication that a calculation has gone awry.
+
+## 8: Open the PR
 
 Once users are satisfied with the proposed code (and/or have noted any
 issues), they should click on their branch in the GitHub repository and
