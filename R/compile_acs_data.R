@@ -448,6 +448,15 @@ internal_compute_acs_variables = function(.data) {
 #'   states = "NJ",
 #'   counties = NULL,
 #'   spatial = FALSE)
+#'   
+#' # Inflation-adjust dollar variables to 2022 dollars
+#' df_adjusted = compile_acs_data(
+#'   variables = acs_variables,
+#'   years = c(2020, 2021, 2022),
+#'   geography = "county",
+#'   states = "NJ",
+#'   spatial = FALSE,
+#'   dollar_year = 2022)
 #'   }
 #' @export
 #' @importFrom magrittr %>%
