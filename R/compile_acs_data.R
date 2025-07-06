@@ -12,6 +12,130 @@
 #' @export
 safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 
+#' @title Get CPI data for inflation adjustment
+#' @description Returns Consumer Price Index data for inflation adjustment calculations.
+#' @details Internal function that provides CPI-U (Consumer Price Index for All Urban Consumers) 
+#'    annual averages for years 2009-2024. Data sourced from Bureau of Labor Statistics.
+#' @returns A data frame with columns 'year' and 'cpi_annual_average'.
+#' @keywords internal
+get_cpi_data = function() {
+  # CPI-U Annual averages (1982-84=100) from Bureau of Labor Statistics
+  # Source: https://www.bls.gov/cpi/tables/supplemental-files/historical-cpi-u-202412.pdf
+  data.frame(
+    year = c(2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024),
+    cpi_annual_average = c(214.5, 218.1, 224.9, 229.6, 233.0, 236.7, 237.0, 240.0, 245.1, 251.1, 255.7, 258.8, 271.0, 292.7, 307.7, 312.4)
+  )
+}
+
+#' @title Calculate CPI adjustment factor
+#' @description Calculates the inflation adjustment factor between two years.
+#' @param from_year The source year for the adjustment.
+#' @param to_year The target year for the adjustment.
+#' @param cpi_data Optional data frame with CPI data. If NULL, uses internal CPI data.
+#' @returns A numeric value representing the inflation adjustment factor.
+#' @examples
+#' \dontrun{
+#' # Adjust from 2020 to 2022 dollars
+#' factor = calculate_cpi_adjustment_factor(2020, 2022)
+#' }
+#' @keywords internal
+calculate_cpi_adjustment_factor = function(from_year, to_year, cpi_data = NULL) {
+  if (is.null(cpi_data)) {
+    cpi_data = get_cpi_data()
+  }
+  
+  from_cpi = cpi_data$cpi_annual_average[cpi_data$year == from_year]
+  to_cpi = cpi_data$cpi_annual_average[cpi_data$year == to_year]
+  
+  if (length(from_cpi) == 0) {
+    stop(paste("CPI data not available for year", from_year))
+  }
+  if (length(to_cpi) == 0) {
+    stop(paste("CPI data not available for year", to_year))
+  }
+  
+  return(to_cpi / from_cpi)
+}
+
+#' @title Identify dollar-denominated variables
+#' @description Identifies which variables in a dataset contain dollar amounts.
+#' @param .data The dataset to analyze.
+#' @returns A character vector of variable names that contain dollar amounts.
+#' @examples
+#' \dontrun{
+#' df = compile_acs_data(years = 2022, geography = "state", states = "DE")
+#' dollar_vars = identify_dollar_variables(df)
+#' }
+#' @keywords internal
+identify_dollar_variables = function(.data) {
+  # Patterns that indicate dollar-denominated variables
+  dollar_patterns = c(
+    "^median_household_income",
+    "^household_income_quintile",
+    "^housing_cost_monthly_median",
+    "^median_household_income_in_past_12_months",
+    # Include margin of error versions
+    "^median_household_income.*_M$",
+    "^household_income_quintile.*_M$",
+    "^housing_cost_monthly_median.*_M$",
+    "^median_household_income_in_past_12_months.*_M$"
+  )
+  
+  # Find variables that match dollar patterns
+  all_vars = names(.data)
+  dollar_vars = c()
+  
+  for (pattern in dollar_patterns) {
+    matches = grep(pattern, all_vars, value = TRUE)
+    dollar_vars = c(dollar_vars, matches)
+  }
+  
+  return(unique(dollar_vars))
+}
+
+#' @title Apply inflation adjustment to dollar variables
+#' @description Adjusts dollar-denominated variables for inflation.
+#' @param .data The dataset containing dollar variables.
+#' @param target_year The year to adjust dollar values to.
+#' @returns The dataset with dollar variables adjusted for inflation.
+#' @examples
+#' \dontrun{
+#' df = compile_acs_data(years = 2020, geography = "state", states = "DE")
+#' df_adjusted = adjust_dollar_variables(df, 2022)
+#' }
+#' @keywords internal
+adjust_dollar_variables = function(.data, target_year) {
+  dollar_vars = identify_dollar_variables(.data)
+  
+  if (length(dollar_vars) == 0) {
+    return(.data)
+  }
+  
+  # Get CPI data
+  cpi_data = get_cpi_data()
+  
+  # Apply adjustment for each data source year
+  for (year in unique(.data$data_source_year)) {
+    if (year == target_year) {
+      next  # No adjustment needed
+    }
+    
+    # Calculate adjustment factor
+    adjustment_factor = calculate_cpi_adjustment_factor(year, target_year, cpi_data)
+    
+    # Apply adjustment to dollar variables for this year
+    year_mask = .data$data_source_year == year
+    
+    for (var in dollar_vars) {
+      if (var %in% names(.data)) {
+        .data[[var]][year_mask] = .data[[var]][year_mask] * adjustment_factor
+      }
+    }
+  }
+  
+  return(.data)
+}
+
 #' @title Calculate ACS measures
 #' @description Calculates derived ACS indicators.
 #' @details An internal function used to calculate indicators and derived variable
@@ -306,6 +430,9 @@ internal_compute_acs_variables = function(.data) {
 #'    will override the \code{states} parameter. If \code{NULL}, all counties in the the
 #'    state(s) specified in the \code{states} parameter will be included.
 #' @param spatial Boolean. Return a simple features (sf), spatially-enabled dataframe?
+#' @param dollar_year The year to which dollar-denominated variables should be inflation-adjusted.
+#'    If \code{NULL} (default), dollar values are adjusted to the latest year in the \code{years} parameter.
+#'    Dollar-denominated variables include median household income, income quintile thresholds, and housing costs.
 #' @seealso \code{tidycensus::get_acs()}, which this function wraps.
 #' @returns A dataframe containing the requested \code{variables}, their MOEs,
 #'    a series of derived variables, such as percentages, and the year of the data.
@@ -331,7 +458,8 @@ compile_acs_data = function(
     geography = "county",
     states = NULL,
     counties = NULL,
-    spatial = FALSE) {
+    spatial = FALSE,
+    dollar_year = NULL) {
 
   options(tigris_use_cache = FALSE)
 
@@ -519,8 +647,23 @@ this function returns.")}
         dplyr::rename_with(.cols = dplyr::matches("household_income.*percent_M$"), .fn = ~ stringr::str_replace(., "percent_M$", "pct_M")),
       by = c("GEOID", "data_source_year"))
 
+  ## Apply inflation adjustment if needed
+  # Determine target year for inflation adjustment
+  if (is.null(dollar_year)) {
+    target_year = max(years)
+  } else {
+    target_year = dollar_year
+  }
+  
+  # Apply inflation adjustment and notify user
+  dollar_vars = identify_dollar_variables(df_calculated_estimates)
+  if (length(dollar_vars) > 0 && (length(unique(df_calculated_estimates$data_source_year)) > 1 || !is.null(dollar_year))) {
+    df_calculated_estimates = adjust_dollar_variables(df_calculated_estimates, target_year)
+    message(paste("All dollar-denominated variables have been inflation-adjusted to", target_year, "dollars using Consumer Price Index data."))
+  }
+
   ## generate the codebook, which is used to calculate CVs
-  codebook = generate_codebook(.data = df_calculated_estimates)
+  codebook = generate_codebook(.data = df_calculated_estimates, dollar_year = target_year)
   attr(df_calculated_estimates, "codebook") = codebook
 
   suppressMessages({suppressWarnings({

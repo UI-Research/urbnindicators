@@ -4,6 +4,7 @@
 #' @details Generates a tibble of variable names and definitions that describe
 #' how each variable was created.
 #' @param .data The dataset returned from \code{urbnindicators::compile_acs_data()}.
+#' @param dollar_year The year to which dollar values were inflation-adjusted, if applicable.
 #' @returns A tibble containing the names and definitions of  variables returned from
 #' \code{urbnindicators::compile_acs_data()}.
 #' @examples
@@ -19,7 +20,7 @@
 #' }
 #' @importFrom magrittr %>%
 
-generate_codebook = function(.data)  {
+generate_codebook = function(.data, dollar_year = NULL)  {
     .data = .data %>%
       sf::st_drop_geometry()
     ####----Variable Crosswalk----####
@@ -505,6 +506,27 @@ generate_codebook = function(.data)  {
           stringr::str_detect(calculated_variable, "percent$") & variable_type == "Count",
           stringr::str_replace(calculated_variable, "percent$", "pct"),
           calculated_variable))
+
+    # Add inflation adjustment information to dollar-denominated variables
+    if (!is.null(dollar_year)) {
+      dollar_patterns = c(
+        "^median_household_income",
+        "^household_income_quintile", 
+        "^housing_cost_monthly_median",
+        "^median_household_income_in_past_12_months"
+      )
+      
+      for (pattern in dollar_patterns) {
+        result3 = result3 %>%
+          dplyr::mutate(
+            definition = dplyr::if_else(
+              stringr::str_detect(calculated_variable, pattern),
+              paste0(definition, " Values have been inflation-adjusted to ", dollar_year, " dollars using Consumer Price Index data."),
+              definition
+            )
+          )
+      }
+    }
 
     return(result3)
 }
