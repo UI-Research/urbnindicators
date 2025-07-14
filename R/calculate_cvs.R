@@ -46,11 +46,8 @@ se_sum = function(...) {
       data_long %>% dplyr::filter(estimate != 0),
       data_long %>%
         dplyr::filter(estimate == 0) %>%
-        #AS: you could also use dplyr::slice_max() after
-        #- group_by() to avoid having to arrange first
-        dplyr::arrange(dplyr::desc(moe)) %>%
         dplyr::group_by(observation) %>%
-        dplyr::slice(1) %>%
+        dplyr::slice_max(order_by = moe, n = 1) %>%
         dplyr::ungroup()) %>%
     dplyr::group_split(observation) %>%
     purrr::map(~ .x %>% dplyr::pull(moe)) %>%
@@ -137,8 +134,8 @@ extract_definition_terms = function(.definition, .type) {
 #' @title Calculate coefficients of variation
 #' @details Create CVs for all ACS estimates and derived indicators
 #' @param .df The dataset returned from \code{compile_acs_data()}.
-#'  The argument to this parameter must have an attribute named `codebook` (as is)
-#'  true of results from \code{compile_acs_data()}.
+#'  The argument to this parameter must have an attribute named `codebook` (as is
+#'  true of results from \code{compile_acs_data())}.
 #' @returns A modified dataframe that includes newly calculated indicators.
 #' @examples
 #' \dontrun{
@@ -153,11 +150,22 @@ extract_definition_terms = function(.definition, .type) {
 #'  dplyr::select(matches("_CV$"))
 #' }
 
+# df = compile_acs_data(
+#     years = c(2023),
+#     geography = "county",
+#     states = "NJ")
+#
+# df %>%
+#   select(matches("_M$")) %>%
+#     pivot_longer(everything())
+
 calculate_cvs = function(.df) {
   warning("Coefficients of variation and related, calculated measures of error such as margins of error and standard errors are experimental features and should be used with great caution. Such measures are respectively suffixed with `_CV`, `_M`, and `_SE`.")
 
   ## the codebook attached to the default compile_acs_data() return
   codebook = .df %>% attr("codebook")
+
+  test = tidycensus::get_acs(geography = "county", variables = c("B01001_001", "B01001_002"), state = "CO")
 
   ## modified codebook prepared for calculating CVs
   codebook1 = codebook %>%
@@ -166,16 +174,13 @@ calculate_cvs = function(.df) {
     dplyr::mutate(
       numerator_count = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_real_,
-        #AS: Is there a reason the condition here just checks for "Metadata" but for
-        # - the denominator_count it checks for metatada and sum? It strikes me that
-        # - the conditions should be parallel?
-        variable_type %in% c("Metadata") ~ NA_real_,
-        #AS: I might suggest pulling this logic into a helper function or at least adding
-        # - a comment explaining what it's doing.
+        variable_type %in% c("Metadata", "Sum") ~ NA_real_,
+        # Extract numerator definition and count comma-separated variables
         TRUE ~ stringr::str_extract(definition, "Numerator = .*\\.") %>% stringr::str_count(",") + 1),
       denominator_count = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_real_,
         variable_type %in% c("Metadata", "Sum") ~ NA_real_,
+        # Extract denominator definition and count comma or dash-separated variables
         TRUE ~ stringr::str_extract(definition, "Denominator = .*\\.") %>% stringr::str_count(",|-") + 1),
       numerator = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_character_,
@@ -187,23 +192,16 @@ calculate_cvs = function(.df) {
         variable_type %in% c("Metadata", "Sum") ~ NA_character_,
         TRUE ~ extract_definition_terms(definition, .type = "Denominator")),
       ## these variables do not have associated MOEs when returned from the Census API
+      ## controlled estimates are geography-dependent - check for NA MOEs in the data
       no_moe_flag = dplyr::case_when(
-        #AS: It seems to me that the use of controlled estimates is a bit more nuanced than
-        # - applying a rule to at the variable level. For example, it seems that these variables
-        # - are controlled only at some geographic levels - for example, the following call:
-        # - get_acs(geography = "county", variables = c("B01001_001", "B01001_002"), state = "CO")
-        # - returns NA MOEs for some but not all counties. And when I change geography to "tract"
-        # - all of the MOEs are non-NA. It seems to me that a better approach would involve
-        # - testing for NA values in the MOE column. I'd also flag that I believe there are
-        # - other controlled variables, such as group quarters per the link below. I've also
-        # - seen some mention of household controlled estimates but haven't been able to find them.
-        # - https://www.census.gov/programs-surveys/acs/technical-documentation/user-notes/2024-02.html
-        # - I might suggest defining a controlled_variables object with this vector and using
-        # - throughout instead of hard-coding in multiple places
-        # - I would also recommend checking out footnote 9 on p 11 of this doc for more on controlled
-        # - estimates and geography:
-        # - https://www2.census.gov/programs-surveys/acs/replicate_estimates/2023/documentation/5-year/2019-2023_Variance_Replicate_Table_Documentation.pdf
-        denominator %in% c("sex_by_age_universe", "race_universe", "total_population_universe") ~ 1,
+        # Check if corresponding MOE column has NA values (controlled estimates)
+        calculated_variable %in% names(.df) & 
+          !paste0(calculated_variable, "_M") %in% names(.df) ~ 1,
+        calculated_variable %in% names(.df) & 
+          paste0(calculated_variable, "_M") %in% names(.df) & 
+          all(is.na(.df[[paste0(calculated_variable, "_M")]])) ~ 1,
+        # Fallback for known controlled variables (universe variables)
+        calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe") ~ 1,
         TRUE ~ 0),
       #AS: noting that for the test data this variable is always equal to 0
       # - flagging to confirm that is intended
@@ -219,29 +217,26 @@ calculate_cvs = function(.df) {
         numerator_count > 1 & denominator_count > 1 ~ "complex numerator and complex denominator percent",
         TRUE ~ "unspecified"),
       variable_class = dplyr::case_when(
-        #AS: Not urgent, but I think you could simplify these conditions using the
-        # - moe_type var you just created
-        ## for example: snap_received_percent
-        variable_type == "Percent" & numerator_count == 1 & denominator_count == 1 &
-          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "simple percent, no calculated variables",
-        ## for example: disability_percent
-        variable_type == "Percent" & numerator_count > 1 & denominator_count == 1 &
-          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "numerator sum percent",
-        ## for example: means_transportation_work_bicycle_percent
-        variable_type == "Percent" & numerator_count == 1 & denominator_count > 1 &
-          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "denominator sum percent",
-        ## for example: cost_burdened_30percentormore_allincomes_percent
-        variable_type == "Percent" & numerator_count > 1 & denominator_count > 1 &
-          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "numerator and denominator sum percent",
-        ## for example: age_10_14_years
-        variable_type == "Sum" & calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "sum",
+        # Handle special cases first
+        calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe") ~ "no MOE count",
         ## percents where there's no MOE for the denominator
         ## for example: sex_female_percent
         no_moe_flag == 1 & variable_type == "Percent" ~ "no MOE denominator",
-        calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe") ~ "no MOE count",
+        calculated_variable_dependency_flag == 1 ~ "non-ACS variable",
+        # Use moe_type to simplify percent classifications
+        ## for example: snap_received_percent
+        moe_type == "simple percent" ~ "simple percent, no calculated variables",
+        ## for example: disability_percent
+        moe_type == "complex numerator percent" ~ "numerator sum percent",
+        ## for example: means_transportation_work_bicycle_percent
+        moe_type == "complex denominator percent" ~ "denominator sum percent",
+        ## for example: cost_burdened_30percentormore_allincomes_percent
+        moe_type == "complex numerator and complex denominator percent" ~ "numerator and denominator sum percent",
+        ## for example: age_10_14_years
+        moe_type == "sum" ~ "sum",
         ## basic SE calculations with se_simple
         ## for example: snap_universe
-        stringr::str_detect(definition, "This is a raw ACS estimate.") ~ "raw",
+        moe_type == "raw" ~ "raw",
         moe_type == "minus" ~ "one minus percentage",
         TRUE ~ "non-ACS variable"))
 
@@ -281,12 +276,11 @@ calculate_cvs = function(.df) {
           numerator_moe_variables = numerator_estimate_variables %>%
             paste0("_M")
 
-          #AS: flagging that you're calculating SEs not MOEs here for clarity
-          # - in line 327 below, I believe you're dividing the SEs you
-          # - just calculated here by 1.645, which is incorrect
-          moe = se_sum(
+          # Calculate pooled standard error for sum, then convert to MOE
+          se = se_sum(
             purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
-            purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))) * 1.645
+            purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x)))
+          moe = se * 1.645
 
           return(moe) },
         .names = "{.col}_M"),
@@ -326,12 +320,12 @@ calculate_cvs = function(.df) {
             stringr::str_c("_M")
 
           ## for variables where we already have an MOE, this is simple:
-          #AS: As mentioned in the comment on line 284 above, I think you don't
-          # - need to apply se_simple() to variable_classes$sum since those are
-          # - already a SE. I think you could add another condition to the logic
-          # - below that just pulls the column for variable_classes$sum
-          if (current_column %in% c(variable_classes$raw, variable_classes$sum) %>% stringr::str_remove("_count_estimate")) {
+          if (current_column %in% variable_classes$raw %>% stringr::str_remove("_count_estimate")) {
             SE = se_simple(get(dplyr::cur_column() %>% paste0("_M"))) }
+          
+          ## for sum variables, we already calculated SEs above - just pull them
+          if (current_column %in% variable_classes$sum %>% stringr::str_remove("_count_estimate")) {
+            SE = get(dplyr::cur_column() %>% paste0("_M")) / 1.645 }
 
           ## for percent variables with a denominator that doesn't have an MOE
           ## these are directly assigned the CV of the numerator and then we back-calculate
@@ -428,8 +422,8 @@ calculate_cvs = function(.df) {
     colnames() %>%
     stringr::str_remove("_SE$")
 
-  #AS: I think a comment here would be helpful to explain the conditions
-  # - in which we'd expect a variable to have a SE but not MOE
+  # Variables with SE but not MOE occur when we calculate SEs directly
+  # (e.g., for complex percentages) but didn't create corresponding MOEs
   df_cvs = df_cvs1 %>%
     dplyr::mutate(
       dplyr::across(

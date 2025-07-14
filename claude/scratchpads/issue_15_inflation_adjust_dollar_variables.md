@@ -49,8 +49,8 @@ For multi-year calls, dollar-denominated variables are returned in dollars corre
 - [x] Test edge cases (single year, multiple years, NULL parameter)
 
 ### 7. Documentation
-- [ ] Update function documentation
-- [ ] Add examples showing inflation adjustment
+- [x] Update function documentation
+- [x] Add examples showing inflation adjustment
 
 ## Technical Details
 
