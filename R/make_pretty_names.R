@@ -156,6 +156,12 @@ make_pretty_names = function(.data, .case = "title") {
       stringr::str_trim() %>%
       stringr::str_to_title() %>%
       stringr::str_replace_all(capitalization_spacing_other_fixes)
+
+    output = switch(
+      .case,
+      title = stringr::str_to_title(result),
+      sentence = stringr::str_to_sentence(result),
+      upper = stringr::str_to_upper(result))
   }
 
   if (is.data.frame(.data)) {
@@ -166,15 +172,13 @@ make_pretty_names = function(.data, .case = "title") {
           stringr::str_trim() %>%
           stringr::str_to_title() %>%
           stringr::str_replace_all(capitalization_spacing_other_fixes))
-  }
 
-  output = switch(
-    .case,
-    title = dplyr::rename_with(result, stringr::str_to_title),
-    sentence = dplyr::rename_with(result, stringr::str_to_sentence),
-    upper = dplyr::rename_with(result, stringr::str_to_upper))
+    output = switch(
+      .case,
+      title = dplyr::rename_with(result, stringr::str_to_title),
+      sentence = dplyr::rename_with(result, stringr::str_to_sentence),
+      upper = dplyr::rename_with(result, stringr::str_to_upper))
+  }
 
   return(output)
 }
-
-
