@@ -261,7 +261,6 @@ calculate_cvs = function(.df) {
 
           return(moe) },
         .names = "{.col}_M"),
-
       ## count variables
       ## raw ACS variables
       dplyr::across(
@@ -297,7 +296,7 @@ calculate_cvs = function(.df) {
             stringr::str_c("_M")
 
           ## for variables where we already have an MOE, this is simple:
-          if (current_column %in% c(variable_classes$raw, variable_classes$sum) %>% stringr::str_remove("_count_estimate")) {
+          if (current_column %in% (c(variable_classes$raw, variable_classes$sum) %>% stringr::str_remove("_count_estimate"))) {
             SE = se_simple(get(dplyr::cur_column() %>% paste0("_M"))) }
 
           ## for percent variables with a denominator that doesn't have an MOE

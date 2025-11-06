@@ -20,8 +20,10 @@
 #' @importFrom magrittr %>%
 
 generate_codebook = function(.data)  {
+
     .data = .data %>%
       sf::st_drop_geometry()
+
     ####----Variable Crosswalk----####
     expression_list = rlang::enexpr(list_acs_variables) %>% as.list()
     list_acs_expression = expression_list[[2]][[4]][[3]]
@@ -257,9 +259,9 @@ generate_codebook = function(.data)  {
     }
 
     ####----Get Across Variable Names (Function)----####
-    get_across_variable_names = function(match_expression) {
+    get_across_variable_names = function(match_expression, negative_match_expression = "nomatchhere") {
       selected_columns = .data %>%
-        dplyr::select(dplyr::matches(match_expression), -dplyr::matches("_M$|percent$")) %>%
+        dplyr::select(dplyr::matches(match_expression), -dplyr::matches("_M$|percent$"), -dplyr::matches(negative_match_expression)) %>%
         colnames
     }
 
@@ -278,12 +280,25 @@ generate_codebook = function(.data)  {
       }
 
       if (any(expression %>% as.character %>% stringr::str_detect("across|matches"))) {
+
+        negative_match_expression = expression %>%
+          as.character() %>%
+          purrr::keep(~ stringr::str_detect(.x, "across|matches")) %>%
+          stringr::str_extract("-dplyr::matches.*") %>%
+          stringr::str_remove_all('dplyr::matches\\(|\\){1,4}$|"|\\-') %>%
+          stringr::str_trim() %>% stringr::str_squish()
+
+        if (any(is.na(negative_match_expression))) { negative_match_expression = negative_match_expression[!is.na(negative_match_expression)] }
+        if (all(is.na(negative_match_expression))) { negative_match_expression = "nomatchhere" }
+
         summed_variables = expression %>%
           as.character() %>%
           purrr::keep(~ stringr::str_detect(.x, "across|matches")) %>%
-          stringr::str_extract("matches.*") %>%
-          stringr::str_remove_all('matches\\(|\\){1,4}$|"') %>%
-          get_across_variable_names()
+          stringr::str_extract("dplyr::matches.*") %>%
+          stringr::str_remove_all('dplyr::matches\\(|\\){1,4}$|"|-dplyr::matches\\(.*\\)|\\)\\,') %>%
+          stringr::str_trim() %>% stringr::str_squish() %>%
+          get_across_variable_names(negative_match_expression = negative_match_expression)
+
         }
 
       return(summed_variables)
@@ -296,9 +311,7 @@ generate_codebook = function(.data)  {
     define_codebook_variable = function(mutate_call, mutate_call_name) {
 
        # mutate_call = rlang::expr(
-       #   safe_divide(
-       #     rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(bicycle|walked)$"))),
-       #     (means_transportation_work_universe - means_transportation_work_worked_from_home))
+       #   safe_divide(rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[4-9]|2).*"), -dplyr::matches("percent"))), year_structure_built_universe)
        # )
 
       if (any((mutate_call[[1]] %>% as.character) == "safe_divide")) {
