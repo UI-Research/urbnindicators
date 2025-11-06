@@ -42,39 +42,39 @@ internal_compute_acs_variables = function(.data) {
           .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("below", "universe"))),
           .names = "{.col}_percent"),
         cost_burdened_30percentormore_allincomes_percent = safe_divide(
-          ## numerator -- all households where gross rent is 30% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(percent|pct)"))),
-          ## denominator -- all households with computed rent shares
+          ## numerator -- all renter-occupied households where gross rent is 30% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(percent)"))),
+          ## denominator -- all renter-occupied households with computed rent shares
           rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed")))),
         cost_burdened_50percentormore_allincomes_percent = safe_divide(
-          ## numerator -- all households where gross rent is 50% or more of household income
+          ## numerator -- all renter-occupied households where gross rent is 50% or more of household income
           rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*50_0.*percent"))),
-          ## denominator -- all households with computed rent shares
+          ## denominator -- all renter-occupied households with computed rent shares
           rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed")))),
         cost_burdened_30percentormore_incomeslessthan35000_percent = safe_divide(
-          ## numerator -- all households where gross rent is 30% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(percent|pct)"))),
-          ## denominator -- all households whose household incomes are $34,999 or less with computed rent shares
+          ## numerator -- all renter-occupied households where gross rent is 30% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(percent)"))),
+          ## denominator -- all renter-occupied households whose household incomes are $34,999 or less with computed rent shares
           rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999).*not_computed")))),
         cost_burdened_50percentormore_incomeslessthan35000_percent = safe_divide(
-          ## numerator -- all households where gross rent is 50% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(percent|pct)"))),
-          ## denominator -- all households whose household incomes are $34,999 or less with computed rent shares
+          ## numerator -- all renter-occupied households where gross rent is 50% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(percent)"))),
+          ## denominator -- all renter-occupied households whose household incomes are $34,999 or less with computed rent shares
           rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999).*not_computed")))),
         cost_burdened_30percentormore_incomeslessthan50000_percent = safe_divide(
-          ## numerator -- all households where gross rent is 30% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(percent|pct)"))),
-          ## denominator -- all households whose household incomes are $50,000 or less with computed rent shares
+          ## numerator -- all renter-occupied households where gross rent is 30% or more of household income
+          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(percent)"))),
+          ## denominator -- all renter-occupied households whose household incomes are $50,000 or less with computed rent shares
           rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999|49999).*not_computed")))),
         cost_burdened_50percentormore_incomeslessthan50000_percent = safe_divide(
-          ## numerator -- all households where gross rent is 50% or more of household income
+          ## numerator -- all renter-occupied households where gross rent is 50% or more of household income
           rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*percent"))),
-          ## denominator -- all households whose household incomes are $50,000 or less
+          ## denominator -- all renter-occupied households whose household incomes are $50,000 or less
           rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999|49999).*not_computed")))),
 
       ####----RACE/ETHNICITY----####
         dplyr::across(
-          .cols = c(dplyr::matches("^race_nonhispanic|^race_hispanic"), -dplyr::matches("percent")),
+          .cols = dplyr::matches("^race_nonhispanic|^race_hispanic"),
           .fns = ~ safe_divide(.x, race_universe),
           .names = "{.col}_percent"),
         race_personofcolor_percent = 1 - race_nonhispanic_white_alone_percent,
@@ -212,7 +212,7 @@ internal_compute_acs_variables = function(.data) {
       ####----TRANSPORTATION----####
       ## Note: means_transportation_work_public_transportation_excluding_taxicab is a measure of conventional "public transportation"
       dplyr::across(
-        .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home", -dplyr::matches("percent"))),
+        .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home"), -dplyr::matches("percent")),
         .fns = ~ safe_divide(.x, (means_transportation_work_universe - means_transportation_work_worked_from_home)),
         .names = "{.col}_percent"), ## the denominator here does not include people who worked from home
       means_transportation_work_worked_from_home_percent = safe_divide(
@@ -253,6 +253,7 @@ internal_compute_acs_variables = function(.data) {
         educational_attainment_degree_morethanbachelors_percent = safe_divide(
           rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(masters|professional|doctorate)"))),
           educational_attainment_population_25_years_over_universe),
+
         educational_enrollment_grades_1thru12_percent = safe_divide(
           school_enrollment_universe - rowSums(dplyr::select(., dplyr::matches("school_enrollment.*[^(_universe)]"), -dplyr::matches("percent"))),
           school_enrollment_universe),

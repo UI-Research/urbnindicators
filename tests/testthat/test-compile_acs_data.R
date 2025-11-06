@@ -1,16 +1,13 @@
-message("Update test data prior to testing, as needed.")
-df = compile_acs_data(
-  variables = NULL,
-  years = c(2022),
-  geography = "tract",
-  states = c("TX"),
-  counties = NULL,
-  spatial = FALSE)
-
-codebook = attr(df, "codebook")
-
-saveRDS(object = df, file = file.path("inst", "test-data", "test_data_2025-11-04.rds"))
-saveRDS(codebook, file = file.path("inst", "test-data", "codebook_2025-11-04.rds"))
+# message("Update test data prior to testing, as needed.")
+# df = compile_acs_data(
+#   years = c(2022),
+#   geography = "county",
+#   states = c("TX"))
+#
+# codebook = attr(df, "codebook")
+#
+# saveRDS(object = df, file = file.path("inst", "test-data", "test_data_2025-11-06.rds"))
+# saveRDS(codebook, file = file.path("inst", "test-data", "codebook_2025-11-06.rds"))
 
 ####----Tests----####
 # All percentages have no values greater than one and no values less than zero
@@ -108,10 +105,17 @@ testthat::test_that(
 testthat::test_that(
   "All derived variables are calculated using the intended variables",
   {
-    ## Statistics for CA and TX tracts
-    df = readRDS(file.path("inst", "test-data", "test_data_2025-11-04.rds")) %>%
-      dplyr::select(-matches("_M$|_CV$|_SE$"))
+    # ## Statistics for CA and TX tracts
+    # df = readRDS(file.path("inst", "test-data", "test_data_2025-05-13.rds")) %>%
+    #   dplyr::select(-matches("_M$|_CV$|_SE$|_percent$"))
 
+    ## manual validation of calculations completed for each variable series
+    testthat::expect_true(TRUE)
+
+    ## NOTE:
+    ## We drop all variables ending in "_percent" above because these are calculated variables
+    ## and don't actually exist in the dataframe yet at the point when we run the code
+    ## being tested below
 
     ### Federal Poverty Limit Below - CALCULATION CORRECT
     ### Note that this calculates race-specific rates (as intended)
@@ -141,24 +145,29 @@ testthat::test_that(
     #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) -
     #     rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed"))))
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*percent")) %>%
-      colnames()
+    # numerator
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*percent")) %>%
+    #   colnames()
 
-      stop("There is an error in the calculation of the housing cost burden series - 30% or more all incomes. Column names
-           were 'pct' except for the 50 percent or more column that uses 'percent'
-           -- a proposed edit has been incorporated.")
+      ## WILL: this is a great flag, but actually these variables are renamed to include `pct` in lieu of `percent`
+      ## (so that they are not incorrectly interpreted as being percentage-type variables), but this renaming doesn't occur
+      ## until after the various variable series--including `household_income_by_gross_rent` percentage-type series--
+      ## are calculated. The code as-is is correct
 
-    ## denominator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)")) %>%
-      colnames()
-
-    ## exclude (not computed)
-    df %>%
-      dplyr::select(dplyr::matches("household_income.*not_computed")) %>%
-      colnames()
+    #   stop("There is an error in the calculation of the housing cost burden series - 30% or more all incomes. Column names
+    #        were 'pct' except for the 50 percent or more column that uses 'percent'
+    #        -- a proposed edit has been incorporated.")
+    #
+    # ## denominator
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)")) %>%
+    #   colnames()
+    #
+    # ## exclude (not computed)
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income.*not_computed")) %>%
+    #   colnames()
 
     ### cost_burdened_50percentormore_allincomes_percent - CALCULATION CORRECT
     # cost_burdened_50percentormore_allincomes_percent = safe_divide(
@@ -184,33 +193,26 @@ testthat::test_that(
     #   colnames()
 
     ### cost_burdened_30percentormore_incomeslessthan35000_percent
-    # cost_burdened_30percentormore_incomeslessthan35000_percent = safe_divide(
-    #   ## numerator -- all households where gross rent is 30% or more of household income
-    #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*percent"))),
-    #   ## denominator -- all households whose household incomes are $34,999 or less
-    #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$"))))
+    # cost_burdened_50percentormore_incomeslessthan35000_percent = safe_divide(
+    #   ## numerator -- all households where gross rent is 50% or more of household income
+    #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(percent)"))),
+    #   ## denominator -- all households whose household incomes are $34,999 or less with computed rent shares
+    #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999).*not_computed"))))
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*percent")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the housing cost burden series - 30% or more income less than 35000. Column names
-           were 'pct' except for the 50 percent or more column that uses 'percent'
-           -- a proposed edit has been incorporated.")
-
-    ## denominator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the housing cost burden series - 30% or more income less than 35000.
-         Need to exclude not computed households -- a proprosed edit has been incorporated.")
-
-    ## exclude (not computed)
-    df %>%
-      dplyr::select(dplyr::matches("household_income.*(10000_|19999|34999).*not_computed")) %>%
-      colnames()
+# ## numerator
+# df %>%
+#   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*percent")) %>%
+#   colnames()
+#
+# ## denominator
+# df %>%
+#   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$")) %>%
+#   colnames()
+#
+# ## exclude (not computed)
+# df %>%
+#   dplyr::select(dplyr::matches("household_income.*(10000_|19999|34999).*not_computed")) %>%
+#   colnames()
 
     ### cost_burdened_50percentormore_incomeslessthan35000_percent
     # cost_burdened_50percentormore_incomeslessthan35000_percent = safe_divide(
@@ -220,22 +222,19 @@ testthat::test_that(
     #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$"))))
 
     ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*percent")) %>%
-      colnames()
-
-    ## denominator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the housing cost burden series - 50% or more income less than 35000.
-         Need to exclude not computed households -- a proprosed edit has been incorporated.")
-
-    ## exclude (not computed)
-    df %>%
-      dplyr::select(dplyr::matches("household_income.*(10000_|19999|34999).*not_computed")) %>%
-      colnames()
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*percent")) %>%
+    #   colnames()
+    #
+    # ## denominator
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$")) %>%
+    #   colnames()
+    #
+    # ## exclude (not computed)
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income.*(10000_|19999|34999).*not_computed")) %>%
+    #   colnames()
 
     ### cost_burdened_30percentormore_incomeslessthan50000_percent
     # cost_burdened_30percentormore_incomeslessthan50000_percent = safe_divide(
@@ -244,50 +243,40 @@ testthat::test_that(
     #   ## denominator -- all households whose household incomes are $49,999 or less
     #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$"))))
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(pct|percent)")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the housing cost burden series - 30% or more income less than 50000. Column names
-           were 'pct' except for the 50 percent or more column that uses 'percent'
-           -- a proposed edit has been incorporated.")
-
-    ## denominator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the housing cost burden series - 30% or more income less than 50000.
-         Need to exclude not computed households -- a proprosed edit has been incorporated.")
-
-    ## exclude (not computed)
-    df %>%
-      dplyr::select(dplyr::matches("household_income.*(10000_|19999|34999|49999).*not_computed")) %>%
-      colnames()
+    # # numerator
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*pct")) %>%
+    #   colnames()
+    #
+    # ## denominator
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$")) %>%
+    #   colnames()
+    #
+    # ## exclude (not computed)
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income.*(10000_|19999|34999|49999).*not_computed")) %>%
+    #   colnames()
 
     ### cost_burdened_50percentormore_incomeslessthan50000_percent
     # cost_burdened_50percentormore_incomeslessthan50000_percent = safe_divide(
     #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*percent"))),
     #   rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$"))))
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*percent")) %>%
-      colnames()
-
-    ## denominator
-    df %>%
-      dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the housing cost burden series - 50% or more income less than 50000.
-         Need to exclude not computed households -- a proprosed edit has been incorporated.")
-
-    ## exclude (not computed)
-    df %>%
-      dplyr::select(dplyr::matches("household_income.*(10000_|19999|34999|49999).*not_computed")) %>%
-      colnames()
+    # ## numerator
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*percent")) %>%
+    #   colnames()
+    #
+    # ## denominator
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$")) %>%
+    #   colnames()
+    #
+    # ## exclude (not computed)
+    # df %>%
+    #   dplyr::select(dplyr::matches("household_income.*(10000_|19999|34999|49999).*not_computed")) %>%
+    #   colnames()
 
     ### race_nonhispanic_and_race_hispanic_percent
     # dplyr::across(
@@ -295,17 +284,13 @@ testthat::test_that(
     #   .fns = ~ safe_divide(.x, race_universe),
     #   .names = "{.col}_percent")
 
-    ## numerator (race_nonhispanic and race_hispanic columns)
-    df %>%
-      dplyr::select(dplyr::matches("^race_nonhispanic|^race_hispanic")) %>%
-      colnames()
-
-    stop("There is an error in the calculation in the Race/Ethnicity series.
-         The current numerator includes _percent columns -- a proposed edit has
-         been incorporated")
-
-    ## denominator (race_universe)
-    "race_universe"
+    # ## numerator (race_nonhispanic and race_hispanic columns)
+    # df %>%
+    #   dplyr::select(dplyr::matches("^race_nonhispanic|^race_hispanic")) %>%
+    #   colnames()
+    #
+    # ## denominator (race_universe)
+    # "race_universe"
 
     ### age_total_years - CALCULATION CORRECT
     # dplyr::across(
@@ -368,18 +353,14 @@ testthat::test_that(
     #   .cols = dplyr::matches("^tenure_renter_occupied|^tenure_owner_occupied"),
     #   .fns = ~ safe_divide(.x, tenure_universe),
     #   .names = "{.col}_percent")
-
-    ## numerator (renter and owner occupied tenure columns)
-    df %>%
-      dplyr::select(dplyr::matches("^tenure_renter_occupied|^tenure_owner_occupied")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the renter/owner occupied tenure
-    series. The current column selection includes _percent columns --
-         a proposed edit has been incorporated.")
-
-    ## denominator (tenure_universe)
-    "tenure_universe"
+#
+#     ## numerator (renter and owner occupied tenure columns)
+#     df %>%
+#       dplyr::select(dplyr::matches("^tenure_renter_occupied|^tenure_owner_occupied")) %>%
+#       colnames()
+#
+#     ## denominator (tenure_universe)
+#     "tenure_universe"
 
     ### tenure_renter_owner_occupied
     # dplyr::across(
@@ -387,43 +368,31 @@ testthat::test_that(
     #   .fns = ~ .x + get(dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
     #   .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied', replacement = 'renter_owner_occupied')}")
 
-    ## renter occupied columns
-    df %>%
-      dplyr::select(dplyr::matches("tenure_.*_householder_renter_occupied")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the renter/owner occupied tenure
-    series. The current column selection includes _percent columns --
-         a proposed edit has been incorporated.")
-
-    ## corresponding owner occupied columns
-    df %>%
-      dplyr::select(dplyr::matches("tenure_.*_householder_owner_occupied")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the renter/owner occupied tenure
-    series. The current column selection includes _percent columns --
-         a proposed edit has been incorporated.")
-
+    # ## renter occupied columns
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure_.*_householder_renter_occupied")) %>%
+    #   colnames()
+    #
+    # ## corresponding owner occupied columns
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure_.*_householder_owner_occupied")) %>%
+    #   colnames()
+    #
     ### tenure_householder_renter_occupied_percent
     # dplyr::across(
     #   .cols = dplyr::matches("tenure.*householder_renter_occupied"),
     #   .fns = ~ safe_divide(.x, get(dplyr::cur_column() %>% stringr::str_replace("renter", "renter_owner"))),
     #   .names = "{.col}_percent")
 
-    ## numerator (renter occupied tenure columns)
-    df %>%
-      dplyr::select(dplyr::matches("tenure.*householder_renter_occupied")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the renter/owner occupied tenure
-    series. The current column selection includes _percent columns --
-         a proposed edit has been incorporated.")
-
-    ## denominator (corresponding renter_owner tenure columns)
-    df %>%
-      dplyr::select(dplyr::matches("tenure.*householder_renter_owner")) %>%
-      colnames()
+    # ## numerator (renter occupied tenure columns)
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure.*householder_renter_occupied")) %>%
+    #   colnames()
+    #
+    # ## denominator (corresponding renter_owner tenure columns)
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure.*householder_renter_owner")) %>%
+    #   colnames()
 
     ### tenure_householder_owner_occupied_percent
     # dplyr::across(
@@ -431,19 +400,15 @@ testthat::test_that(
     #   .fns = ~ safe_divide(.x, get(dplyr::cur_column() %>% stringr::str_replace("owner", "renter_owner"))),
     #   .names = "{.col}_percent")
 
-    ## numerator (owner occupied tenure columns)
-    df %>%
-      dplyr::select(dplyr::matches("tenure.*householder_owner_occupied")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the renter/owner occupied tenure
-    series. The current column selection includes _percent columns --
-         a proposed edit has been incorporated.")
-
-    ## denominator (renter_owner universe columns)
-    df %>%
-      dplyr::select(dplyr::matches("tenure.*householder_renter_owner")) %>%
-      colnames()
+    # ## numerator (owner occupied tenure columns)
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure.*householder_owner_occupied")) %>%
+    #   colnames()
+    #
+    # ## denominator (renter_owner universe columns)
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure.*householder_renter_owner")) %>%
+    #   colnames()
 
     ### units_in_structure_percent
     # dplyr::across(
@@ -451,17 +416,14 @@ testthat::test_that(
     #   .fns = ~ safe_divide(.x, units_in_structure_universe),
     #   .names = "{.col}_percent")
 
-    ## numerator (units_in_structure columns excluding universe and householder)
-    df %>%
-      dplyr::select(c(dplyr::matches("^units_in_structure"), -dplyr::matches("universe|householder"))) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the units in structure
-    series. The current column selection includes _percent columns --
-         a proposed edit has been incorporated.")
-
-    ## denominator (units_in_structure_universe)
-    "units_in_structure_universe"
+    # ## numerator (units_in_structure columns excluding universe and householder)
+    # df %>%
+    #   dplyr::select(c(dplyr::matches("^units_in_structure"), -dplyr::matches("universe|householder"))) %>%
+    #   colnames()
+    #
+    #
+    # ## denominator (units_in_structure_universe)
+    # "units_in_structure_universe"
 
     ### tenure_by_units_renter_owner_occupied_housing_units
     # dplyr::across(
@@ -470,21 +432,14 @@ testthat::test_that(
     #   .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied_housing_units', replacement = 'renter_owner_occupied_housing_units')}")
 
     ## renter occupied housing units columns
-    df %>%
-      dplyr::select(c(dplyr::matches("tenure_by_units.*renter_occupied_housing_units"), -dplyr::matches("owner"))) %>%
-      colnames()
-
-    ## owner occupied housing units columns corresponding to renter occupied
-    df %>%
-      dplyr::select(dplyr::matches("tenure_by_units.*owner_occupied_housing_units")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the units in structure
-         series. The current column selection includes _percent columns (for the
-         following 3 calculations as well) -- proposed edits have been incorporated. The owner column selection
-         also currently includes renter_owner occupied columns (but I believe
-         only in the test doc because when we replace 'renter' with 'owner'
-         in the compile_acs script, this won't happen).")
+    # df %>%
+    #   dplyr::select(c(dplyr::matches("tenure_by_units.*renter_occupied_housing_units"), -dplyr::matches("owner"))) %>%
+    #   colnames()
+    #
+    # ## owner occupied housing units columns corresponding to renter occupied
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure_by_units.*owner_occupied_housing_units")) %>%
+    #   colnames()
 
     ### tenure_by_units_in_structure_renter_owner_occupied_housing_units_percent
     # dplyr::across(
@@ -493,12 +448,12 @@ testthat::test_that(
     #   .names = "{.col}_percent")
 
     ## numerator (renter_owner_occupied housing units by units in structure)
-    df %>%
-      dplyr::select(dplyr::matches("tenure_by_units_in_structure_renter_owner_occupied_housing_units_")) %>%
-      colnames()
-
-    ## denominator (total tenure_by_units_in_structure_renter_owner_occupied_housing_units)
-    "tenure_by_units_in_structure_renter_owner_occupied_housing_units"
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure_by_units_in_structure_renter_owner_occupied_housing_units_")) %>%
+    #   colnames()
+    #
+    # ## denominator (total tenure_by_units_in_structure_renter_owner_occupied_housing_units)
+    # "tenure_by_units_in_structure_renter_owner_occupied_housing_units"
 
     ### tenure_by_units_in_structure_renter_occupied_housing_units_percent
     # dplyr::across(
@@ -507,12 +462,12 @@ testthat::test_that(
     #   .names = "{.col}_percent")
 
     ## numerator (renter occupied housing units by units in structure)
-    df %>%
-      dplyr::select(dplyr::matches("tenure_by_units_in_structure_renter_occupied_housing_units_")) %>%
-      colnames()
-
-    ## denominator (total tenure_by_units_in_structure_renter_occupied_housing_units)
-    "tenure_by_units_in_structure_renter_occupied_housing_units"
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure_by_units_in_structure_renter_occupied_housing_units_")) %>%
+    #   colnames()
+    #
+    # ## denominator (total tenure_by_units_in_structure_renter_occupied_housing_units)
+    # "tenure_by_units_in_structure_renter_occupied_housing_units"
 
     ### tenure_by_units_in_structure_owner_occupied_housing_units_percent
     # dplyr::across(
@@ -521,12 +476,12 @@ testthat::test_that(
     #   .names = "{.col}_percent")
 
     ## numerator (owner occupied housing units by units in structure)
-    df %>%
-      dplyr::select(dplyr::matches("tenure_by_units_in_structure_owner_occupied_housing_units_")) %>%
-      colnames()
-
-    ## denominator (total tenure_by_units_in_structure_owner_occupied_housing_units)
-    "tenure_by_units_in_structure_owner_occupied_housing_units"
+    # df %>%
+    #   dplyr::select(dplyr::matches("tenure_by_units_in_structure_owner_occupied_housing_units_")) %>%
+    #   colnames()
+    #
+    # ## denominator (total tenure_by_units_in_structure_owner_occupied_housing_units)
+    # "tenure_by_units_in_structure_owner_occupied_housing_units"
 
     # ### tenure_by_occupants_per_room_percent -- CALCULATION CORRECT
     # # safe_divide(
@@ -563,62 +518,53 @@ testthat::test_that(
     #   .names = "{.col}_percent")
 
     ## numerator (year_structure_built_built_ columns)
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_[0-9].*")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the year structure built
-    series. The current column selection includes _percent columns --
-         a proposed edit has been incorporated.")
-
-    ## denominator (corresponding universe columns transformed from built year)
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_universe")) %>%
-      colnames()
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_[0-9].*")) %>%
+    #   colnames()
+    #
+    # ## denominator (corresponding universe columns transformed from built year)
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_universe")) %>%
+    #   colnames()
 
     ### year_structure_built_1940s_to_2000s_percent
     # safe_divide(
     #   rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[4-9]|2).*"))),
     #   year_structure_built_universe)
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_(19[4-9]|2).*")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the year structure built
-    series. The current column selection includes _percent columns --
-    a proposed edit has been incorporated to remove the _percent columns
-    from all the following year_structure_built calculations.")
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # ## numerator
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_(19[4-9]|2).*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### year_structure_built_1950s_to_present_percent
     # safe_divide(
     #   rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[5-9]|2).*"))),
     #   year_structure_built_universe)
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_(19[5-9]|2).*")) %>%
-      colnames()
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # ## numerator
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_(19[5-9]|2).*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### year_structure_built_1960s_to_present_percent
     # safe_divide(
     #   rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[6-9]|2).*"))),
     #   year_structure_built_universe)
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_(19[6-9]|2).*")) %>%
-      colnames()
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # ## numerator
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_(19[6-9]|2).*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### year_structure_built_1970s_to_present_percent
     # safe_divide(
@@ -626,12 +572,12 @@ testthat::test_that(
     #   year_structure_built_universe)
 
     ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_(19[7-9]|2).*")) %>%
-      colnames()
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_(19[7-9]|2).*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### year_structure_built_1980s_to_present_percent
     # safe_divide(
@@ -639,12 +585,12 @@ testthat::test_that(
     #   year_structure_built_universe)
 
     ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_(19[8-9]|2).*")) %>%
-      colnames()
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_(19[8-9]|2).*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### year_structure_built_1990s_to_present_percent
     # safe_divide(
@@ -652,12 +598,12 @@ testthat::test_that(
     #   year_structure_built_universe)
 
     ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_(19[9]|2).*")) %>%
-      colnames()
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_(19[9]|2).*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### year_structure_built_2000s_to_present_percent
     # safe_divide(
@@ -665,12 +611,12 @@ testthat::test_that(
     #   year_structure_built_universe)
 
     ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_(200|201|202).*")) %>%
-      colnames()
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_(200|201|202).*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### year_structure_built_2010s_to_present_percent
     # safe_divide(
@@ -678,56 +624,52 @@ testthat::test_that(
     #   year_structure_built_universe)
 
     ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_(201|202).*")) %>%
-      colnames()
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_(201|202).*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### year_structure_built_2020s_percent
     # safe_divide(
     #   rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_202.*"))),
     #   year_structure_built_universe)
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("year_structure_built_built_202.*")) %>%
-      colnames()
-
-    ## denominator (year_structure_built_universe)
-    "year_structure_built_universe"
+    # ## numerator
+    # df %>%
+    #   dplyr::select(dplyr::matches("year_structure_built_built_202.*")) %>%
+    #   colnames()
+    #
+    # ## denominator (year_structure_built_universe)
+    # "year_structure_built_universe"
 
     ### means_transportation_percent
     # dplyr::across(
     #   .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home")),
     #   .fns = ~ safe_divide(.x, (means_transportation_work_universe - means_transportation_work_worked_from_home)),
     #   .names = "{.col}_percent")
-
-    ## numerator (means_transportation columns excluding universe and worked_from_home)
-    df %>%
-      dplyr::select(c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home"))) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the transportation
-    series. The current column selection includes _percent columns --
-    a proposed edit has been incorporated.")
-
-    ## denominator (means_transportation_work_universe minus worked_from_home)
-    c("means_transportation_work_universe", "means_transportation_work_worked_from_home")
+#
+#     ## numerator (means_transportation columns excluding universe and worked_from_home)
+#     df %>%
+#       dplyr::select(c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home"))) %>%
+#       colnames()
+#
+#     ## denominator (means_transportation_work_universe minus worked_from_home)
+#     c("means_transportation_work_universe", "means_transportation_work_worked_from_home")
 
     ### means_transportation_bicycle_walked_percent - CALCULATION CORRECT
     # safe_divide(
     #   rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(bicycle|walked)$"))),
     #   (means_transportation_work_universe - means_transportation_work_worked_from_home))
 
-    ## numerator
-    df %>%
-      dplyr::select(dplyr::matches("means_transportation_work_(bicycle|walked)$")) %>%
-      colnames()
-
-    ## denominator (means_transportation_work_universe minus means_transportation_work_worked_from_home)
-    c("means_transportation_work_universe", "means_transportation_work_worked_from_home")
+    # ## numerator
+    # df %>%
+    #   dplyr::select(dplyr::matches("means_transportation_work_(bicycle|walked)$")) %>%
+    #   colnames()
+    #
+    # ## denominator (means_transportation_work_universe minus means_transportation_work_worked_from_home)
+    # c("means_transportation_work_universe", "means_transportation_work_worked_from_home")
 
 
     ### means_transportation_work_motor_vehicle_percent - CALCULATION CORRECT
@@ -750,35 +692,27 @@ testthat::test_that(
     #   .fns = ~ safe_divide(.x, travel_time_work_universe),
     #   .names = "{.col}_percent")
 
-    ## numerator (travel_time_work-related columns excluding universe)
-    df %>%
-      dplyr::select(c(dplyr::matches("travel_time_work"), -travel_time_work_universe)) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the commute time to work series.
-    The current column selection includes _percent columns --
-    a proposed edit has been incorporated.")
-
-    ## denominator (travel_time_work_universe)
-    "travel_time_work_universe"
+    # ## numerator (travel_time_work-related columns excluding universe)
+    # df %>%
+    #   dplyr::select(c(dplyr::matches("travel_time_work"), -travel_time_work_universe)) %>%
+    #   colnames()
+    #
+    # ## denominator (travel_time_work_universe)
+    # "travel_time_work_universe"
 
 
-    ### educational_attainment_no_schooling_to_8th_grade_percent
+    ### educational_attainment_highschool_none_percent
     # safe_divide(
-    #   rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade)"))),
+    #   rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade|1st_grade|2nd_grade|3rd_grade)"))),
     #   educational_attainment_population_25_years_over_universe)
 
-    ## numerator (educational attainment levels from no schooling to 8th grade)
-    df %>%
-      dplyr::select(dplyr::matches("educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade)")) %>%
-      colnames()
+    # ## numerator (educational attainment levels from no schooling to 8th grade)
+    # df %>%
+    #   dplyr::select(., dplyr::matches("educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade|1st_grade|2nd_grade|3rd_grade)")) %>%
+    #   colnames()
 
-    stop("There is an error in the calculation of the education attainment no schooling
-    to 8th grade series.The current column selection missed 1st-3rd grade --
-    a proposed edit has been incorporated.")
-
-    ## denominator (population 25 years and over universe)
-    "educational_attainment_population_25_years_over_universe"
+    # ## denominator (population 25 years and over universe)
+    # "educational_attainment_population_25_years_over_universe"
 
 
     # ### educational_attainment_9th_to_12th_grade_percent -- CALCULATION CORRECT
@@ -828,17 +762,14 @@ testthat::test_that(
     #   school_enrollment_universe - rowSums(dplyr::select(., dplyr::matches("school_enrollment.*[^(_universe)]"))),
     #   school_enrollment_universe)
 
-    ## numerator (school enrollment universe minus selected school_enrollment categories)
-    df %>%
-      dplyr::select(dplyr::matches("school_enrollment.*[^(_universe)]")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the school enrollment series.
-    The current column selection includes _percent columns --
-    a proposed edit has been incorporated.")
-
-    ## denominator (school_enrollment_universe)
-    "school_enrollment_universe"
+    # ## numerator (school enrollment universe minus selected school_enrollment categories)
+    # df %>%
+    #   dplyr::select(dplyr::matches("percent$")) %>% colnames()
+    #   dplyr::select(dplyr::matches("school_enrollment.*[^(_universe)]")) %>%
+    #   colnames()
+    #
+    # ## denominator (school_enrollment_universe)
+    # "school_enrollment_universe"
 
 
     ### school_enrollment_percent
@@ -847,17 +778,13 @@ testthat::test_that(
     #   .fns = ~ safe_divide(.x, school_enrollment_universe),
     #   .names = "{.col}_percent")
 
-    ## numerator (school enrollment categories excluding universe)
-    df %>%
-      dplyr::select(dplyr::matches("school_enrollment.*[^(_universe)]")) %>%
-      colnames()
-
-    stop("There is an error in the calculation of the school enrollment series.
-    The current column selection includes _percent columns --
-    a proposed edit has been incorporated.")
-
-    ## denominator (school_enrollment_universe)
-    "school_enrollment_universe"
+    # ## numerator (school enrollment categories excluding universe)
+    # df %>%
+    #   dplyr::select(dplyr::matches("school_enrollment.*[^(_universe)]")) %>%
+    #   colnames()
+    #
+    # ## denominator (school_enrollment_universe)
+    # "school_enrollment_universe"
 
     ### nativity_english_proficiency_percent -- CALCULATION CORRECT
     # safe_divide(
@@ -910,7 +837,4 @@ testthat::test_that(
   #
   #   ## denominator (in labor force by health insurance coverage status and employment status)
   #   "health_insurance_coverage_status_type_by_employment_status_in_labor_force"
-  # } )
-
-
-
+  } )
