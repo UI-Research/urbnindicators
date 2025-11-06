@@ -46,9 +46,7 @@ se_sum = function(...) {
       data_long %>% dplyr::filter(estimate != 0),
       data_long %>%
         dplyr::filter(estimate == 0) %>%
-        dplyr::group_by(observation) %>%
-        dplyr::slice_max(order_by = moe, n = 1) %>%
-        dplyr::ungroup()) %>%
+        dplyr::slice_max(order_by = moe, .by = "observation", n = 1)) %>%
     dplyr::group_split(observation) %>%
     purrr::map(~ .x %>% dplyr::pull(moe)) %>%
     purrr::map(se_simple) %>%
@@ -160,12 +158,13 @@ extract_definition_terms = function(.definition, .type) {
 #     pivot_longer(everything())
 
 calculate_cvs = function(.df) {
-  warning("Coefficients of variation and related, calculated measures of error such as margins of error and standard errors are experimental features and should be used with great caution. Such measures are respectively suffixed with `_CV`, `_M`, and `_SE`.")
+  warning("Coefficients of variation and related, calculated measures of error such
+          as margins of error and standard errors are experimental features and should
+          be used with great caution. Such measures are respectively suffixed with
+          `_CV`, `_M`, and `_SE`.")
 
   ## the codebook attached to the default compile_acs_data() return
   codebook = .df %>% attr("codebook")
-
-  test = tidycensus::get_acs(geography = "county", variables = c("B01001_001", "B01001_002"), state = "CO")
 
   ## modified codebook prepared for calculating CVs
   codebook1 = codebook %>%
@@ -195,18 +194,15 @@ calculate_cvs = function(.df) {
       ## controlled estimates are geography-dependent - check for NA MOEs in the data
       no_moe_flag = dplyr::case_when(
         # Check if corresponding MOE column has NA values (controlled estimates)
-        calculated_variable %in% names(.df) & 
-          !paste0(calculated_variable, "_M") %in% names(.df) ~ 1,
-        calculated_variable %in% names(.df) & 
-          paste0(calculated_variable, "_M") %in% names(.df) & 
-          all(is.na(.df[[paste0(calculated_variable, "_M")]])) ~ 1,
+        #
+        calculated_variable %in% names(.df) &
+          !stringr::str_c(calculated_variable, "_M") %in% names(.df) ~ 1,
+        calculated_variable %in% names(.df) &
+          stringr::str_c(calculated_variable, "_M") %in% names(.df) &
+          all(is.na(.df[[stringr::str_c(calculated_variable, "_M")]])) ~ 1,
         # Fallback for known controlled variables (universe variables)
         calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe") ~ 1,
         TRUE ~ 0),
-      #AS: noting that for the test data this variable is always equal to 0
-      # - flagging to confirm that is intended
-      calculated_variable_dependency_flag = dplyr::if_else(
-        stringr::str_detect(definition, "calculated variable"), 1, 0),
       moe_type = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ "raw",
         stringr::str_detect(definition, "minus") ~ "minus",
@@ -222,7 +218,6 @@ calculate_cvs = function(.df) {
         ## percents where there's no MOE for the denominator
         ## for example: sex_female_percent
         no_moe_flag == 1 & variable_type == "Percent" ~ "no MOE denominator",
-        calculated_variable_dependency_flag == 1 ~ "non-ACS variable",
         # Use moe_type to simplify percent classifications
         ## for example: snap_received_percent
         moe_type == "simple percent" ~ "simple percent, no calculated variables",
@@ -322,7 +317,7 @@ calculate_cvs = function(.df) {
           ## for variables where we already have an MOE, this is simple:
           if (current_column %in% variable_classes$raw %>% stringr::str_remove("_count_estimate")) {
             SE = se_simple(get(dplyr::cur_column() %>% paste0("_M"))) }
-          
+
           ## for sum variables, we already calculated SEs above - just pull them
           if (current_column %in% variable_classes$sum %>% stringr::str_remove("_count_estimate")) {
             SE = get(dplyr::cur_column() %>% paste0("_M")) / 1.645 }
@@ -444,5 +439,5 @@ calculate_cvs = function(.df) {
 
 utils::globalVariables(c(
   "calculated_variable", "numerator_variable_count", "denominator_variable_count",
-  "no_moe_flag", "calculated_variable_dependency_flag", "numerator", "denominator",
+  "no_moe_flag", "numerator", "denominator",
   "observation", "type", "estimate", "moe", "variable_class"))
