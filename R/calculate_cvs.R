@@ -46,10 +46,7 @@ se_sum = function(...) {
       data_long %>% dplyr::filter(estimate != 0),
       data_long %>%
         dplyr::filter(estimate == 0) %>%
-        dplyr::arrange(dplyr::desc(moe)) %>%
-        dplyr::group_by(observation) %>%
-        dplyr::slice(1) %>%
-        dplyr::ungroup()) %>%
+        dplyr::slice_max(order_by = moe, by = "observation", n = 1)) %>%
     dplyr::group_split(observation) %>%
     purrr::map(~ .x %>% dplyr::pull(moe)) %>%
     purrr::map(se_simple) %>%
@@ -135,8 +132,8 @@ extract_definition_terms = function(.definition, .type) {
 #' @title Calculate coefficients of variation
 #' @details Create CVs for all ACS estimates and derived indicators
 #' @param .df The dataset returned from \code{compile_acs_data()}.
-#'  The argument to this parameter must have an attribute named `codebook` (as is)
-#'  true of results from \code{compile_acs_data()}.
+#'  The argument to this parameter must have an attribute named `codebook` (as is
+#'  true of results from \code{compile_acs_data())}.
 #' @returns A modified dataframe that includes newly calculated indicators.
 #' @examples
 #' \dontrun{
@@ -150,12 +147,31 @@ extract_definition_terms = function(.definition, .type) {
 #' cvs = calculate_cvs(df) %>%
 #'  dplyr::select(matches("_CV$"))
 #' }
-
+#' @keywords internal
 calculate_cvs = function(.df) {
-  warning("Coefficients of variation and related, calculated measures of error such as margins of error and standard errors are experimental features and should be used with great caution. Such measures are respectively suffixed with `_CV`, `_M`, and `_SE`.")
+  warning("Coefficients of variation and related calculated measures of error such
+          as margins of error (for derived variables) and standard errors are
+          experimental features and should be used with  caution.
+          Such measures are respectively suffixed with `_CV`, `_M`, and `_SE`.")
 
   ## the codebook attached to the default compile_acs_data() return
   codebook = .df %>% attr("codebook")
+
+  ## source: https://www.census.gov/programs-surveys/acs/technical-documentation/user-notes/2024-02.html
+  ## these are the variables (at least for 2023) that at times have controlled
+  ## estimates. for these variables, if the MOE in the raw data is missing, we
+  ## set the MOE equal to 0, as controlled estimates have no sampling error.
+  ## (note that group quarters estimates are also controlled at the state and national
+  ## levels, but this package does not return group quarters estimates)
+  controlled_variables = c(
+    "total_population_universe", "sex_by_age_universe", "race_universe",
+    "race_hispanic_allraces", "race_nonhispanic_allraces") %>% stringr::str_c("_M")
+
+  .df = .df %>%
+    dplyr::mutate(
+      dplyr::across(
+        .cols = dplyr::any_of(controlled_variables),
+        .fns = ~ dplyr::if_else(is.na(.x), 0, .x) ))
 
   ## modified codebook prepared for calculating CVs
   codebook1 = codebook %>%
@@ -164,11 +180,13 @@ calculate_cvs = function(.df) {
     dplyr::mutate(
       numerator_count = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_real_,
-        variable_type %in% c("Metadata") ~ NA_real_,
+        variable_type %in% c("Metadata", "Sum") ~ NA_real_,
+        # Extract numerator definition and count comma-separated variables
         TRUE ~ stringr::str_extract(definition, "Numerator = .*\\.") %>% stringr::str_count(",") + 1),
       denominator_count = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_real_,
         variable_type %in% c("Metadata", "Sum") ~ NA_real_,
+        # Extract denominator definition and count comma or dash-separated variables
         TRUE ~ stringr::str_extract(definition, "Denominator = .*\\.") %>% stringr::str_count(",|-") + 1),
       numerator = dplyr::case_when(
         definition == "This is a raw ACS estimate." ~ NA_character_,
@@ -179,16 +197,10 @@ calculate_cvs = function(.df) {
         definition == "This is a raw ACS estimate." ~ NA_character_,
         variable_type %in% c("Metadata", "Sum") ~ NA_character_,
         TRUE ~ extract_definition_terms(definition, .type = "Denominator")),
-      ## these variables do not have associated MOEs when returned from the Census API
-      no_moe_flag = dplyr::case_when(
-        denominator %in% c("sex_by_age_universe", "race_universe", "total_population_universe") ~ 1,
-        TRUE ~ 0),
-      calculated_variable_dependency_flag = dplyr::if_else(
-        stringr::str_detect(definition, "calculated variable"), 1, 0),
       moe_type = dplyr::case_when(
-        definition == "This is a raw ACS estimate." ~ "raw",
+        stringr::str_detect(definition,"This is a raw ACS estimate") ~ "raw",
         stringr::str_detect(definition, "minus") ~ "minus",
-        stringr::str_detect(definition, "sum") & variable_type == "Sum" ~ "sum",
+        stringr::str_detect(definition, "(Sum|sum)") & variable_type == "Sum" ~ "sum",
         numerator_count == 1 & denominator_count == 1 ~ "simple percent",
         numerator_count == 1 & denominator_count > 1 ~ "complex denominator percent",
         numerator_count > 1 & denominator_count == 1 ~ "complex numerator percent",
@@ -196,26 +208,18 @@ calculate_cvs = function(.df) {
         TRUE ~ "unspecified"),
       variable_class = dplyr::case_when(
         ## for example: snap_received_percent
-        variable_type == "Percent" & numerator_count == 1 & denominator_count == 1 &
-          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "simple percent, no calculated variables",
+        moe_type == "simple percent" ~ "simple percent, no calculated variables",
         ## for example: disability_percent
-        variable_type == "Percent" & numerator_count > 1 & denominator_count == 1 &
-          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "numerator sum percent",
+        moe_type == "complex numerator percent" ~ "numerator sum percent",
         ## for example: means_transportation_work_bicycle_percent
-        variable_type == "Percent" & numerator_count == 1 & denominator_count > 1 &
-          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "denominator sum percent",
+        moe_type == "complex denominator percent" ~ "denominator sum percent",
         ## for example: cost_burdened_30percentormore_allincomes_percent
-        variable_type == "Percent" & numerator_count > 1 & denominator_count > 1 &
-          calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "numerator and denominator sum percent",
+        moe_type == "complex numerator and complex denominator percent" ~ "numerator and denominator sum percent",
         ## for example: age_10_14_years
-        variable_type == "Sum" & calculated_variable_dependency_flag == 0 & no_moe_flag == 0 ~ "sum",
-        ## percents where there's no MOE for the denominator
-        ## for example: sex_female_percent
-        no_moe_flag == 1 & variable_type == "Percent" ~ "no MOE denominator",
-        calculated_variable %in% c("total_population_universe", "sex_by_age_universe", "race_universe") ~ "no MOE count",
+        moe_type == "sum" ~ "sum",
         ## basic SE calculations with se_simple
         ## for example: snap_universe
-        stringr::str_detect(definition, "This is a raw ACS estimate.") ~ "raw",
+        moe_type == "raw" ~ "raw",
         moe_type == "minus" ~ "one minus percentage",
         TRUE ~ "non-ACS variable"))
 
@@ -255,12 +259,15 @@ calculate_cvs = function(.df) {
           numerator_moe_variables = numerator_estimate_variables %>%
             paste0("_M")
 
-          moe = se_sum(
+          # Calculate pooled standard error for sum, then convert to MOE
+          se = se_sum(
             purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
-            purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))) * 1.645
+            purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x)))
+          moe = se * 1.645
 
           return(moe) },
         .names = "{.col}_M"),
+
       ## count variables
       ## raw ACS variables
       dplyr::across(
@@ -296,29 +303,9 @@ calculate_cvs = function(.df) {
             stringr::str_c("_M")
 
           ## for variables where we already have an MOE, this is simple:
-          if (current_column %in% (c(variable_classes$raw, variable_classes$sum) %>% stringr::str_remove("_count_estimate"))) {
+          ## we have already calculated MOEs for derived sum variables as well
+          if (current_column %in% c(c(variable_classes$raw, variable_classes$sum) %>% stringr::str_remove("_count_estimate"))) {
             SE = se_simple(get(dplyr::cur_column() %>% paste0("_M"))) }
-
-          ## for percent variables with a denominator that doesn't have an MOE
-          ## these are directly assigned the CV of the numerator and then we back-calculate
-          ## values for the SE and MOE from the CV
-          if (current_column %in% variable_classes[["no MOE denominator"]]) {
-            estimate_numerator = purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))
-            estimate_moe = purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x))
-            ## in the case that there are multiple numerator variables, we need to
-            ## calculate the pooled SE of the numerator -- otherwise we just directly
-            ## calculate the SE
-            if (length(numerator_estimate_variables) > 1) {
-              se_numerator = se_sum(
-                estimate_moe,
-                estimate_numerator) } else {
-              se_numerator = se_simple(estimate_moe %>% unlist) }
-
-            ## this is a CV -- we rename these accordingly in a following step
-            ## this is consolidated here for brevity
-            SE = cv(
-              estimate = purrr::pmap_dbl(estimate_numerator, sum),
-              se = se_numerator) }
 
           ## for simple percent variables with one numerator, one denominator:
           if (current_column %in% variable_classes[["simple percent, no calculated variables"]]) {
@@ -364,11 +351,6 @@ calculate_cvs = function(.df) {
 
           return(SE) },
         .names = "{.col}_SE")) %>%
-    ## these variables are initially (above) named as if they're SEs, but in reality
-    ## they're CVs, so we rename accordingly
-    dplyr::rename_with(
-      .cols = variable_classes[["no MOE denominator"]] %>% stringr::str_c("_SE"),
-      .fn = ~ .x %>% stringr::str_replace("_SE$", "_CV")) %>%
     dplyr::mutate(
       ## create coefficients of variation from standard errors
       dplyr::across(
@@ -387,6 +369,8 @@ calculate_cvs = function(.df) {
     colnames() %>%
     stringr::str_remove("_SE$")
 
+  # Variables with SE but not MOE occur when we calculate SEs directly
+  # (e.g., for complex percentages) but didn't create corresponding MOEs
   df_cvs = df_cvs1 %>%
     dplyr::mutate(
       dplyr::across(
@@ -394,18 +378,27 @@ calculate_cvs = function(.df) {
         .fns = ~ .x * 1.645,
         .names = "{.col %>% stringr::str_remove('_SE$')}_M"))
 
-  # moe_variables = df_cvs %>% select(matches("_M$")) %>% colnames() %>% str_remove("_M$")
-  # se_variables = df_cvs %>% select(matches("_SE$")) %>% colnames() %>% str_remove("_SE$")
+  ## quick tests for when making updates to the script
 
-  # # ## should be none
+  # moe_variables = df_cvs %>% dplyr::select(matches("_M$")) %>% colnames() %>% stringr::str_remove("_M$")
+  # se_variables = df_cvs %>% dplyr::select(matches("_SE$")) %>% colnames() %>% stringr::str_remove("_SE$")
+
+  ## should be none
   # se_variables[!se_variables %in% moe_variables]
-  # # ## should be three--the controlled variables that don't have margins of error
   # moe_variables[!moe_variables %in% se_variables]
+
+  # df_cvs %>%
+  #   dplyr::select(dplyr::matches("_SE|_M|_CV")) %>%
+  #   tidyr::pivot_longer(dplyr::everything()) %>%
+  #   dplyr::summarize(
+  #     mean = mean(value),
+  #     min = min(value),
+  #     median = median(value),
+  #     max = max(value))
 
   return(df_cvs)
 }
 
 utils::globalVariables(c(
   "calculated_variable", "numerator_variable_count", "denominator_variable_count",
-  "no_moe_flag", "calculated_variable_dependency_flag", "numerator", "denominator",
-  "observation", "type", "estimate", "moe", "variable_class"))
+  "numerator", "denominator", "observation", "type", "estimate", "moe", "variable_class"))

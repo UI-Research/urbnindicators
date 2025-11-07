@@ -8,8 +8,8 @@ calculate_cvs(.df)
 }
 \arguments{
 \item{.df}{The dataset returned from \code{compile_acs_data()}.
-The argument to this parameter must have an attribute named \code{codebook} (as is)
-true of results from \code{compile_acs_data()}.}
+The argument to this parameter must have an attribute named \code{codebook} (as is
+true of results from \code{compile_acs_data())}.}
 }
 \value{
 A modified dataframe that includes newly calculated indicators.
@@ -33,3 +33,4 @@ cvs = calculate_cvs(df) \%>\%
  dplyr::select(matches("_CV$"))
 }
 }
+\keyword{internal}
