@@ -1,5 +1,5 @@
 pandoc: 3.1.11
-pkgdown: 2.1.3
+pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   codebook: codebook.html
@@ -7,7 +7,7 @@ articles:
   opening-a-pull-request: opening-a-pull-request.html
   quantified-survey-error: quantified-survey-error.html
   urbnindicators: urbnindicators.html
-last_built: 2025-11-06T23:17Z
+last_built: 2025-11-07T23:05Z
 urls:
   reference: https://ui-research.github.io/urbnindicators/reference
   article: https://ui-research.github.io/urbnindicators/articles

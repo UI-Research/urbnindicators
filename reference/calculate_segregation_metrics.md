@@ -1,0 +1,88 @@
+# Calculate segregation at multiple geographies
+
+Calculate multi-group segregation metrics using the Mutual Information
+Index (M)
+
+## Usage
+
+``` r
+calculate_segregation_metrics(
+  data,
+  data_format,
+  nesting_geography_geoid_length
+)
+```
+
+## Arguments
+
+- data:
+
+  A dataframe containing a `GEOID` column and the required input
+  measures, e.g., of race or income, at a single geography (e.g.,
+  tract). The `GEOID` column must be a character column, and each
+  `GEOID` must be unique. If data are formatted wide, there must be at
+  least two columns in addition to `GEOID`. If data are formatted long,
+  there must be a single columd in addition to `GEOID`. inputted data
+  cannot contain other measures.For example: tibble::tribble( ~GEOID,
+  ~race_nonhispanic_white_alone, ~race_nonhispanic_black_alone,
+  "37001020100", 2835, 1035, "37001020200", 1205, 1321)
+
+- data_format:
+
+  Describe the structure of the inputted data. One of "wide" or "long".
+  Data are returned in the same format in which they are passed to the
+  function.
+
+- nesting_geography_geoid_length:
+
+  The length of the `GEOID` that identifies nesting geographies. For
+  example, if smaller_geography_data is defined at the tract level (with
+  a GEOID of length 11), then `nesting_geography_geoid_length = 5` would
+  return segregation metrics for counties (which have a GEOID of
+  length 5) and for tracts (relative to other tracts within the same
+  county).
+
+## Value
+
+A dataframe comprising segregation estimates and associated p-values at
+both geographic levels.
+
+## Details
+
+Given data at a smaller geography (e.g., tract),
+`calculate_segregation_metrics()` returns Mutual Information Index (M)
+values and associated p-values for a perfectly nested larger geography
+(e.g., a county or state) as well as decomposed values for the smaller
+geography (e.g., tract). Note that all segregation calculations rely on
+`segregation` and users should refer to that package at
+https://github.com/elbersb/segregation for further implementation
+details.
+
+## See also
+
+Functions used for underlying segregation calculations are from the
+`segregation` package.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+variables = c(
+  race_nonhispanic_white_alone_ = "B03002_003",
+  race_nonhispanic_black_alone_ = "B03002_004",
+  race_nonhispanic_native_alone_ = "B03002_005",
+  race_nonhispanic_asian_alone_ = "B03002_006",
+  race_nonhispanic_nhpi_alone_ = "B03002_007")
+df_long = tidycensus::get_acs(
+  geography = "tract",
+  state = "SC",
+  variables = variables,
+  output = "tidy") %>%
+  # can only include a GEOID column and segregation-related measures
+  dplyr::select(-c(NAME, matches("_M$")))
+calculate_segregation_metrics(
+  data = df_long,
+  data_format = "long",
+  nesting_geography_geoid_length = 5)
+} # }
+```

@@ -1,0 +1,363 @@
+# How to Open a Pull Request
+
+``` r
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(urbnindicators)
+library(tidycensus)
+```
+
+Pull requests (PRs) are a way to propose changes to the codebase of a
+project. They allow you to suggest changes, improvements, or fixes to
+the code, and they provide a platform for discussion and review before
+those changes are merged into the main codebase.
+
+For
+[`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/),
+a common use-case for a PR is to propose a new variable or series of
+variable. This vignette will illustrate the complete PR process for a
+new series of variables, including where the PR should propose codebase
+updates and the supporting tests and verifications submitted with the PR
+to assert that the newly-created variables are correctly calculated and
+appropriately documented.
+
+## Overview
+
+There are five places in the codebase that should either be updated or
+quality-checked as part of the process of adding a new variable(s).
+These include:
+
+1.  `R/list_acs_variables.R`: this is where the desired variable codes
+    are selected before being passed to
+    [`tidycensus::get_acs()`](https://walker-data.com/tidycensus/reference/get_acs.html).
+
+2.  `R/compile_acs_data.R`, specifically within
+    [`internal_compute_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/internal_compute_acs_variables.md):
+    this is where new derived variables are created, e.g., by
+    standardizing counts by their table denominators.
+
+3.  `R/generate_codebook.R`: this is where we use meta-programming to
+    evaluate the code in `R/compile_acs_data.R` to document the
+    variables and operations used to calculate derived variables.
+
+4.  `R/calculate_cvs.R`: this is where we leverage metadata from the
+    codebook to calculate coefficients of variation (and other measures
+    of error) for all of the returned variables.
+
+5.  `R/make_pretty_names.R`: this facilitates using variable names in
+    charts and tables, so we want to ensure that the
+    programmatically-generated names of new variables return reasonable
+    pretty-printed names.
+
+Our last step is to integrate our proposed changes, execute
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md),
+and evaluate the results to ensure that the changes not only work in
+isolation, but that they also work as part of the broader codebase.
+
+## Our Variable Series
+
+We’re going to add a series of estimates that describe “Household Type”,
+which are contained in table B11001. We can find the relevant variables
+by navigating the codebook returned by
+[`tidycensus::load_variables()`](https://walker-data.com/tidycensus/reference/load_variables.html).
+
+``` r
+codebook = load_variables(dataset = "acs5", year = 2023)
+
+codebook %>%
+  filter(str_detect(name, "B11001")) %>%
+  head()
+#> # A tibble: 6 × 4
+#>   name        label                                            concept geography
+#>   <chr>       <chr>                                            <chr>   <chr>    
+#> 1 B11001A_001 Estimate!!Total:                                 Househ… block gr…
+#> 2 B11001A_002 Estimate!!Total:!!Family households:             Househ… block gr…
+#> 3 B11001A_003 Estimate!!Total:!!Family households:!!Married-c… Househ… block gr…
+#> 4 B11001A_004 Estimate!!Total:!!Family households:!!Other fam… Househ… block gr…
+#> 5 B11001A_005 Estimate!!Total:!!Family households:!!Other fam… Househ… block gr…
+#> 6 B11001A_006 Estimate!!Total:!!Family households:!!Other fam… Househ… block gr…
+```
+
+## 1: `R/list_acs_variables()`
+
+We can see how these variables will be renamed behind the scenes in
+[`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
+by providing the table name to
+[`urbnindicators::select_variables_by_name()`](https://ui-research.github.io/urbnindicators/reference/select_variables_by_name.md).
+
+These are auto-named reasonably well, but we can make the names more
+concise by removing the repeated substring `"including_living_alone_"`.
+Note that each variable names ends in an `_`; this is intentional.
+
+This code is then the code that should be added within
+[`list_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/list_acs_variables.md)
+under the appropriate commented header, which in this case is
+`####----HOUSEHOLD COMPOSITION----####`. We’ll then add the table name
+in comments above this new code, so that the resulting block of code
+will look like the below:
+
+       ####----EMPLOYMENT----####
+          ## EMPLOYMENT STATUS FOR THE POPULATION 16 YEARS AND OVER
+          employment_civilian_labor_force_universe_ = "B23025_003",
+          employment_civilian_labor_force_employed_ = "B23025_004",
+
+       ####----HOUSEHOLD COMPOSITION----####
+          ## AVERAGE HOUSEHOLD SIZE OF OCCUPIED HOUSING UNITS BY TENURE
+          household_size_average_ = "B25010_001",
+          household_size_average_owneroccupied_ = "B25010_002",
+          household_size_average_renteroccupied_ = "B25010_003",
+          
+          ## HOUSEHOLD TYPE (INCLUDING LIVING ALONE)
+          select_variables_by_name("B11001_", census_codebook = codebook) %>%
+            stats::setNames(names(.) %>% stringr::str_remove_all("including_living_alone_")),
+       
+       ####----HEALTH INSURANCE----####
+          ## HEALTH INSURANCE COVERAGE STATUS AND TYPE BY EMPLOYMENT STATUS
+          select_variables("B27011"),
+
+## 2: `R/compile_acs_data`
+
+Now we need to calculate any desired variables. In virtually all cases
+(excepting, for example, estimates that reflect non-count quantities,
+such as medians or percentiles), we will want to calculate percentages.
+In some cases, however, we will first want to create intermediate count
+variables, such as by summing or subtracting multiple count variables.
+In this case, we’ll just calculate percentages.
+
+Selecting an appropriate denominator for percentage variables is
+critical, and at times, complex. The basic approach is to simply divide
+every variable by the table universe, which should contain `universe` in
+the variable name. But in other cases, alternate variables may make for
+more insightful denominators. For example, if we were interested in the
+share of family households that were headed by single male householders,
+we would want to divide
+`household_type_family_households_other_family_male_householder_no_spouse_present`
+by `household_type_family_households_` rather than by
+`household_type_universe_`.
+
+At this point, we’ll want to obtain some sample data to ensure our
+first-pass code is functional. We can do this as so:
+
+``` r
+sample_data = tidycensus::get_acs(
+  years = 2022,
+  geography = "county",
+  state = "NJ",
+  variables = select_variables_by_name("B11001_", census_codebook = codebook) %>%
+        stats::setNames(names(.) %>% stringr::str_remove_all("including_living_alone_")),
+  output = "wide") %>% ## urbnindicators returns wide, not long, data
+  ## when urbnindicators calculates variables, it does so after de-selecting all 
+  ## MOE variables (it joins them back later in the process)
+  select(GEOID, NAME, matches("_E")) %>% 
+  ## urbnindicators also systematically drops all "_E" suffices, which denote "ESTIMATE"
+  ## variables
+  rename_with(cols = everything(), ~ str_remove_all(.x, "_E")) 
+
+sample_data %>%
+  head()
+#> # A tibble: 6 × 11
+#>   GEOID NAME                       household_type_unive…¹ household_type_famil…²
+#>   <chr> <chr>                                       <dbl>                  <dbl>
+#> 1 34001 Atlantic County, New Jers…                 108712                  70517
+#> 2 34003 Bergen County, New Jersey                  353307                 252639
+#> 3 34005 Burlington County, New Je…                 176046                 120137
+#> 4 34007 Camden County, New Jersey                  200569                 131150
+#> 5 34009 Cape May County, New Jers…                  44369                  29171
+#> 6 34011 Cumberland County, New Je…                  53341                  36155
+#> # ℹ abbreviated names: ¹​household_type_universe,
+#> #   ²​household_type_family_households
+#> # ℹ 7 more variables:
+#> #   household_type_family_households_married_couple_family <dbl>,
+#> #   household_type_family_households_other_family <dbl>,
+#> #   household_type_family_households_other_family_male_householder_no_spouse_present <dbl>,
+#> #   household_type_family_households_other_family_female_householder_no_spouse_present <dbl>, …
+```
+
+We calculate percentages across a series of variables using
+[`dplyr::across()`](https://dplyr.tidyverse.org/reference/across.html);
+the general pattern is:
+
+    dplyr::across(
+      .cols = dplyr::matches("[UNIQUE REGEX TO MATCH DESIRED NUMERATOR VARIABLES]),
+      .fns = ~ .x / [UNIVERSE VARIABLE],
+      .names = "{.col}_percent")
+
+In our case, that will be as follows. Note that we explicitly exclude
+the universe variable from our selection of numerators–this is an easy
+step to forget!
+
+Defining an appropriate selection term for the numerators can be
+particularly challenging because we must ensure both that we select the
+desired variables and that we don’t unintentionally select any undesired
+variables, which can be especially difficult when applied to the real
+case, where we’re not selecting from our `sample_data` object but from
+the full suite of variables returned by `urbnindicators`. To help
+evaluate and prevent such issues, users should call
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
+and ensure that the selection term they develop during this stage does
+not select any of the variables that are already returned by
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
+
+Note the use of
+[`urbnindicators::safe_divide()`](https://ui-research.github.io/urbnindicators/reference/safe_divide.md),
+which is a normal division operation except that when the denominator is
+zero, it returns `0` rather than `NaN`.
+
+``` r
+sample_data %>%
+  dplyr::transmute(
+    dplyr::across(
+      .cols = c(dplyr::matches("household_type"), -dplyr::matches("universe")),
+      .fns = ~ safe_divide(.x, household_type_universe),
+      .names = "{.col}_percent")) %>%
+  ## just to print out a subset of our results
+  head() %>% select(1:3)
+#> # A tibble: 6 × 3
+#>   household_type_family_househol…¹ household_type_famil…² household_type_famil…³
+#>                              <dbl>                  <dbl>                  <dbl>
+#> 1                            0.649                  0.444                  0.205
+#> 2                            0.715                  0.558                  0.157
+#> 3                            0.682                  0.524                  0.159
+#> 4                            0.654                  0.441                  0.213
+#> 5                            0.657                  0.517                  0.141
+#> 6                            0.678                  0.420                  0.258
+#> # ℹ abbreviated names: ¹​household_type_family_households_percent,
+#> #   ²​household_type_family_households_married_couple_family_percent,
+#> #   ³​household_type_family_households_other_family_percent
+```
+
+If we’re satisfied with the resulting estimates, we can add this code
+into `compile_acs_data.R`, within
+[`internal_compute_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/internal_compute_acs_variables.md).
+Akin to our preceding step, this new code should be organized under the
+`####----HOUSEHOLD COMPOSITION----####` comment header.
+
+## 3: `R/generate_codebook.R`
+
+If all has gone well, there will be no new code to add to
+[`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)–
+new variables should be automatically documented by the function and
+included in the resulting codebook object that is attached as an
+attribute to the primary dataframe returned by
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
+However, we should meticulously verify that each new variable is in fact
+documented in the codebook, and that its documentation is accurate. If
+the documentation is incorrect, the error we estimate for derived
+variables will also be incorrect.
+
+Note that if the documentation is incorrect, the user creating the PR
+should still open the PR and should note the issue with the
+documentation; the PR should not include any changes to
+[`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md).
+
+## 4: `R/calculate_cvs.R`
+
+Like with step 3 above, if all has gone well, there will be no new code
+to add to
+[`calculate_cvs()`](https://ui-research.github.io/urbnindicators/reference/calculate_cvs.md).
+Here again, the primary task is to check that coefficients of variation
+appear reasonable (and if not, to flag any concerns in the PR).
+
+At this stage, users should also check the magnitude of errors for all
+variables –raw ACS estimates and `urbnindicators`-calculated variables
+alike–across smaller geographies, such as all tracts in one or more
+states. If CVs are large (e.g., over 50) for a large share of all
+tracts, this may indicate that the series of interest is not appropriate
+for tract-level analysis. Because `urbnindicators` is designed to
+facilitate tract-level analysis, variables that are consistently
+unreliable at the tract-level will not be integrated into the codebase.
+
+## 5: `R/make_pretty_names.R`
+
+Finally, we need to ensure that the new variables have reasonable names.
+We can evaluate this easily with our sample data:
+
+``` r
+sample_data %>%
+  dplyr::mutate(
+    dplyr::across(
+      .cols = c(dplyr::matches("household_type"), -dplyr::matches("universe")),
+      .fns = ~ .x / household_type_universe,
+      .names = "{.col}_percent")) %>%
+  urbnindicators::make_pretty_names() %>%
+  colnames()
+#>  [1] "Geoid"                                                                                 
+#>  [2] "Name"                                                                                  
+#>  [3] "Household Type (Universe)"                                                             
+#>  [4] "Household Type Family Households"                                                      
+#>  [5] "Household Type Family Households Married Couple Family"                                
+#>  [6] "Household Type Family Households Other Family"                                         
+#>  [7] "Household Type Family Households Other Family Male Householder No Spouse Present"      
+#>  [8] "Household Type Family Households Other Family Female Householder No Spouse Present"    
+#>  [9] "Household Type Nonfamily Households"                                                   
+#> [10] "Household Type Nonfamily Households Householder Living Alone"                          
+#> [11] "Household Type Nonfamily Households Householder Not Living Alone"                      
+#> [12] "Household Type Family Households (%)"                                                  
+#> [13] "Household Type Family Households Married Couple Family (%)"                            
+#> [14] "Household Type Family Households Other Family (%)"                                     
+#> [15] "Household Type Family Households Other Family Male Householder No Spouse Present (%)"  
+#> [16] "Household Type Family Households Other Family Female Householder No Spouse Present (%)"
+#> [17] "Household Type Nonfamily Households (%)"                                               
+#> [18] "Household Type Nonfamily Households Householder Living Alone (%)"                      
+#> [19] "Household Type Nonfamily Households Householder Not Living Alone (%)"
+```
+
+Though these names are far from perfect, they’re reasonably concise and
+descriptive, and there are no problematic words that are lost in the
+pretty-ifying process (e.g., acronyms, series of numbers, etc.). We can
+leave it to users to make other adjustments, such as removing the
+substring “Household Type”, if they want even more concise names.
+
+## 6: Evaluate Changes by Calling `compile_acs_data()`
+
+Lastly, users should ensure that the code they’ve developed in isolation
+for their PR functions as intended, and without unanticipated side
+effects, by integrating their proposed changes into the codebase (on
+their branch), loading the current version of `urbnindicators` (which is
+done by calling `devtools::load_all()` in the console), and then calling
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
+in a scratch file and interactively exploring both the data and
+codebook.
+
+## 7: Quality Check Results
+
+There are a few strategies for quality-checking the results of a series
+of variables:
+
+1.  Compare to a published benchmark value. This works well for derived
+    variables, such as percentages, that are reported by the Census
+    Bureau in the Subject Tables (tables prefixed with an `S`) but that
+    are not directly available via the detailed tables (prefixed with a
+    `B` or `C`). However, for this series of variables, there are not
+    counterpart percentages reported as part of the subject tables. (An
+    example of one of multiple reasons that `urbnindicators` exclusively
+    uses data from the detailed tables.)
+
+2.  Manually compute a benchmark value. This works well for all those
+    derived variables that aren’t reported in any Census Bureau product.
+    Identify the relevant numerator and denominator variables (in the
+    case of a derived percentage) and manually calculate the derived
+    variable, then compare the manually-computed benchmark to the
+    programmatically-calculated version. This seems very simple for our
+    example here, where each derived variable is a given variable
+    divided by the table universe, but with more complex variables–e.g.,
+    where a numerator is a summed variable itself–this is a very useful
+    quality check.
+
+3.  Plot a histogram of the computed variable(s) (if multiple variables
+    in a series, use
+    [`pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html)
+    to turn the dataframe long, then use `facet_wrap()` to plot each
+    histogram side-by-side. Check for unexpected spikes and outlier
+    values.
+
+4.  Check for missingness. Generally, derived variables should have low
+    or no missingness, so any substantial number of missing observations
+    may be an indication that a calculation has gone awry.
+
+## 8: Open the PR
+
+Once users are satisfied with the proposed code (and/or have noted any
+issues), they should click on their branch in the GitHub repository and
+click `New pull request`.
