@@ -4,8 +4,6 @@
 
 - [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
   : Analysis-ready social science measures
-- [`calculate_segregation_metrics()`](https://ui-research.github.io/urbnindicators/reference/calculate_segregation_metrics.md)
-  : Calculate segregation at multiple geographies
 
 ## Measuring error
 
@@ -18,16 +16,6 @@
   : Calculate a pooled standard error for a proportion or ratio
 - [`cv()`](https://ui-research.github.io/urbnindicators/reference/cv.md)
   : Calculate a coefficient of variation
-- [`calculate_cvs()`](https://ui-research.github.io/urbnindicators/reference/calculate_cvs.md)
-  : Calculate coefficients of variation
-
-## Document data
-
-- [`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)
-  :
-
-  Document variables from
-  [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
 
 ## Helper functions
 
