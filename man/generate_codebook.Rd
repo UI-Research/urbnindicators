@@ -33,3 +33,4 @@ df = compile_acs_data(
 codebook = generate_codebook(.data = df)
 }
 }
+\keyword{internal}

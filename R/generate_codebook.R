@@ -18,6 +18,7 @@
 #' codebook = generate_codebook(.data = df)
 #' }
 #' @importFrom magrittr %>%
+#' @keywords internal
 
 generate_codebook = function(.data)  {
 

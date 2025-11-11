@@ -25,7 +25,7 @@ knitr::opts_chunk$set(
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![License: GPL
 v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-
+[![Codecov test coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](https://app.codecov.io/gh/UI-Research/urbnindicators)
 <!-- badges: end -->
 
 # Overview
@@ -49,10 +49,10 @@ With a single function call, you get:
     available from the ACS.
 
 -   Built-in quality checks to help ensure that calculated variables are
-    accurate.
+    accurate. Plus some good, old-fashioned manual QC.
 
--   Margins of error and coefficients of variation for (virtually) all
-    variables.
+-   Margins of error and coefficients of variation for all variables--those direct
+    from the API as well as derived variables.
 
 # Installation
 
