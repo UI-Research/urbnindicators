@@ -167,8 +167,7 @@ ggplot() +
 A growing number of vignettes aim to support users in effectively using
 this package. These vignettes include:
 
--   A package overview to help users [**Get
-    Started**] (articles/urbnindicators.html).
+-   A package overview to help users [**Get Started**](articles/urbnindicators.html).
 
 -   An interactive version of the package's
     [**Codebook**](articles/codebook.html) so that prospective users can

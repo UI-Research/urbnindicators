@@ -160,7 +160,6 @@ And now we're ready to analyze or plot our data. Simplistically:
 
 ```{r}
 df_urbnindicators %>%
-  select(matches("disability.*percent$"), geometry) %>%
   ggplot() +
     geom_sf(aes(fill = disability_percent)) +
     theme_urbn_map() +
@@ -222,7 +221,7 @@ XX% use a motor vehicle as their primary commute mode."
 ## So What's the Value Add?
 
 Hopefully the process above has illustrated some of the advantages,
-which fall into two buckets: efficiency and reliability.
+which fall into two buckets:
 
 1.  Speed:
 
