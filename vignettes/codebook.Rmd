@@ -15,11 +15,9 @@ knitr::opts_chunk$set(
   comment = "#>")
 ```
 
-```{r setup}
+```{r setup, echo = FALSE}
 library(urbnindicators)
-```
 
-```{r}
 df = compile_acs_data(year = 2023, geography = "us")
 codebook = attr(df, "codebook")
 
@@ -31,4 +29,3 @@ reactable::reactable(
       Definition = definition), 
   filterable = TRUE)
 ```
-

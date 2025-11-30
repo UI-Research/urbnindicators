@@ -15,7 +15,7 @@ testthat::test_that(
   "All percentages have no values greater than one and no values less than zero",
   {
     ## Statistics for CA and TX tracts
-    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
+    df = readRDS(testthat::test_path("test-data", "test_data_2025-05-13.rds"))
 
     percentage_outliers_maxima = df %>%
       dplyr::select(dplyr::matches("percent$")) %>%
@@ -42,7 +42,7 @@ testthat::test_that(
   "All measures have meaningful values",
   {
     ## Statistics for CA and TX Tracts
-    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
+    df = readRDS(testthat::test_path("test-data", "test_data_2025-05-13.rds"))
 
     summary_statistics = df %>%
       dplyr::select(GEOID, matches("percent$")) %>%
@@ -68,7 +68,7 @@ testthat::test_that(
   "All percentages are distinct",
   {
     ## Statistics for CA and TX Tracts
-    df = readRDS(system.file("test-data", "test_data_2025-05-13.rds", package = "urbnindicators"))
+    df = readRDS(testthat::test_path("test-data", "test_data_2025-05-13.rds"))
 
     duplicates = purrr::map_dfr(
       colnames(df %>% dplyr::select(dplyr::matches("percent$"))),

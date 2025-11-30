@@ -2,7 +2,7 @@ testthat::test_that(
   "No CV has missing values for all observations",
   {
     ## Statistics for CA and TX tracts
-    df = readRDS(system.file("test-data", "test_data_2025-11-06.rds", package = "urbnindicators"))
+    df = readRDS(testthat::test_path("test-data", "test_data_2025-11-06.rds"))
 
     measure_level_quality = df %>%
       dplyr::select(dplyr::matches("_CV$")) %>%
@@ -34,7 +34,7 @@ testthat::test_that(
   "All measures have at least some values with modest CVs",
   {
     ## Statistics for CA and TX tracts
-    df = readRDS(system.file("test-data", "test_data_2025-11-06.rds", package = "urbnindicators"))
+    df = readRDS(testthat::test_path("test-data", "test_data_2025-11-06.rds"))
 
     measure_level_quality = df %>%
       dplyr::select(dplyr::matches("_CV$")) %>%
@@ -65,7 +65,7 @@ testthat::test_that(
 testthat::test_that(
   "There is a CV for every variable that has an MOE (or for which one can be calculated)",
   {
-    df = readRDS(system.file("test-data", "test_data_2025-11-06.rds", package = "urbnindicators"))
+    df = readRDS(testthat::test_path("test-data", "test_data_2025-11-06.rds"))
     moes = df %>%
       dplyr::select(dplyr::matches("_M$")) %>%
       colnames() %>%

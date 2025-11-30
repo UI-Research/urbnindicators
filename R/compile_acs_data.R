@@ -337,10 +337,13 @@ compile_acs_data = function(
   options(tigris_use_cache = FALSE)
 
   ## default values for the variables and states arguments.
-  if (length(variables) == 0) { variables = list_acs_variables(year = years[1]) }
-  if (length(states) == 0) { states =  tigris::fips_codes %>%
-    dplyr::filter(!state %in% c("PR", "UM", "VI", "GU", "AS", "MP")) %>%
-    dplyr::pull(state) %>% unique() }
+  if (length(variables) == 0) {
+    suppressWarnings({suppressMessages({variables = list_acs_variables(year = years[1]) })}) }
+  if (length(states) == 0) { suppressWarnings({suppressMessages({
+    states =  tigris::fips_codes %>%
+      dplyr::filter(!state %in% c("PR", "UM", "VI", "GU", "AS", "MP")) %>%
+      dplyr::pull(state) %>% unique()
+  })}) }
 
   ## warning about inter-decadal tract geometry changes
   if ( (max(years) >= 2020) & (min(years) < 2020) & (geography == "tract") ) {
@@ -371,45 +374,47 @@ this function returns.")}
   ## these will be joined to the data to calculate population density
   ## (and optionally retained in the final output)
   suppressMessages({ suppressWarnings({
-      geometries = purrr::map_dfr(
-        years,
-        function(year) {
-          switch(
-            geography,
-            "us" = tigris::nation(year = year) %>%
-              dplyr::mutate(
-                GEOID = "1",
-                ALAND = 9161555541118, ## sum of ALAND from tigris::states(year = 2022, cb = TRUE)
-                AWATER = 711492860209), ## sum of AWATER from tigris::states(year = 2022, cb = TRUE)
-            "region" = tigris::regions(year = year),
-            "division" = tigris::divisions(year = year),
-            "state" = tigris::states(year = year, cb = TRUE),
-            "county" = purrr::map_dfr(states, ~ tigris::counties(state = .x, cb = TRUE, year = year)),
-            "county subdivision" = purrr::map_dfr(states, ~ tigris::county_subdivisions(state = .x, cb = TRUE, year = year)),
-            "tract" = purrr::map_dfr(states, ~ tigris::tracts(state = .x, cb = TRUE, year = year)),
-            "place" = purrr::map_dfr(states, ~ tigris::places(state = .x, cb = TRUE, year = year)),
-            "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
-            "american indian area/alaska native area/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
-            "american indian area/alaska native area (reservation of statistical entity only)" = tigris::native_areas(cb = TRUE, year = year),
-            "american indian area (off reservation trust land only)/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
-            "metropolitan/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-            "metropolitan statistical area/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-            "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-            "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
-            "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
-            dplyr::transmute(
-              area_land_sq_kilometer = ALAND / 1000000,
-              area_water_sq_kilometer = AWATER / 1000000,
-              area_land_water_sq_kilometer = area_land_sq_kilometer + area_water_sq_kilometer,
-              GEOID = GEOID,
-              data_source_year = year) })
-    })})
+    geometries = purrr::map_dfr(
+      years,
+      function(year) {
+        switch(
+          geography,
+          "us" = tigris::nation(year = year) %>%
+            dplyr::mutate(
+              GEOID = "1",
+              ALAND = 9161555541118, ## sum of ALAND from tigris::states(year = 2022, cb = TRUE)
+              AWATER = 711492860209), ## sum of AWATER from tigris::states(year = 2022, cb = TRUE)
+          "region" = tigris::regions(year = year),
+          "division" = tigris::divisions(year = year),
+          "state" = tigris::states(year = year, cb = TRUE),
+          "county" = purrr::map_dfr(states, ~ tigris::counties(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) ,
+          "county subdivision" =  purrr::map_dfr(states, ~ tigris::county_subdivisions(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) ,
+          "tract" =  purrr::map_dfr(states, ~  tigris::tracts(state = .x, cb = TRUE, year = year, progress_bar = FALSE)),
+          "place" = purrr::map_dfr(states, ~  tigris::places(state = .x, cb = TRUE, year = year, progress_bar = FALSE)),
+          "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
+          "american indian area/alaska native area/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
+          "american indian area/alaska native area (reservation of statistical entity only)" = tigris::native_areas(cb = TRUE, year = year),
+          "american indian area (off reservation trust land only)/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
+          "metropolitan/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "metropolitan statistical area/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+          "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
+          "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
+          dplyr::transmute(
+            area_land_sq_kilometer = ALAND / 1000000,
+            area_water_sq_kilometer = AWATER / 1000000,
+            area_land_water_sq_kilometer = area_land_sq_kilometer + area_water_sq_kilometer,
+            GEOID = GEOID,
+            data_source_year = year) })
+  })})
 
   ## configuring to subset call to specified counties, if applicable
   if (geography %in% c("county", "county subdivision", "tract") & !is.null(counties)) {
-    county_codes = tidycensus::fips_codes %>%
-      dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
-      dplyr::filter(county_fips %in% counties)
+    suppressWarnings({suppressMessages({
+      county_codes = tidycensus::fips_codes %>%
+        dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
+        dplyr::filter(county_fips %in% counties)
+    })})
 
     if (nrow(county_codes) == 0) {
       stop("No valid county FIPS codes were found in the `counties` argument.") }
@@ -418,8 +423,10 @@ this function returns.")}
       invalid_county_count = length(counties) - nrow(county_codes)
       warning(paste0("There were ", invalid_county_count, " invalid county codes; no results are returned for these counties.")) }
   } else {
-    county_codes = tidycensus::fips_codes %>%
-      dplyr::filter(state %in% states | state_code %in% states | state_name %in% states) }
+    suppressWarnings({suppressMessages({
+      county_codes = tidycensus::fips_codes %>%
+        dplyr::filter(state %in% states | state_code %in% states | state_name %in% states)
+    })}) }
 
   states = county_codes$state %>% unique
 
