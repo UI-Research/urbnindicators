@@ -14,16 +14,14 @@ science applications.
 ## Design choices
 
 - **Support geographies from the tract level and up**. Block groups are
-  not supported at present because the margins of error for block
-  group-level estimates are often so large as to make the estimates
-  meaningless. We may consider adding support for block groups in the
-  future (open an issue in GitHub if this is of interest).
+  not supported because the margins of error for block group-level
+  estimates are often so large as to make the estimates meaningless.
+  Further, many estimates available from the tract level and up are not
+  available for block groups.
 
-- **Support five-year estimates only.** One-year estimates bring similar
-  margin of error challenges, even for relatively larger-population
-  geographies, such as tracts, zip codes, and even some places and
-  counties. We may consider adding support for them in the future (open
-  an issue in GitHub if this is of interest).
+- **Support five-year estimates only.** One-year estimates bring margin
+  of error challenges, even for relatively larger-population
+  geographies, such as tracts, zip codes, and some places and counties.
 
 - **Support only a subset of ACS variables.** Pre-calculated ACS
   estimates cover tens of thousands of different variables. But, in our
@@ -34,21 +32,19 @@ science applications.
   variables added to the default set.
 
 - **Rename all variables.** The default variable names returned by the
-  ACS API are not human-friendly. Not only is it challenging to
-  determine what a given variable represents when you’re looking at a
-  name like `B01001_001E`, but when you’re looking at a dozen or a
-  hundred such variables, it’s very easy to accidentally misinterpret or
-  mis-select the variable(s) you want. For these reasons, we apply more
-  meaningful names to every returned variable, while retaining
-  consistency of variable names from within the same table so that it’s
-  easy to select and operate on sets of interrelated variables. The
-  downside of this approach is that the default API variable names are
-  used in other publications, and that you will find no documentation
-  anywhere (apart from the codebook returned by this package!) of a
-  variable named, for example, `race_personofcolor_percent`. Many
-  variables in the codebook have their original API names included in
-  their definitions, but we plan to continue to expand this
-  documentation to make it more comprehensive and easier to work with.
+  API are not human-friendly. Not only is it challenging to determine
+  what a given variable represents when you’re looking at a name like
+  `B01001_001E`, but when you’re looking at a dozen or a hundred such
+  variables, it’s very easy to accidentally misinterpret or mis-select
+  the variable(s) you want. For these reasons, we apply more meaningful
+  names to every returned variable while retaining consistency of
+  variable names from within the same table so that it’s easy to select
+  and operate on sets of interrelated variables. The downside of this
+  approach is that the default API variable names are used in other
+  publications, and that you will find no documentation anywhere (apart
+  from the codebook returned by this package!) of a variable named, for
+  example, `race_personofcolor_percent`. Variables in the codebook have
+  their original API names included in their definitions.
 
 - **Return a very large, wide dataset.** The underlying
   [`library(tidycensus)`](https://walker-data.com/tidycensus/) interface
@@ -58,8 +54,8 @@ science applications.
   around which
   [`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
   was designed. Queries at small geographies can be slow, but the result
-  is a dataset containing everything you could want (hopefully) and more
-  (likely). If you’re just looking for one, or a few, variables,
+  is a dataset containing everything you could want. If you’re just
+  looking for one, or a few, variables,
   [`library(tidycensus)`](https://walker-data.com/tidycensus/) is
   probably a better approach, and you can still use functions like
   [`urbnindicators::select_variables_by_name()`](https://ui-research.github.io/urbnindicators/reference/select_variables_by_name.md),

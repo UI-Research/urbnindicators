@@ -97,24 +97,24 @@ under the appropriate commented header, which in this case is
 in comments above this new code, so that the resulting block of code
 will look like the below:
 
-       ####----EMPLOYMENT----####
-          ## EMPLOYMENT STATUS FOR THE POPULATION 16 YEARS AND OVER
-          employment_civilian_labor_force_universe_ = "B23025_003",
-          employment_civilian_labor_force_employed_ = "B23025_004",
+    ####----EMPLOYMENT----####
+      ## EMPLOYMENT STATUS FOR THE POPULATION 16 YEARS AND OVER
+      employment_civilian_labor_force_universe_ = "B23025_003",
+      employment_civilian_labor_force_employed_ = "B23025_004",
 
-       ####----HOUSEHOLD COMPOSITION----####
-          ## AVERAGE HOUSEHOLD SIZE OF OCCUPIED HOUSING UNITS BY TENURE
-          household_size_average_ = "B25010_001",
-          household_size_average_owneroccupied_ = "B25010_002",
-          household_size_average_renteroccupied_ = "B25010_003",
-          
-          ## HOUSEHOLD TYPE (INCLUDING LIVING ALONE)
-          select_variables_by_name("B11001_", census_codebook = codebook) %>%
-            stats::setNames(names(.) %>% stringr::str_remove_all("including_living_alone_")),
-       
-       ####----HEALTH INSURANCE----####
-          ## HEALTH INSURANCE COVERAGE STATUS AND TYPE BY EMPLOYMENT STATUS
-          select_variables("B27011"),
+    ####----HOUSEHOLD COMPOSITION----####
+      ## AVERAGE HOUSEHOLD SIZE OF OCCUPIED HOUSING UNITS BY TENURE
+      household_size_average_ = "B25010_001",
+      household_size_average_owneroccupied_ = "B25010_002",
+      household_size_average_renteroccupied_ = "B25010_003",
+      
+      ## HOUSEHOLD TYPE (INCLUDING LIVING ALONE)
+      select_variables_by_name("B11001_", census_codebook = codebook) %>%
+        stats::setNames(names(.) %>% stringr::str_remove_all("including_living_alone_")),
+
+    ####----HEALTH INSURANCE----####
+      ## HEALTH INSURANCE COVERAGE STATUS AND TYPE BY EMPLOYMENT STATUS
+      select_variables("B27011"),
 
 ## 2: `R/compile_acs_data`
 
@@ -145,13 +145,13 @@ sample_data = tidycensus::get_acs(
   geography = "county",
   state = "NJ",
   variables = select_variables_by_name("B11001_", census_codebook = codebook) %>%
-        stats::setNames(names(.) %>% stringr::str_remove_all("including_living_alone_")),
+    stats::setNames(names(.) %>% stringr::str_remove_all("including_living_alone_")),
   output = "wide") %>% ## urbnindicators returns wide, not long, data
   ## when urbnindicators calculates variables, it does so after de-selecting all 
   ## MOE variables (it joins them back later in the process)
   select(GEOID, NAME, matches("_E")) %>% 
-  ## urbnindicators also systematically drops all "_E" suffices, which denote "ESTIMATE"
-  ## variables
+  ## urbnindicators also systematically drops all "_E" suffices, which denote 
+  ## "ESTIMATE" variables
   rename_with(cols = everything(), ~ str_remove_all(.x, "_E")) 
 
 sample_data %>%

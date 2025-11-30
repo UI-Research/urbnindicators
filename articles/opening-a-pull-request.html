@@ -155,24 +155,24 @@ header, which in this case is
 <code>####----HOUSEHOLD COMPOSITION----####</code>. We’ll then add the
 table name in comments above this new code, so that the resulting block
 of code will look like the below:</p>
-<pre><code>   ####----EMPLOYMENT----####
-      ## EMPLOYMENT STATUS FOR THE POPULATION 16 YEARS AND OVER
-      employment_civilian_labor_force_universe_ = "B23025_003",
-      employment_civilian_labor_force_employed_ = "B23025_004",
+<pre><code>####----EMPLOYMENT----####
+  ## EMPLOYMENT STATUS FOR THE POPULATION 16 YEARS AND OVER
+  employment_civilian_labor_force_universe_ = "B23025_003",
+  employment_civilian_labor_force_employed_ = "B23025_004",
 
-   ####----HOUSEHOLD COMPOSITION----####
-      ## AVERAGE HOUSEHOLD SIZE OF OCCUPIED HOUSING UNITS BY TENURE
-      household_size_average_ = "B25010_001",
-      household_size_average_owneroccupied_ = "B25010_002",
-      household_size_average_renteroccupied_ = "B25010_003",
-      
-      ## HOUSEHOLD TYPE (INCLUDING LIVING ALONE)
-      select_variables_by_name("B11001_", census_codebook = codebook) %&gt;%
-        stats::setNames(names(.) %&gt;% stringr::str_remove_all("including_living_alone_")),
-   
-   ####----HEALTH INSURANCE----####
-      ## HEALTH INSURANCE COVERAGE STATUS AND TYPE BY EMPLOYMENT STATUS
-      select_variables("B27011"),</code></pre>
+####----HOUSEHOLD COMPOSITION----####
+  ## AVERAGE HOUSEHOLD SIZE OF OCCUPIED HOUSING UNITS BY TENURE
+  household_size_average_ = "B25010_001",
+  household_size_average_owneroccupied_ = "B25010_002",
+  household_size_average_renteroccupied_ = "B25010_003",
+  
+  ## HOUSEHOLD TYPE (INCLUDING LIVING ALONE)
+  select_variables_by_name("B11001_", census_codebook = codebook) %&gt;%
+    stats::setNames(names(.) %&gt;% stringr::str_remove_all("including_living_alone_")),
+
+####----HEALTH INSURANCE----####
+  ## HEALTH INSURANCE COVERAGE STATUS AND TYPE BY EMPLOYMENT STATUS
+  select_variables("B27011"),</code></pre>
 </div>
 <div class="section level2">
 <h2 id="rcompile_acs_data">2: <code>R/compile_acs_data</code><a class="anchor" aria-label="anchor" href="#rcompile_acs_data"></a>
@@ -201,13 +201,13 @@ first-pass code is functional. We can do this as so:</p>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  state <span class="op">=</span> <span class="st">"NJ"</span>,</span>
 <span>  variables <span class="op">=</span> <span class="fu"><a href="../reference/select_variables_by_name.html">select_variables_by_name</a></span><span class="op">(</span><span class="st">"B11001_"</span>, census_codebook <span class="op">=</span> <span class="va">codebook</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>        <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="st">"including_living_alone_"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="st">"including_living_alone_"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  output <span class="op">=</span> <span class="st">"wide"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="co">## urbnindicators returns wide, not long, data</span></span>
 <span>  <span class="co">## when urbnindicators calculates variables, it does so after de-selecting all </span></span>
 <span>  <span class="co">## MOE variables (it joins them back later in the process)</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">GEOID</span>, <span class="va">NAME</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"_E"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
-<span>  <span class="co">## urbnindicators also systematically drops all "_E" suffices, which denote "ESTIMATE"</span></span>
-<span>  <span class="co">## variables</span></span>
+<span>  <span class="co">## urbnindicators also systematically drops all "_E" suffices, which denote </span></span>
+<span>  <span class="co">## "ESTIMATE" variables</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename_with</a></span><span class="op">(</span>cols <span class="op">=</span> <span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html" class="external-link">everything</a></span><span class="op">(</span><span class="op">)</span>, <span class="op">~</span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="va">.x</span>, <span class="st">"_E"</span><span class="op">)</span><span class="op">)</span> </span>
 <span></span>
 <span><span class="va">sample_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
