@@ -65,7 +65,8 @@ acs_codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
 
 acs_codebook %>%
   dplyr::filter(stringr::str_detect(concept, "Disability")) %>% 
-  head() %>%
+  ## only printing three, for brevity
+  head(3) %>%
   reactable::reactable()
 ```
 

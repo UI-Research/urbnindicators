@@ -34,7 +34,7 @@ library(gridExtra)
 
 Because data from the American Community **Survey** are--you guessed
 it--survey data, they are subject to sampling error. Sampling error
-means, in very brief, that when we extrapolate from our sample--say, 200
+means, in brief, that when we extrapolate from our sample--say, 200
 households out of a neighborhood population of 1,000 households--we make
 assumptions that the sample is representative of the population.[^1]
 These assumptions are inherently imperfect, and so the estimates we use
@@ -87,7 +87,7 @@ measures of error.
     footnote or in the body of the document, that this and other MOEs
     are calculated at the 90% confidence level). What this means in
     practice is that if we were to repeat 100 times–using exactly the
-    same methods–our methods to calculate this estimate, 90 of those
+    same methods–our approach to calculating this estimate, 90 of those
     times we would produce a parallel estimate between 15% and 25%,
     while 10 of those times, our estimate would fall outside this range.
 

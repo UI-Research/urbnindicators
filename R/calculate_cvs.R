@@ -44,6 +44,7 @@ se_sum = function(...) {
   se =
     dplyr::bind_rows(
       data_long %>% dplyr::filter(estimate != 0),
+      data_long %>% dplyr::filter(is.na(estimate)),
       data_long %>%
         dplyr::filter(estimate == 0) %>%
         dplyr::slice_max(order_by = moe, by = "observation", n = 1)) %>%
@@ -53,6 +54,8 @@ se_sum = function(...) {
     purrr::map(~ .x ^2) %>%
     purrr::map(sum) %>%
     purrr::map_dbl(sqrt)
+
+  stopifnot(nrow(moes) == length(se))
 
   return(se)
 }
@@ -135,18 +138,6 @@ extract_definition_terms = function(.definition, .type) {
 #'  The argument to this parameter must have an attribute named `codebook` (as is
 #'  true of results from \code{compile_acs_data())}.
 #' @returns A modified dataframe that includes newly calculated indicators.
-#' @examples
-#' \dontrun{
-#' df = compile_acs_data(
-#'   variables = list_acs_variables(year = 2022),
-#'   years = c(2022),
-#'   geography = "county",
-#'   states = "NJ",
-#'   counties = NULL,
-#'   spatial = FALSE)
-#' cvs = calculate_cvs(df) %>%
-#'  dplyr::select(matches("_CV$"))
-#' }
 #' @keywords internal
 calculate_cvs = function(.df) {
   warning("Coefficients of variation and related calculated measures of error such
@@ -239,11 +230,11 @@ calculate_cvs = function(.df) {
     purrr::map(~ .x %>% dplyr::pull(calculated_variable)) %>%
     stats::setNames(variable_class_names)
 
-  ## derived sum variables - calculate MOEs that can be used in subsequent calculations
-  ## for example: age_10_14_years
   df_cvs1 = .df %>%
     sf::st_drop_geometry() %>%
     dplyr::mutate(
+      ## derived sum variables - calculate MOEs that can be used in subsequent calculations
+      ## for example: age_10_14_years
       dplyr::across(
         .cols = dplyr::any_of(variable_classes$sum),
         .fns = function(x) {
@@ -263,6 +254,7 @@ calculate_cvs = function(.df) {
           se = se_sum(
             purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
             purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x)))
+
           moe = se * 1.645
 
           return(moe) },
@@ -376,9 +368,13 @@ calculate_cvs = function(.df) {
       dplyr::across(
         .cols = dplyr::all_of(se_variables[!se_variables %in% moe_variables] %>% stringr::str_c("_SE")),
         .fns = ~ .x * 1.645,
-        .names = "{.col %>% stringr::str_remove('_SE$')}_M"))
+        .names = "{.col %>% stringr::str_remove('_SE$')}_M"),
+      ## reduce number of digits
+      dplyr::across(
+        .cols = dplyr::where(is.numeric),
+        .fns = ~ round(.x, digits = 4)))
 
-  ## quick tests for when making updates to the script
+  ####----quick tests for making updates to the script----####
 
   # moe_variables = df_cvs %>% dplyr::select(matches("_M$")) %>% colnames() %>% stringr::str_remove("_M$")
   # se_variables = df_cvs %>% dplyr::select(matches("_SE$")) %>% colnames() %>% stringr::str_remove("_SE$")
@@ -396,6 +392,7 @@ calculate_cvs = function(.df) {
   #     median = median(value),
   #     max = max(value))
 
+  ####----####
   return(df_cvs)
 }
 

@@ -25,7 +25,9 @@ knitr::opts_chunk$set(
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![License: GPL
 v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Codecov test coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](https://app.codecov.io/gh/UI-Research/urbnindicators)
+[![Codecov test
+coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](https://app.codecov.io/gh/UI-Research/urbnindicators)
+
 <!-- badges: end -->
 
 # Overview
@@ -51,8 +53,8 @@ With a single function call, you get:
 -   Built-in quality checks to help ensure that calculated variables are
     accurate. Plus some good, old-fashioned manual QC.
 
--   Margins of error and coefficients of variation for all variables--those direct
-    from the API as well as derived variables.
+-   Margins of error and coefficients of variation for all
+    variables--those direct from the API as well as derived variables.
 
 # Installation
 
@@ -80,6 +82,7 @@ set_urbn_defaults(style = "print")
 ```
 
 ## Obtain Data
+
 ```{r, warning = FALSE, message = FALSE}
 plot_data = compile_acs_data(
     years = c(2017, 2022),
@@ -104,6 +107,7 @@ dumbbell_data = plot_data %>%
 ```
 
 ## Plot Data
+
 ```{r, warning = FALSE, message = FALSE}
 ggplot() +
   geom_segment(
@@ -154,7 +158,7 @@ ggplot() +
     x = "County", 
     y = "Share of population who are people of color",
     color = "Year") +
-  scale_x_discrete(expand = expansion(mult = c(.03, 0.04))) +
+  scale_x_discrete(expand = expansion(mult = c(.03, .04))) +
   scale_y_continuous(
     breaks = c(0, .25, .50, .75, 1.0),
     limits = c(0, .75),
@@ -167,7 +171,8 @@ ggplot() +
 A growing number of vignettes aim to support users in effectively using
 this package. These vignettes include:
 
--   A package overview to help users [**Get Started**](articles/urbnindicators.html).
+-   A package overview to help users [**Get
+    Started**](articles/urbnindicators.html).
 
 -   An interactive version of the package's
     [**Codebook**](articles/codebook.html) so that prospective users can
@@ -188,5 +193,6 @@ This package is built on top of and enormously indebted to
 accessing the Census Bureau API. For users who want additional
 variables, `library(tidycensus)` exposes the entire range of
 pre-tabulated variables available from the ACS and provides access to
-ACS microdata and other Census Bureau datasets. Learn more here:
-<https://walker-data.com/tidycensus/index.html>.
+ACS microdata and other Census Bureau datasets.
+
+Learn more here: <https://walker-data.com/tidycensus/index.html>.

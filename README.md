@@ -11,6 +11,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Codecov test
 coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](https://app.codecov.io/gh/UI-Research/urbnindicators)
+
 <!-- badges: end -->
 
 # Overview
@@ -129,7 +130,7 @@ ggplot() +
     x = "County", 
     y = "Share of population who are people of color",
     color = "Year") +
-  scale_x_discrete(expand = expansion(mult = c(.03, 0.04))) +
+  scale_x_discrete(expand = expansion(mult = c(.03, .04))) +
   scale_y_continuous(
     breaks = c(0, .25, .50, .75, 1.0),
     limits = c(0, .75),
@@ -166,5 +167,6 @@ This package is built on top of and enormously indebted to
 accessing the Census Bureau API. For users who want additional
 variables, `library(tidycensus)` exposes the entire range of
 pre-tabulated variables available from the ACS and provides access to
-ACS microdata and other Census Bureau datasets. Learn more here:
-<https://walker-data.com/tidycensus/index.html>.
+ACS microdata and other Census Bureau datasets.
+
+Learn more here: <https://walker-data.com/tidycensus/index.html>.
