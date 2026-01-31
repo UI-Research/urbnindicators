@@ -22,8 +22,8 @@
 
 generate_codebook = function(.data)  {
 
-    .data = .data %>%
-      sf::st_drop_geometry()
+  .data = .data %>%
+    sf::st_drop_geometry()
 
     ####----Variable Crosswalk----####
     expression_list = rlang::enexpr(list_acs_variables) %>% as.list()
@@ -261,9 +261,14 @@ generate_codebook = function(.data)  {
 
     ####----Get Across Variable Names (Function)----####
     get_across_variable_names = function(match_expression, negative_match_expression = "nomatchhere") {
+      ## the series of housing-cost-burden-related indicators are renamed to avoid having "percent" at the end of the variable name
+      ## here we work around this to ensure that the codebook-ing process accurately records the correct component variables used to
+      ## calculate the housing cost burden percent series
       selected_columns = .data %>%
+        dplyr::rename_with(.cols = dplyr::matches("household_income.*pct$"), .fn = ~ stringr::str_replace(., "pct$", "percent_count")) %>%
         dplyr::select(dplyr::matches(match_expression), -dplyr::matches("_M$|percent$"), -dplyr::matches(negative_match_expression)) %>%
-        colnames
+        colnames %>%
+        stringr::str_replace_all("percent_count$", "percent")
     }
 
     ####----Get rowSums Variables (Function)----####
@@ -292,16 +297,19 @@ generate_codebook = function(.data)  {
         if (any(is.na(negative_match_expression))) { negative_match_expression = negative_match_expression[!is.na(negative_match_expression)] }
         if (all(is.na(negative_match_expression))) { negative_match_expression = "nomatchhere" }
 
-        summed_variables = expression %>%
+        match_expression = expression %>%
           as.character() %>%
           purrr::keep(~ stringr::str_detect(.x, "across|matches")) %>%
           stringr::str_extract("dplyr::matches.*") %>%
           stringr::str_remove_all('dplyr::matches\\(|\\){1,4}$|"|-dplyr::matches\\(.*\\)|\\)\\,') %>%
-          stringr::str_trim() %>% stringr::str_squish() %>%
-          get_across_variable_names(negative_match_expression = negative_match_expression)
+          stringr::str_trim() %>% stringr::str_squish()
+
+        summed_variables = get_across_variable_names(
+          match_expression = match_expression,
+          negative_match_expression = negative_match_expression)
 
         }
-
+      
       return(summed_variables)
     }
 
@@ -311,9 +319,13 @@ generate_codebook = function(.data)  {
 
     define_codebook_variable = function(mutate_call, mutate_call_name) {
 
-       # mutate_call = rlang::expr(
-       #   safe_divide(rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[4-9]|2).*"), -dplyr::matches("percent"))), year_structure_built_universe)
-       # )
+      #  mutate_call = rlang::expr(
+      #    safe_divide(
+      #     ## numerator -- all renter-occupied households where gross rent is 30% or more of household income
+      #     rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(percent)"))),
+      #     ## denominator -- all renter-occupied households with computed rent shares
+      #     rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed"))))
+      #  )
 
       if (any((mutate_call[[1]] %>% as.character) == "safe_divide")) {
         numerator = rlang::call_args(mutate_call) %>% .[[1]]
@@ -335,6 +347,10 @@ generate_codebook = function(.data)  {
               unlist() %>%
               purrr::map_chr(
                 function(x) {
+
+                  if (stringr::str_detect(x, "household_income_by_gross_rent")) {
+                    x = stringr::str_replace(x, "percent$", "percent_count_estimate") }
+
                   raw_variable_code = variable_name_crosswalk %>% dplyr::filter(clean_name == x) %>% dplyr::pull(raw_name)
                   result = dplyr::if_else(
                     length(raw_variable_code) == 0,
@@ -342,6 +358,9 @@ generate_codebook = function(.data)  {
                     paste0(x, " (", raw_variable_code, ")")) }) %>%
               paste0(collapse = " - ")
             } else {
+              if (stringr::str_detect(x, "household_income_by_gross_rent")) {
+                x = stringr::str_replace(x, "percent$", "percent_count_estimate") }
+            
               raw_variable_code = variable_name_crosswalk %>% dplyr::filter(clean_name == x) %>% dplyr::pull(raw_name)
               result = dplyr::if_else(length(raw_variable_code) == 0, paste0(x, " (calculated variable)"), paste0(x, " (", raw_variable_code, ")"))
           }
@@ -436,7 +455,7 @@ generate_codebook = function(.data)  {
           function(mutate_chain) {
             mutate_chain %>%
               purrr::imap_dfr( ~ define_codebook_variable(mutate_call = .x, mutate_call_name = .y)) })
-
+  
     uncalculated_variables = names(list_acs_variables()) %>% unique %>% stringr::str_remove("_$")
 
     ## some adjustments
@@ -518,8 +537,11 @@ generate_codebook = function(.data)  {
         calculated_variable = dplyr::if_else(
           stringr::str_detect(calculated_variable, "percent$") & variable_type == "Count",
           stringr::str_replace(calculated_variable, "percent$", "pct"),
-          calculated_variable))
-
+          calculated_variable),
+        definition = dplyr::case_when(
+          stringr::str_detect(definition, "household_income_by_gross_rent") ~ stringr::str_replace_all(definition, "percent ", "pct "),
+          TRUE ~ definition))
+  
     return(result3)
 }
 
