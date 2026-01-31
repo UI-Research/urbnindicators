@@ -157,7 +157,7 @@ calculate_cvs = function(.df) {
   controlled_variables = c(
     "total_population_universe", "sex_by_age_universe", "race_universe",
     "race_hispanic_allraces", "race_nonhispanic_allraces") %>% stringr::str_c("_M")
-
+  
   .df = .df %>%
     dplyr::mutate(
       dplyr::across(
@@ -267,6 +267,7 @@ calculate_cvs = function(.df) {
         .fns = function(x) {
 
           current_column = dplyr::cur_column()
+
           ## this effectively returns error calculations for the underlying variable
           ## under the assumption that the `1 - ` operation has no effect on the calculation
           ## of error
@@ -286,11 +287,13 @@ calculate_cvs = function(.df) {
                   stringr::str_remove_all("_count_estimate") %>%
                   stringr::str_split(", ")))
           numerator_estimate_variables = codebook_variable %>%
-            dplyr::pull(numerator) %>% unlist()
+            dplyr::pull(numerator) %>% unlist() %>% 
+            stringr::str_replace_all("percent$", "pct")
           numerator_moe_variables = numerator_estimate_variables %>%
             stringr::str_c("_M")
           denominator_estimate_variables = codebook_variable %>%
-            dplyr::pull(denominator) %>% unlist()
+            dplyr::pull(denominator) %>% unlist() %>% 
+            stringr::str_replace_all("percent$", "pct")
           denominator_moe_variables = denominator_estimate_variables %>%
             stringr::str_c("_M")
 

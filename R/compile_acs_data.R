@@ -32,6 +32,7 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' @importFrom magrittr %>%
 #' @keywords internal
 internal_compute_acs_variables = function(.data) {
+
   .data %>%
     dplyr::mutate(
       ####----INCOME, POVERTY, FINANCIAL ASSISTANCE----####
