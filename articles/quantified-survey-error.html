@@ -197,7 +197,7 @@ added (or otherwise summarize) the way that estimates can.</p>
 <span>      y <span class="op">=</span> <span class="st">"Distribution"</span>,</span>
 <span>      title <span class="op">=</span> <span class="st">"County CVs are Smaller than Tract CVs\nCVs for Wider Age Ranges are Smaller than CVs for Narrow Age Ranges"</span>,</span>
 <span>      subtitle <span class="op">=</span> <span class="st">"Coefficients of variation (CV) at the county and tract levels for various age groupings"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="quantified-survey-error_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" width="7000"></p>
+<p><img src="quantified-survey-error_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="7000"></p>
 </div>
 <div class="section level2">
 <h2 id="conduct-statistical-significance-testing">Conduct Statistical Significance Testing<a class="anchor" aria-label="anchor" href="#conduct-statistical-significance-testing"></a>
@@ -272,7 +272,7 @@ that of the corresponding county.</p>
 <span>      fill <span class="op">=</span> <span class="st">""</span>,</span>
 <span>      title <span class="op">=</span> <span class="st">"Many Tract-Level Estimates Are Not Statistically Significantly Different from the County-Level Estimate"</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_wrap.html" class="external-link">str_wrap</a></span><span class="op">(</span><span class="fl">90</span><span class="op">)</span>,</span>
 <span>      subtitle <span class="op">=</span> <span class="st">"Tract-level share of the population 65+ vs. county-level estimate, Atlantic County, NJ"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="quantified-survey-error_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" width="7000"></p>
+<p><img src="quantified-survey-error_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="7000"></p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">signficance_test_data</span> <span class="op">=</span> <span class="va">plot_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">GEOID</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"34001011901"</span>, <span class="st">"34001001900"</span><span class="op">)</span><span class="op">)</span></span>
@@ -307,7 +307,7 @@ that of the corresponding county.</p>
 <span>    y <span class="op">=</span> <span class="st">"Tract"</span>,</span>
 <span>    title <span class="op">=</span> <span class="st">"One Tract Estimate Triples That of the Other, But the Difference is Barely Statistically Significant Owing to the Error"</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_wrap.html" class="external-link">str_wrap</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>,</span>
 <span>    subtitle <span class="op">=</span> <span class="st">"Share of population over the age of 64, point estimates and margins of error"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="quantified-survey-error_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" width="7000"></p>
+<p><img src="quantified-survey-error_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="7000"></p>
 </div>
 <div class="section level2">
 <h2 id="report-and-visualize-error">Report and Visualize Error<a class="anchor" aria-label="anchor" href="#report-and-visualize-error"></a>
