@@ -37,7 +37,7 @@ the American Community Survey (ACS).
 
 With a single function call, you get:
 
--   Hundreds of standardized variables, such as percentages, in addition
+-   Access to hundreds of standardized variables, such as percentages, in addition
     to the raw count variables used to produce them.
 
 -   Meaningful, consistent variable names.
@@ -61,9 +61,17 @@ With a single function call, you get:
 Install the development version of `urbnindicators` from
 [GitHub](https://github.com/) with:
 
-```         
+```r
 install.packages("renv")
 renv::install("UI-Research/urbnindicators")
+```
+
+You'll need a Census API key
+([request one here](https://api.census.gov/data/key_signup.html)).
+Set it once with:
+
+```r
+tidycensus::census_api_key("YOUR_KEY", install = TRUE)
 ```
 
 Note that this package is under active development with frequent
@@ -75,95 +83,142 @@ updates--check to ensure you have the most recent version installed!
 library(dplyr)
 library(tidyr)
 library(stringr)
-library(urbnindicators)
 library(ggplot2)
 library(urbnthemes)
+library(distributional)
+library(ggdist)
 set_urbn_defaults(style = "print")
+
+library(urbnindicators)
+```
+
+## Discover Available Data
+
+```{r, warning = FALSE, message = FALSE}
+list_tables()
+list_variables()
 ```
 
 ## Obtain Data
 
+A single call to `compile_acs_data()` returns analysis-ready data
+with pre-computed percentages, meaningful variable names, and
+margins of error:
+
 ```{r, warning = FALSE, message = FALSE}
-plot_data = compile_acs_data(
-    years = c(2017, 2022),
-    geography = "county",
-    states = "NJ")  %>% 
+df = compile_acs_data(
+  tables = "race",
+  years = 2024,
+  geography = "county",
+  states = "NJ")
+
+glimpse(df)
+```
+
+## Visualize Data
+
+`compile_acs_data()` makes it easy to pull multiple years and
+produce publication-ready visualizations:
+
+```{r, warning = FALSE, message = FALSE}
+df = compile_acs_data(
+  tables = "race",
+  ## selecting 5-year ACS data from years with no measurement overlap
+  years = c(2019, 2024),
+  geography = "county",
+  states = "NJ")
+
+plot_data = df %>%
   transmute(
-    county_name = NAME %>% str_remove(" County, New Jersey"), 
-    race_personofcolor_percent, 
-    data_source_year)
+    county_name = NAME %>% str_remove(" County, New Jersey"),
+    race_personofcolor_percent,
+    race_personofcolor_percent_SE,
+    data_source_year = factor(data_source_year))
 
 state_averages = plot_data %>%
   group_by(data_source_year) %>%
-  summarize(mean_race_personofcolor_percent = mean(race_personofcolor_percent)) %>%
+  summarize(mean_pct = mean(race_personofcolor_percent)) %>%
   arrange(data_source_year) %>%
-  pull()
+  pull(mean_pct)
 
-dumbbell_data = plot_data %>% 
+## order counties by 2019 value for the dumbbell plot
+county_order = plot_data %>%
+  filter(data_source_year == "2019") %>%
+  arrange(race_personofcolor_percent) %>%
+  pull(county_name)
+
+plot_data = plot_data %>%
+  mutate(county_name = factor(county_name, levels = county_order))
+
+dumbbell_data = plot_data %>%
   pivot_wider(
-    names_from = data_source_year, 
-    values_from = race_personofcolor_percent, 
+    id_cols = county_name,
+    names_from = data_source_year,
+    values_from = race_personofcolor_percent,
     names_prefix = "year_")
 ```
-
-## Plot Data
 
 ```{r, warning = FALSE, message = FALSE}
 ggplot() +
   geom_segment(
     data = dumbbell_data,
     aes(
-      x = reorder(county_name, year_2017),
-      y = year_2017,
-      yend = year_2022),
+      x = county_name,
+      y = year_2019,
+      yend = year_2024),
     color = palette_urbn_main[7],
     linewidth = 1) +
-  geom_point(
-    data = plot_data, 
+  ggdist::stat_gradientinterval(
+    data = plot_data,
     aes(
-      x = reorder(county_name, race_personofcolor_percent), 
-      y = race_personofcolor_percent, 
-      color = factor(data_source_year))) +
-  annotate(
-    "text", 
-    y = .31,  
-    x = 21.5, 
-    label = "State mean (2017)", 
-    fontface = "bold.italic", 
-    color = palette_urbn_main[1],
-    size = 9 / .pt) +
-  annotate(
-    "text", 
-    y = .47,  
-    x = 21.5, 
-    label = "State mean (2022)", 
-    fontface = "bold.italic", 
-    color = palette_urbn_main[2],
-    size = 9 / .pt) +
+      x = county_name,
+      ydist = distributional::dist_normal(
+        race_personofcolor_percent,
+        race_personofcolor_percent_SE),
+      color = data_source_year),
+    point_size = 2,
+    .width = .95) +
   geom_hline(
-    yintercept = state_averages[1], 
-    linetype = "dashed", 
+    yintercept = state_averages[1],
+    linetype = "dashed",
     color = palette_urbn_main[1]) +
   geom_hline(
-    yintercept = state_averages[2], 
-    linetype = "dashed", 
+    yintercept = state_averages[2],
+    linetype = "dashed",
     color = palette_urbn_main[2]) +
+  annotate(
+    "text",
+    y = state_averages[1] - .15,
+    x = 21.5,
+    label = "State mean (2019)",
+    fontface = "bold.italic",
+    color = palette_urbn_main[1],
+    size = 9 / .pt,
+    hjust = 0,
+    nudge_y = .01) +
+  annotate(
+    "text",
+    y = state_averages[2] + .01,
+    x = 21.5,
+    label = "State mean (2024)",
+    fontface = "bold.italic",
+    color = palette_urbn_main[2],
+    size = 9 / .pt,
+    hjust = 0,
+    nudge_y = .01) +
   labs(
-    title = "Change in NJ Counties' Racial Composition, 2017 to 2022",
-    subtitle = paste0(
-      "On average, counties in NJ saw a ", 
-      round((state_averages[2] - state_averages[1]), digits = 3) * 100, 
-      " pecentage point increase in the share of the population who are people of color from 2017 to 2022.") %>%
-      str_wrap(120), 
-    x = "County", 
-    y = "Share of population who are people of color",
-    color = "Year") +
+    title = "All NJ Counties Experienced Racial Diversification from 2019 to 2024",
+    subtitle = paste0("Share of population who are people of color, by county, 2019-2024
+Confidence intervals are presented around each point but are extremely small"),
+    x = "County",
+    y = "Share of population who are people of color") +
   scale_x_discrete(expand = expansion(mult = c(.03, .04))) +
   scale_y_continuous(
     breaks = c(0, .25, .50, .75, 1.0),
     limits = c(0, .75),
     labels = scales::percent) +
-  coord_flip()
+  coord_flip() +
+  theme_urbn_print()
 ```
 
 # Learn More

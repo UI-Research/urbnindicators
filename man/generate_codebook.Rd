@@ -4,10 +4,13 @@
 \alias{generate_codebook}
 \title{Document variables from \code{compile_acs_data()}}
 \usage{
-generate_codebook(.data)
+generate_codebook(.data, resolved_tables = NULL)
 }
 \arguments{
 \item{.data}{The dataset returned from \code{urbnindicators::compile_acs_data()}.}
+
+\item{resolved_tables}{A character vector of resolved table names from the
+table registry. When NULL (default), all registered tables are used.}
 }
 \value{
 A tibble containing the names and definitions of  variables returned from
@@ -24,12 +27,12 @@ how each variable was created.
 \examples{
 \dontrun{
 df = compile_acs_data(
-  variables = list_acs_variables(year = 2022),
-  years = c(2022),
+  years = c(2024),
   geography = "county",
   states = "NJ",
   counties = NULL,
-  spatial = FALSE)
+  spatial = FALSE) \%>\%
+  dplyr::select(-dplyr::matches("_M$|_SE$|_CV$"))
 codebook = generate_codebook(.data = df)
 }
 }

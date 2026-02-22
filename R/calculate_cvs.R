@@ -79,7 +79,7 @@ se_proportion_ratio = function(
     se_denominator = NULL,
     type = "proportion") {
 
-  if (all(is.null(c(moe_numerator, se_numerator))) | all(is.na(c(moe_denominator, se_denominator)))) {
+  if (all(is.null(moe_numerator), is.null(se_numerator)) | all(is.null(moe_denominator), is.null(se_denominator))) {
     stop("A margin of error or standard error must be provided for both the numerator and the denominator.")
   }
 
@@ -258,8 +258,10 @@ calculate_cvs = function(.df) {
           moe = se * 1.645
 
           return(moe) },
-        .names = "{.col}_M"),
+        .names = "{.col}_M"))
 
+  df_cvs1 = df_cvs1 %>%
+    dplyr::mutate(
       ## count variables
       ## raw ACS variables
       dplyr::across(
@@ -316,10 +318,10 @@ calculate_cvs = function(.df) {
               estimate_numerator = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables))),
               estimate_denominator = get(denominator_estimate_variables),
               se_numerator = se_sum(
-                purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
-                purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))),
+                purrr::map(numerator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)),
+                purrr::map(numerator_estimate_variables, ~ df_cvs1 %>% dplyr::pull(.x))),
               se_denominator = se_simple(
-                purrr::map(denominator_moe_variables, ~ .df %>% dplyr::pull(.x)) %>% unlist())) }
+                purrr::map(denominator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)) %>% unlist())) }
 
           ## for percents with one numerator, summed/subtracted denominators
           if (current_column %in% variable_classes[["denominator sum percent"]]) {
@@ -327,10 +329,10 @@ calculate_cvs = function(.df) {
               estimate_numerator = get(numerator_estimate_variables),
               estimate_denominator = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables))),
               se_numerator = se_simple(
-                purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)) %>% unlist()),
+                purrr::map(numerator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)) %>% unlist()),
               se_denominator = se_sum(
-                purrr::map(denominator_moe_variables, ~ .df %>% dplyr::pull(.x)),
-                purrr::map(denominator_estimate_variables, ~ .df %>% dplyr::pull(.x)))) }
+                purrr::map(denominator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)),
+                purrr::map(denominator_estimate_variables, ~ df_cvs1 %>% dplyr::pull(.x)))) }
 
           ## for percents with summed numerators and summed denominators
           if (current_column %in% variable_classes[["numerator and denominator sum percent"]]) {
@@ -338,11 +340,11 @@ calculate_cvs = function(.df) {
               estimate_numerator = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables))),
               estimate_denominator = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables))),
               se_numerator = se_sum(
-                purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
-                purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x))),
+                purrr::map(numerator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)),
+                purrr::map(numerator_estimate_variables, ~ df_cvs1 %>% dplyr::pull(.x))),
               se_denominator = se_sum(
-                purrr::map(denominator_moe_variables, ~ .df %>% dplyr::pull(.x)),
-                purrr::map(denominator_estimate_variables, ~ .df %>% dplyr::pull(.x)))) }
+                purrr::map(denominator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)),
+                purrr::map(denominator_estimate_variables, ~ df_cvs1 %>% dplyr::pull(.x)))) }
 
           return(SE) },
         .names = "{.col}_SE")) %>%

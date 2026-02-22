@@ -5,20 +5,27 @@
 \title{Analysis-ready social science measures}
 \usage{
 compile_acs_data(
-  variables = NULL,
+  tables = NULL,
+  indicators = NULL,
   years = c(2022),
   geography = "county",
   states = NULL,
   counties = NULL,
-  spatial = FALSE
+  spatial = FALSE,
+  ...
 )
 }
 \arguments{
-\item{variables}{A named vector of ACS variables such as that returned from
-\code{urbnindicators::list_acs_variables()}.}
+\item{tables}{A character vector of table names to include (e.g.,
+\code{c("race", "snap")}). Use \code{list_tables()} to see available tables.
+When NULL (default) and \code{indicators} is also NULL, all tables are included.}
 
-\item{years}{A character vector (or coercible to the same) comprising one or more
-four-digit years for which to pull five-year American Community Survey estimates.}
+\item{indicators}{A character vector of indicator names to include (e.g.,
+\code{c("snap_received_percent")}). Each indicator's parent table is
+automatically included.}
+
+\item{years}{A numeric vector of four-digit years for which to pull five-year
+American Community Survey estimates.}
 
 \item{geography}{A geography type that is accepted by \code{tidycensus::get_acs()}, e.g.,
 "tract", "county", "state", among others. Geographies below the tract level are not
@@ -32,9 +39,12 @@ will override the \code{states} parameter. If \code{NULL}, all counties in the t
 state(s) specified in the \code{states} parameter will be included.}
 
 \item{spatial}{Boolean. Return a simple features (sf), spatially-enabled dataframe?}
+
+\item{...}{Deprecated arguments. If \code{variables} is passed, a deprecation
+warning is issued and the value is ignored.}
 }
 \value{
-A dataframe containing the requested \code{variables}, their MOEs,
+A dataframe containing the requested variables, their MOEs,
 a series of derived variables, such as percentages, and the year of the data.
 Returned data are formatted wide. A codebook generated with \code{generate_codebook()}
 is attached and can be accessed via \code{compile_acs_data() \%>\% attr("codebook")}.
@@ -46,14 +56,16 @@ the Census Bureau API.
 }
 \examples{
 \dontrun{
-acs_variables = list_acs_variables(year = "2022")
-df = compile_acs_data(
-  variables = acs_variables,
-  years = c(2021, 2022),
-  geography = "county",
-  states = "NJ",
-  counties = NULL,
-  spatial = FALSE)
+## Pull all tables (default, backward-compatible)
+df = compile_acs_data(years = c(2022), geography = "county", states = "NJ")
+
+## Pull specific tables
+df = compile_acs_data(tables = c("race", "snap"), years = 2022,
+                      geography = "county", states = "NJ")
+
+## Pull by indicator name (returns the full parent table)
+df = compile_acs_data(indicators = c("snap_received_percent"),
+                      years = 2022, geography = "county", states = "NJ")
   }
 }
 \seealso{

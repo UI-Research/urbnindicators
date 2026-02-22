@@ -1,21 +1,25 @@
 # message("Update test data prior to testing, as needed.")
 # df = compile_acs_data(
-#   years = c(2022),
+#   years = c(2024),
 #   geography = "county",
 #   states = c("TX"))
-#
+
 # codebook = attr(df, "codebook")
-#
-# saveRDS(object = df, file = file.path("inst", "test-data", "test_data_2025-11-06.rds"))
-# saveRDS(codebook, file = file.path("inst", "test-data", "codebook_2025-11-06.rds"))
+
+test_data_path = test_path("fixtures", "test_data_2026-02-08.rds")
+test_codebook_path = test_path("fixtures", "codebook_2026-02-08.rds")
+
+# saveRDS(object = df, file = test_data_path)
+# saveRDS(codebook, file = test_codebook_path)
 
 ####----Tests----####
 # All percentages have no values greater than one and no values less than zero
 testthat::test_that(
   "All percentages have no values greater than one and no values less than zero",
   {
-    ## Statistics for CA and TX tracts
-    df = readRDS(testthat::test_path("test-data", "test_data_2025-05-13.rds"))
+    testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
+    ## Statistics for TX counties
+    df = readRDS(test_data_path)
 
     percentage_outliers_maxima = df %>%
       dplyr::select(dplyr::matches("percent$")) %>%
@@ -41,8 +45,9 @@ testthat::test_that(
 testthat::test_that(
   "All measures have meaningful values",
   {
+    testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     ## Statistics for CA and TX Tracts
-    df = readRDS(testthat::test_path("test-data", "test_data_2025-05-13.rds"))
+    df = readRDS(test_data_path)
 
     summary_statistics = df %>%
       dplyr::select(GEOID, matches("percent$")) %>%
@@ -67,8 +72,9 @@ testthat::test_that(
 testthat::test_that(
   "All percentages are distinct",
   {
+    testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     ## Statistics for CA and TX Tracts
-    df = readRDS(testthat::test_path("test-data", "test_data_2025-05-13.rds"))
+    df = readRDS(test_data_path)
 
     duplicates = purrr::map_dfr(
       colnames(df %>% dplyr::select(dplyr::matches("percent$"))),
@@ -105,8 +111,9 @@ testthat::test_that(
 testthat::test_that(
   "All derived variables are calculated using the intended variables",
   {
+    testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     # ## Statistics for CA and TX tracts
-    # df = readRDS(file.path("inst", "test-data", "test_data_2025-05-13.rds")) %>%
+    # df = readRDS(test_path("fixtures", "test_data_2025-05-13.rds")) %>%
     #   dplyr::select(-matches("_M$|_CV$|_SE$|_percent$"))
 
     ## manual validation of calculations completed for each variable series
@@ -838,3 +845,120 @@ testthat::test_that(
   #   ## denominator (in labor force by health insurance coverage status and employment status)
   #   "health_insurance_coverage_status_type_by_employment_status_in_labor_force"
   } )
+
+####----TABLE REGISTRY API TESTS----####
+
+testthat::test_that(
+  "compile_acs_data() accepts tables parameter",
+  {
+    ## verify that the tables parameter is accepted and returns only relevant columns
+    ## This is a structural test; it does not call the Census API.
+    ## It verifies that resolve_tables() and collect_raw_variables() work correctly.
+    resolved = resolve_tables(tables = c("snap"))
+    testthat::expect_true("snap" %in% resolved)
+    testthat::expect_true("total_population" %in% resolved)
+    testthat::expect_equal(length(resolved), 2)
+  })
+
+testthat::test_that(
+  "compile_acs_data() accepts indicators parameter",
+  {
+    ## verify indicator resolution returns the correct parent tables
+    resolved = resolve_tables(indicators = c("snap_received_percent"))
+    testthat::expect_true("snap" %in% resolved)
+    testthat::expect_true("total_population" %in% resolved)
+  })
+
+testthat::test_that(
+  "compile_acs_data() accepts mixed tables and indicators",
+  {
+    resolved = resolve_tables(
+      tables = "race",
+      indicators = "snap_received_percent")
+    testthat::expect_true("race" %in% resolved)
+    testthat::expect_true("snap" %in% resolved)
+    testthat::expect_true("total_population" %in% resolved)
+  })
+
+testthat::test_that(
+  "Default (no tables/indicators) resolves to all tables",
+  {
+    all_tables = list_tables()
+    testthat::expect_gte(length(all_tables), 30)
+  })
+
+testthat::test_that(
+  "collect_raw_variables returns named vector for specified tables",
+  {
+    resolved = resolve_tables(tables = "snap")
+    vars = collect_raw_variables(resolved_tables = resolved, year = 2022)
+    testthat::expect_true(is.character(vars))
+    testthat::expect_true(length(vars) > 0)
+    testthat::expect_true(!is.null(names(vars)))
+    testthat::expect_true("B22003_001" %in% vars)
+    testthat::expect_true("B22003_002" %in% vars)
+    testthat::expect_true("B01003_001" %in% vars)
+  })
+
+testthat::test_that(
+  "multi-table queries do not create .x and .y-suffixed variables",
+  {
+    testthat::skip_if_not(nzchar(Sys.getenv("CENSUS_API_KEY")), "No Census API key")
+    df = compile_acs_data(
+      years = 2024,
+      geography = "county",
+      spatial = TRUE)
+
+    testthat::expect_false(any(stringr::str_detect(colnames(df), "\\.x|\\.y")))
+  })
+
+####----DEPRECATION AND ARGUMENT HANDLING TESTS----####
+## These tests verify warning behavior only. We wrap calls in tryCatch() so
+## that any downstream API errors don't cause test failures -- we only care
+## that the warning is issued before the function proceeds.
+
+testthat::test_that(
+  "compile_acs_data() warns when deprecated `variables` parameter is used",
+  {
+    lifecycle::expect_deprecated(
+      tryCatch(
+        compile_acs_data(variables = c("some_var"), years = 2022, geography = "county", states = "NJ"),
+        error = function(e) NULL
+      )
+    )
+  })
+
+testthat::test_that(
+  "compile_acs_data() warns on unknown arguments",
+  {
+    testthat::expect_warning(
+      tryCatch(
+        compile_acs_data(foo = "bar", years = 2022, geography = "county", states = "NJ"),
+        error = function(e) NULL
+      ),
+      "Unknown argument.*`foo`"
+    )
+  })
+
+testthat::test_that(
+  "compile_acs_data() warns separately for `variables` and unknown arguments",
+  {
+    testthat::expect_warning(
+      lifecycle::expect_deprecated(
+        tryCatch(
+          compile_acs_data(variables = c("x"), foo = "bar", years = 2022, geography = "county", states = "NJ"),
+          error = function(e) NULL
+        )
+      ),
+      "Unknown argument.*`foo`"
+    )
+  })
+
+testthat::test_that(
+  "list_acs_variables() is deprecated and returns NULL",
+  {
+    lifecycle::expect_deprecated(
+      result <- list_acs_variables()
+    )
+    testthat::expect_null(result)
+  })

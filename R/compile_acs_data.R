@@ -12,293 +12,18 @@
 #' @export
 safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 
-#' @title Calculate ACS measures
-#' @description Calculates derived ACS indicators.
-#' @details An internal function used to calculate indicators and derived variable
-#' definitions for the codebook.
-#' @param .data The dataset returned from \code{compile_acs_data()}.
-#' @returns A modified dataframe that includes newly calculated indicators.
-#' @examples
-#' \dontrun{
-#' df = compile_acs_data(
-#'   variables = list_acs_variables(year = 2022),
-#'   years = c(2022),
-#'   geography = "county",
-#'   states = "NJ",
-#'   counties = NULL,
-#'   spatial = FALSE)
-#' internal_compute_acs_variables(.data = df)
-#' }
-#' @importFrom magrittr %>%
-#' @keywords internal
-internal_compute_acs_variables = function(.data) {
-
-  .data %>%
-    dplyr::mutate(
-      ####----INCOME, POVERTY, FINANCIAL ASSISTANCE----####
-        snap_received_percent = safe_divide(snap_received, snap_universe),
-        public_assistance_received_percent = safe_divide(public_assistance_received, public_assistance_universe),
-        dplyr::across(
-          .cols = dplyr::matches("federal_poverty_limit.*below"),
-          .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("below", "universe"))),
-          .names = "{.col}_percent"),
-        cost_burdened_30percentormore_allincomes_percent = safe_divide(
-          ## numerator -- all renter-occupied households where gross rent is 30% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(percent)"))),
-          ## denominator -- all renter-occupied households with computed rent shares
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed")))),
-        cost_burdened_50percentormore_allincomes_percent = safe_divide(
-          ## numerator -- all renter-occupied households where gross rent is 50% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*50_0.*percent"))),
-          ## denominator -- all renter-occupied households with computed rent shares
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*([0-9]$|100000_more$)"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*not_computed")))),
-        cost_burdened_30percentormore_incomeslessthan35000_percent = safe_divide(
-          ## numerator -- all renter-occupied households where gross rent is 30% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(percent)"))),
-          ## denominator -- all renter-occupied households whose household incomes are $34,999 or less with computed rent shares
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999).*not_computed")))),
-        cost_burdened_50percentormore_incomeslessthan35000_percent = safe_divide(
-          ## numerator -- all renter-occupied households where gross rent is 50% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(percent)"))),
-          ## denominator -- all renter-occupied households whose household incomes are $34,999 or less with computed rent shares
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999).*not_computed")))),
-        cost_burdened_30percentormore_incomeslessthan50000_percent = safe_divide(
-          ## numerator -- all renter-occupied households where gross rent is 30% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(percent)"))),
-          ## denominator -- all renter-occupied households whose household incomes are $50,000 or less with computed rent shares
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999|49999).*not_computed")))),
-        cost_burdened_50percentormore_incomeslessthan50000_percent = safe_divide(
-          ## numerator -- all renter-occupied households where gross rent is 50% or more of household income
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*percent"))),
-          ## denominator -- all renter-occupied households whose household incomes are $50,000 or less
-          rowSums(dplyr::select(., dplyr::matches("household_income_by_gross_rent.*(10000|19999|34999|49999)$"))) - rowSums(dplyr::select(., dplyr::matches("household_income.*(10000_|19999|34999|49999).*not_computed")))),
-
-      ####----RACE/ETHNICITY----####
-        dplyr::across(
-          .cols = dplyr::matches("^race_nonhispanic|^race_hispanic"),
-          .fns = ~ safe_divide(.x, race_universe),
-          .names = "{.col}_percent"),
-        race_personofcolor_percent = 1 - race_nonhispanic_white_alone_percent,
-
-      ####----SEX----####
-        sex_female_percent = safe_divide(sex_by_age_female, sex_by_age_universe),
-        sex_male_percent = safe_divide(sex_by_age_male, sex_by_age_universe),
-
-      ####----AGE----####
-        ## creating combined, male and female counts by age group named, e.g., age_15_17_years
-        dplyr::across(
-          .cols = dplyr::matches("sex_by_age_female_.*years($|_over$)"),
-          .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("female", "male")),
-          .names =  "{stringr::str_replace(string = .col, pattern = 'sex_by_age_female_', replacement = 'age_')}"),
-        dplyr::across(
-          .cols = dplyr::matches("^age.*years($|_over$)"),
-          .fns = ~ safe_divide(.x, sex_by_age_universe),
-          .names =  "{.col}_percent")) %>%
-
-        ## adding a new mutate call because rowSums is unable to access variables
-        ## created within the same mutate call
-        dplyr::mutate(
-          age_under_18_percent = safe_divide(
-            rowSums(dplyr::select(., age_under_5_years, age_5_9_years, age_10_14_years, age_15_17_years)),
-            sex_by_age_universe),
-          age_over_64_percent = safe_divide(
-            rowSums(dplyr::select(., dplyr::matches("age_(6(5|7)|7|8).*_years($|_over$)"))),
-            sex_by_age_universe),
-
-      ####----DISABILITY----####
-        disability_percent = safe_divide(rowSums(dplyr::select(., dplyr::matches("with_a_disability"))), sex_by_age_by_disability_status_universe),
-
-      ####----HOUSING----####
-        ## tenure
-        ## (percentages)
-        dplyr::across(
-          .cols = c(dplyr::matches("^tenure_renter_occupied|^tenure_owner_occupied"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, tenure_universe),
-          .names = "{.col}_percent"),
-
-        ## tenure by race
-        ## (sums)
-        dplyr::across(
-          .cols = c(dplyr::matches("tenure_.*_householder_renter_occupied"), -dplyr::matches("percent")),
-          .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
-          .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied', replacement = 'renter_owner_occupied')}"),
-
-        ## tenure by race, renter-occupied
-        ## (percentages)
-        dplyr::across(
-          .cols = c(dplyr::matches("tenure.*householder_renter_occupied"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("renter", "renter_owner") )),
-          .names = "{.col}_percent"),
-
-        ## tenure by race, owner-occupied
-        ## (percentages)
-        dplyr::across(
-          .cols = c(dplyr::matches("tenure.*householder_owner_occupied"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("owner", "renter_owner") )),
-          .names = "{.col}_percent"),
-
-        ## units in structure
-        dplyr::across(
-          .cols = c(dplyr::matches("^units_in_structure"), -dplyr::matches("universe|householder"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, units_in_structure_universe),
-          .names = "{.col}_percent"),
-
-        ## units in structure, both tenures
-        ## (sums)
-        dplyr::across( ## summing renter- and owner-occupied estimates
-          .cols = c(dplyr::matches("tenure_by_units.*renter_occupied_housing_units"), -dplyr::matches("owner"), -dplyr::matches("percent")),
-          .fns = ~ .x + get( dplyr::cur_column() %>% stringr::str_replace("renter", "owner")),
-          .names = "{stringr::str_replace_all(string = .col, pattern = 'renter_occupied_housing_units', replacement = 'renter_owner_occupied_housing_units')}"),
-        ## units in structure, both tenures
-        ## (percentages)
-        dplyr::across(
-          .cols = c(dplyr::matches("tenure_by_units_in_structure_renter_owner_occupied_housing_units_"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_owner_occupied_housing_units),
-          .names = "{.col}_percent"),
-        ## renter-occupied units in structure
-        ## (percentages)
-        dplyr::across(
-          .cols = c(dplyr::matches("tenure_by_units_in_structure_renter_occupied_housing_units_"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, tenure_by_units_in_structure_renter_occupied_housing_units),
-          .names = "{.col}_percent"),
-        ## owner-occupied units in structure
-        ## (percentages)
-        dplyr::across(
-          .cols = c(dplyr::matches("tenure_by_units_in_structure_owner_occupied_housing_units_"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, tenure_by_units_in_structure_owner_occupied_housing_units),
-          .names = "{.col}_percent"),
-
-        ## overcrowding
-        overcrowding_morethan1_ppr_alltenures_percent = safe_divide( ## ppr stands for "people per room"
-          rowSums(dplyr::select(., dplyr::matches("tenure_by_occupants_per_room.*(1_01|1_51|2_01)"))),
-          tenure_by_occupants_per_room_universe),
-        overcrowding_morethan1_ppr_renteroccupied_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("tenure_by_occupants_per_room_renter.*(1_01|1_51|2_01)"))),
-          tenure_by_occupants_per_room_renter_occupied),
-
-        ## year built
-        dplyr::across(
-          .cols = c(dplyr::matches("year_structure_built_built_[0-9].*"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, get( dplyr::cur_column() %>% stringr::str_replace("[0-9].*", "universe") %>% stringr::str_replace("built_", "") )),
-          .names = "{.col}_percent"),
-        year_structure_built_built_since_1940_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[4-9]|2).*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_since_1950_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[5-9]|2).*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_since_1960_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[6-9]|2).*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_since_1970_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[7-9]|2).*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_since_1980_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[8-9]|2).*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_since_1990_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(19[9]|2).*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_since_2000_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(200|201|202).*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_since_2010_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_(201|202).*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_since_2020_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("year_structure_built_built_202.*"), -dplyr::matches("percent"))),
-          year_structure_built_universe),
-        year_structure_built_built_before_1960_percent = 1 - year_structure_built_built_since_1960_percent, ## a common proxy for relative exposure to lead-based paint
-
-      ####----TRANSPORTATION----####
-      ## Note: means_transportation_work_public_transportation_excluding_taxicab is a measure of conventional "public transportation"
-      dplyr::across(
-        .cols = c(dplyr::matches("means_transportation"), -dplyr::matches("universe|worked_from_home"), -dplyr::matches("percent")),
-        .fns = ~ safe_divide(.x, (means_transportation_work_universe - means_transportation_work_worked_from_home)),
-        .names = "{.col}_percent"), ## the denominator here does not include people who worked from home
-      means_transportation_work_worked_from_home_percent = safe_divide(
-        means_transportation_work_worked_from_home, means_transportation_work_universe),
-      means_transportation_work_bicycle_walked_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(bicycle|walked)$"))),
-        (means_transportation_work_universe - means_transportation_work_worked_from_home)),
-      means_transportation_work_motor_vehicle_percent = safe_divide(
-        rowSums(dplyr::select(., dplyr::matches("means_transportation_work_(car_truck_van|taxicab|motorcycle)$"))),
-        (means_transportation_work_universe - means_transportation_work_worked_from_home)),
-      dplyr::across(
-        .cols = c(dplyr::matches("travel_time_work"), -travel_time_work_universe, -dplyr::matches("percent")),
-        .fns = ~ safe_divide(.x, travel_time_work_universe),
-        .names = "{.col}_percent"),
-
-      ####----EDUCATION----####
-        educational_attainment_highschool_none_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade|1st_grade|2nd_grade|3rd_grade)"))),
-          educational_attainment_population_25_years_over_universe),
-        educational_attainment_highschool_nodiploma_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(9th|10th|11th|12th)"))),
-          educational_attainment_population_25_years_over_universe),
-        educational_attainment_ged_percent = safe_divide(
-          educational_attainment_population_25_years_over_ged_alternative_credential,
-          educational_attainment_population_25_years_over_universe),
-        educational_attainment_highschool_diploma_percent = safe_divide(
-          educational_attainment_population_25_years_over_regular_high_school_diploma,
-          educational_attainment_population_25_years_over_universe),
-        educational_attainment_college_some_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("educational_attainment.*some_college"))),
-          educational_attainment_population_25_years_over_universe),
-        educational_attainment_degree_associate_percent = safe_divide(
-          educational_attainment_population_25_years_over_associates_degree,
-          educational_attainment_population_25_years_over_universe),
-        educational_attainment_degree_bachelors_percent = safe_divide(
-          educational_attainment_population_25_years_over_bachelors_degree,
-          educational_attainment_population_25_years_over_universe),
-        educational_attainment_degree_morethanbachelors_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("educational_attainment.*(masters|professional|doctorate)"))),
-          educational_attainment_population_25_years_over_universe),
-
-        educational_enrollment_grades_1thru12_percent = safe_divide(
-          school_enrollment_universe - rowSums(dplyr::select(., dplyr::matches("school_enrollment.*[^(_universe)]"), -dplyr::matches("percent"))),
-          school_enrollment_universe),
-        dplyr::across(
-          .cols = c(dplyr::matches("school_enrollment.*[^(_universe)]"), -dplyr::matches("percent")),
-          .fns = ~ safe_divide(.x, school_enrollment_universe),
-          .names = "{.col}_percent"),
-
-      ####----PLACE OF BIRTH/LANGUAGE----####
-        nativity_native_born_percent = safe_divide(
-          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native,
-          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
-        nativity_foreign_born_percent = safe_divide(
-          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born,
-          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
-        ability_speak_english_very_well_better_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("nativity.*(only_english|english_very_well)"))),
-          nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe),
-        ability_speak_english_less_than_very_well_percent = 1 - ability_speak_english_very_well_better_percent,
-
-      ####----EMPLOYMENT----####
-        employment_civilian_labor_force_percent = safe_divide(employment_civilian_labor_force_employed, employment_civilian_labor_force_universe),
-
-      ####----HEALTH INSURANCE----####
-        health_insurance_coverage_status_covered_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*with_health_insurance_coverage$"))),
-          health_insurance_coverage_status_type_by_employment_status_universe),
-        health_insurance_coverage_status_notcovered_percent = 1 - health_insurance_coverage_status_covered_percent,
-        health_insurance_coverage_status_covered_employed_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*_employed.*with_health_insurance_coverage$"))),
-          health_insurance_coverage_status_type_by_employment_status_in_labor_force), ## denominator is only people in the labor force
-        health_insurance_coverage_status_covered_unemployed_percent = safe_divide(
-          rowSums(dplyr::select(., dplyr::matches("health_insurance_coverage_status_type_by_employment_status.*_unemployed.*with_health_insurance_coverage$"))),
-          health_insurance_coverage_status_type_by_employment_status_in_labor_force)) ## denominator is only people in the labor force
-}
-
 #' @title Analysis-ready social science measures
 #' @description Construct measures frequently used in social sciences
 #'    research, leveraging \code{tidycensus::get_acs()} to acquire raw estimates from
 #'    the Census Bureau API.
-#' @param variables A named vector of ACS variables such as that returned from
-#'    \code{urbnindicators::list_acs_variables()}.
-#' @param years A character vector (or coercible to the same) comprising one or more
-#'    four-digit years for which to pull five-year American Community Survey estimates.
+#' @param tables A character vector of table names to include (e.g.,
+#'    \code{c("race", "snap")}). Use \code{list_tables()} to see available tables.
+#'    When NULL (default) and \code{indicators} is also NULL, all tables are included.
+#' @param indicators A character vector of indicator names to include (e.g.,
+#'    \code{c("snap_received_percent")}). Each indicator's parent table is
+#'    automatically included.
+#' @param years A numeric vector of four-digit years for which to pull five-year
+#'    American Community Survey estimates.
 #' @param geography A geography type that is accepted by \code{tidycensus::get_acs()}, e.g.,
 #'    "tract", "county", "state", among others. Geographies below the tract level are not
 #'    supported.
@@ -308,50 +33,104 @@ internal_compute_acs_variables = function(.data) {
 #'    will override the \code{states} parameter. If \code{NULL}, all counties in the the
 #'    state(s) specified in the \code{states} parameter will be included.
 #' @param spatial Boolean. Return a simple features (sf), spatially-enabled dataframe?
+#' @param ... Deprecated arguments. If \code{variables} is passed, a deprecation
+#'    warning is issued and the value is ignored.
 #' @seealso \code{tidycensus::get_acs()}, which this function wraps.
-#' @returns A dataframe containing the requested \code{variables}, their MOEs,
+#' @returns A dataframe containing the requested variables, their MOEs,
 #'    a series of derived variables, such as percentages, and the year of the data.
 #'    Returned data are formatted wide. A codebook generated with \code{generate_codebook()}
 #'    is attached and can be accessed via \code{compile_acs_data() %>% attr("codebook")}.
 #' @examples
 #' \dontrun{
-#' acs_variables = list_acs_variables(year = "2022")
-#' df = compile_acs_data(
-#'   variables = acs_variables,
-#'   years = c(2021, 2022),
-#'   geography = "county",
-#'   states = "NJ",
-#'   counties = NULL,
-#'   spatial = FALSE)
+#' ## Pull all tables (default, backward-compatible)
+#' df = compile_acs_data(years = c(2022), geography = "county", states = "NJ")
+#'
+#' ## Pull specific tables
+#' df = compile_acs_data(tables = c("race", "snap"), years = 2022,
+#'                       geography = "county", states = "NJ")
+#'
+#' ## Pull by indicator name (returns the full parent table)
+#' df = compile_acs_data(indicators = c("snap_received_percent"),
+#'                       years = 2022, geography = "county", states = "NJ")
 #'   }
 #' @export
 #' @importFrom magrittr %>%
 
 compile_acs_data = function(
-    variables = NULL,
+    tables = NULL,
+    indicators = NULL,
     years = c(2022),
     geography = "county",
     states = NULL,
     counties = NULL,
-    spatial = FALSE) {
+    spatial = FALSE,
+    ...) {
 
+  ## handle deprecated `variables` parameter and unknown arguments
+  dots = list(...)
+  if ("variables" %in% names(dots)) {
+    lifecycle::deprecate_warn(
+      when = "0.1.0",
+      what = "compile_acs_data(variables)",
+      details = "The `variables` parameter is ignored. Use `tables` or `indicators` to select specific data, or call with no selection arguments for all tables."
+    )
+  }
+  unknown_args = setdiff(names(dots), "variables")
+  if (length(unknown_args) > 0) {
+    rlang::warn(
+      paste0(
+        "Unknown argument(s) passed to `compile_acs_data()`: ",
+        paste0("`", unknown_args, "`", collapse = ", "),
+        ". These will be ignored."
+      )
+    )
+  }
+
+  old_tigris_cache = getOption("tigris_use_cache")
   options(tigris_use_cache = FALSE)
+  on.exit(options(tigris_use_cache = old_tigris_cache), add = TRUE)
 
-  ## default values for the variables and states arguments.
-  if (length(variables) == 0) {
-    suppressWarnings({suppressMessages({variables = list_acs_variables(year = years[1]) })}) }
-  if (length(states) == 0) { suppressWarnings({suppressMessages({
-    states =  tigris::fips_codes %>%
+  ## validate years
+  years = as.numeric(years)
+  if (any(is.na(years)) || any(years != as.integer(years)) || any(nchar(as.integer(years)) != 4)) {
+    stop("`years` must be a vector of four-digit integers (e.g., 2022).")
+  }
+  if (any(years < 2009) || any(years > as.numeric(format(Sys.Date(), "%Y")))) {
+    stop("`years` must be between 2009 (earliest 5-year ACS) and the current year.")
+  }
+
+  ####----Resolve tables and variables via the registry----####
+  ## resolve which tables to include
+  if (is.null(tables) && is.null(indicators)) {
+    ## default: all internal table names
+    resolved_tables = names(.table_registry$tables)
+  } else {
+    resolved_tables = resolve_tables(tables = tables, indicators = indicators)
+  }
+
+  ## determine whether tigris geometry is needed
+  needs_tigris = isTRUE(spatial) || ("population_density" %in% resolved_tables)
+
+  ## collect raw ACS variables from the registry
+  suppressWarnings({suppressMessages({
+    variables = collect_raw_variables(resolved_tables = resolved_tables, year = years[1])
+  })})
+
+  ## default values for the states argument
+  if (length(states) == 0) {
+    states = tigris::fips_codes %>%
       dplyr::filter(!state %in% c("PR", "UM", "VI", "GU", "AS", "MP")) %>%
       dplyr::pull(state) %>% unique()
-  })}) }
+  }
 
   ## warning about inter-decadal tract geometry changes
   if ( (max(years) >= 2020) & (min(years) < 2020) & (geography == "tract") ) {
     message("Requested years span the year 2020, which is when the Census Bureau re-configures
       census tract boundaries. It is not valid to compare census tract-level statistics for years before 2020 to
-      statistics from 2020 and after; use a crosswalk, such as those provided by NHGIS, to interpolate values.
-      A future version of urbnindicators may address this issue automatically.") }
+      statistics from 2020 and after.
+      
+      Crosswalks are available from NHGIS, or via `library(crosswalk)`, which is currently
+      under development and can be installed via renv::install('UI-Research/crosswalk').)") }
 
   ## tracts and larger are supported
   if ((geography %>% tolower) %in% c("block", "block group")) {
@@ -359,7 +138,7 @@ compile_acs_data = function(
 
   ## warn user -- county-by-county queries are slow and should be used if only
   ## one or a few counties are desired
-  if (!any(is.null(counties))) {
+  if (!any(is.null(counties)) && length(counties) > 5) {
 
 warning(
 "County-level queries can be slow for more than a few counties. Omit the county parameter
@@ -371,51 +150,49 @@ this function returns.")}
     "metropolitan statistical area/micropolitan statistical area",
     "cbsa", "urban area", "zip code tabulation area", "zcta")
 
-  ## download corresponding geometries from tigris
-  ## these will be joined to the data to calculate population density
-  ## (and optionally retained in the final output)
-  suppressMessages({ suppressWarnings({
-    geometries = purrr::map_dfr(
-      years,
-      function(year) {
-        switch(
-          geography,
-          "us" = tigris::nation(year = year) %>%
-            dplyr::mutate(
-              GEOID = "1",
-              ALAND = 9161555541118, ## sum of ALAND from tigris::states(year = 2022, cb = TRUE)
-              AWATER = 711492860209), ## sum of AWATER from tigris::states(year = 2022, cb = TRUE)
-          "region" = tigris::regions(year = year),
-          "division" = tigris::divisions(year = year),
-          "state" = tigris::states(year = year, cb = TRUE),
-          "county" = purrr::map_dfr(states, ~ tigris::counties(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) ,
-          "county subdivision" =  purrr::map_dfr(states, ~ tigris::county_subdivisions(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) ,
-          "tract" =  purrr::map_dfr(states, ~  tigris::tracts(state = .x, cb = TRUE, year = year, progress_bar = FALSE)),
-          "place" = purrr::map_dfr(states, ~  tigris::places(state = .x, cb = TRUE, year = year, progress_bar = FALSE)),
-          "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
-          "american indian area/alaska native area/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
-          "american indian area/alaska native area (reservation of statistical entity only)" = tigris::native_areas(cb = TRUE, year = year),
-          "american indian area (off reservation trust land only)/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
-          "metropolitan/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-          "metropolitan statistical area/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-          "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
-          "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
-          "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
-          dplyr::transmute(
-            area_land_sq_kilometer = ALAND / 1000000,
-            area_water_sq_kilometer = AWATER / 1000000,
-            area_land_water_sq_kilometer = area_land_sq_kilometer + area_water_sq_kilometer,
-            GEOID = GEOID,
-            data_source_year = year) })
-  })})
+  ## download corresponding geometries from tigris (conditionally)
+  if (needs_tigris) {
+    suppressMessages({ suppressWarnings({
+      geometries = purrr::map(
+        years,
+        function(year) {
+          switch(
+            geography,
+            "us" = tigris::nation(year = year) %>%
+              dplyr::mutate(
+                GEOID = "1",
+                ALAND = 9161555541118, ## sum of ALAND from tigris::states(year = 2022, cb = TRUE)
+                AWATER = 711492860209), ## sum of AWATER from tigris::states(year = 2022, cb = TRUE)
+            "region" = tigris::regions(year = year),
+            "division" = tigris::divisions(year = year),
+            "state" = tigris::states(year = year, cb = TRUE),
+            "county" = purrr::map(states, ~ tigris::counties(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
+            "county subdivision" = purrr::map(states, ~ tigris::county_subdivisions(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
+            "tract" = purrr::map(states, ~ tigris::tracts(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
+            "place" = purrr::map(states, ~ tigris::places(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
+            "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
+            "american indian area/alaska native area/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
+            "american indian area/alaska native area (reservation of statistical entity only)" = tigris::native_areas(cb = TRUE, year = year),
+            "american indian area (off reservation trust land only)/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
+            "metropolitan/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+            "metropolitan statistical area/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+            "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
+            "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
+            "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
+            dplyr::transmute(
+              area_land_sq_kilometer = ALAND / 1000000,
+              area_water_sq_kilometer = AWATER / 1000000,
+              area_land_water_sq_kilometer = area_land_sq_kilometer + area_water_sq_kilometer,
+              GEOID = GEOID,
+              data_source_year = year) }) %>% dplyr::bind_rows()
+    })})
+  }
 
   ## configuring to subset call to specified counties, if applicable
   if (geography %in% c("county", "county subdivision", "tract") & !is.null(counties)) {
-    suppressWarnings({suppressMessages({
-      county_codes = tidycensus::fips_codes %>%
-        dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
-        dplyr::filter(county_fips %in% counties)
-    })})
+    county_codes = tidycensus::fips_codes %>%
+      dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
+      dplyr::filter(county_fips %in% counties)
 
     if (nrow(county_codes) == 0) {
       stop("No valid county FIPS codes were found in the `counties` argument.") }
@@ -424,10 +201,9 @@ this function returns.")}
       invalid_county_count = length(counties) - nrow(county_codes)
       warning(paste0("There were ", invalid_county_count, " invalid county codes; no results are returned for these counties.")) }
   } else {
-    suppressWarnings({suppressMessages({
-      county_codes = tidycensus::fips_codes %>%
-        dplyr::filter(state %in% states | state_code %in% states | state_name %in% states)
-    })}) }
+    county_codes = tidycensus::fips_codes %>%
+      dplyr::filter(state %in% states | state_code %in% states | state_name %in% states)
+  }
 
   states = county_codes$state %>% unique
 
@@ -435,7 +211,7 @@ this function returns.")}
 
     ## some geographies are not available by state and can only be returned nationally
     if (geography %in% super_state_geographies) {
-      df_raw_estimates = purrr::map_dfr(
+      df_raw_estimates = purrr::map(
         ## when year is a vector with length > 1 (i.e., there are multiple years)
         ## loop over each item in the vector (and this approach also works for a single year)
         years,
@@ -445,17 +221,17 @@ this function returns.")}
             year = as.numeric(.x),
             survey = "acs5",
             output = "wide") %>%
-          dplyr::mutate(data_source_year = .x))
+          dplyr::mutate(data_source_year = .x)) %>% purrr::list_rbind()
 
     } else if (is.null(counties)) {
       ## for those geographies that can (or must) be returned by state, but where
       ## we do not need to query individual counties:
-      ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for data from each state
+      ## iteratively make calls for data from each state
       ## and then combine the resulting dataframes together into a single dataframe
-      df_raw_estimates = purrr::map_dfr(
+      df_raw_estimates = purrr::map(
         states,
         function (state) {
-          purrr::map_dfr(
+          purrr::map(
             ## when year is a vector with length > 1 (i.e., there are multiple years)
             ## loop over each item in the vector (and this approach also works for a single year)
             years,
@@ -467,22 +243,21 @@ this function returns.")}
               ## this argument is ignored when a query cannot be made at the county level
               survey = "acs5",
               output = "wide") %>%
-              dplyr::mutate(data_source_year = .x))})} else {
+              dplyr::mutate(data_source_year = .x)) %>% purrr::list_rbind()}) %>% purrr::list_rbind()} else {
 
       ## for queries that must be returned by county within state
-      ## a tidycensus::get_acs() call using map_dfr to iteratively make calls for
-      ## data from each state, by county,
+      ## iteratively make calls for data from each state, by county,
       ## and then combine the resulting dataframes together into a single dataframe
-      df_raw_estimates = purrr::map_dfr(
+      df_raw_estimates = purrr::map(
         states,
         function(state) {
-          purrr::map_dfr(
+          purrr::map(
             ## when year is a vector with length > 1 (i.e., there are multiple years)
             ## loop over each item in the vector (and this approach also works for a single year)
             years,
             function(year) {
               if (geography %in% c("tract", "county")) {
-                result = purrr::map_dfr(
+                result = purrr::map(
                   county_codes %>% dplyr::filter(state == !!state) %>% dplyr::pull(county),
                   ~ tidycensus::get_acs(
                     geography = geography,
@@ -491,7 +266,7 @@ this function returns.")}
                     state = state,
                     county = .x,
                     survey = "acs5",
-                    output = "wide")) %>%
+                    output = "wide")) %>% purrr::list_rbind() %>%
                   dplyr::mutate(data_source_year = year) } else {
 
                 result = tidycensus::get_acs(
@@ -501,40 +276,59 @@ this function returns.")}
                   state = state,
                   survey = "acs5",
                   output = "wide") %>%
-                  dplyr::mutate(data_source_year = year)}})})
+                  dplyr::mutate(data_source_year = year)}}) %>% purrr::list_rbind()}) %>% purrr::list_rbind()
       }
     moes = df_raw_estimates %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$"))
   })})
 
+  ####----Compute derived variables----####
   df_calculated_estimates = df_raw_estimates %>%
-    ## drop margin of error variables for calculations since these only relate to raw
-    ## variables.
     dplyr::select(-dplyr::matches("_M$")) %>%
-    dplyr::rename_with(~ stringr::str_remove(.x, "_E$")) %>% ## removing "_E" (for "Estimate") from column names
-    internal_compute_acs_variables() %>%
+    dplyr::rename_with(~ stringr::str_remove(.x, "_E$"))
+
+  ## apply each table's definitions via the execution engine
+  df_calculated_estimates = purrr::reduce(resolved_tables, function(.data, table_name) {
+    table_entry = get_table(table_name)
+    if (!is.null(table_entry) && !is.null(table_entry[["definitions"]]) && length(table_entry[["definitions"]]) > 0) {
+      execute_definitions(.data, table_entry[["definitions"]])
+    } else {
+      .data
+    }
+  }, .init = df_calculated_estimates)
+
+  ####----Generate codebook----####
+  ## generate codebook BEFORE the _pct rename so that regex matching in
+  ## expand_codebook_entry() works on the original _percent column names;
+  ## the codebook's internal rename (percent -> pct for Count variables)
+  ## produces the correct output names
+  codebook = generate_codebook(.data = df_calculated_estimates, resolved_tables = resolved_tables)
+
+  df_calculated_estimates = df_calculated_estimates %>%
     ## these variable names end in "percent", but they're actually count estimates
     dplyr::rename_with(.cols = dplyr::matches("household_income.*percent$"), .fn = ~ stringr::str_replace(., "percent$", "pct")) %>%
-
     ## ensure the vintage of the data and the GEOID for each observation are the first columns
-    dplyr::select(data_source_year, GEOID, dplyr::everything()) %>%
+    dplyr::select(data_source_year, GEOID, dplyr::everything())
 
-    ## join geometries, calculate population density, drop geometry attribute if spatial == FALSE
-    dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one") %>%
-    {if (spatial == FALSE) sf::st_drop_geometry(.) else sf::st_as_sf(.) } %>%
-    dplyr::mutate(population_density_land_sq_kilometer = safe_divide(total_population_universe, area_land_sq_kilometer)) %>%
+  if (needs_tigris) {
+    df_calculated_estimates = df_calculated_estimates %>%
+      dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one") %>%
+      {if (spatial == FALSE) sf::st_drop_geometry(.) else sf::st_as_sf(.) } %>%
+      dplyr::mutate(population_density_land_sq_kilometer = safe_divide(total_population_universe, area_land_sq_kilometer))
+  }
+
+  df_calculated_estimates = df_calculated_estimates %>%
     dplyr::left_join(
       .,
       moes %>%
         dplyr::rename_with(.cols = dplyr::matches("household_income.*percent_M$"), .fn = ~ stringr::str_replace(., "percent_M$", "pct_M")),
       by = c("GEOID", "data_source_year"))
 
-  ## generate the codebook, which is used to calculate CVs
-  codebook = generate_codebook(.data = df_calculated_estimates)
+  ####----Calculate CVs----####
   attr(df_calculated_estimates, "codebook") = codebook
 
   suppressMessages({suppressWarnings({
     df_cvs = calculate_cvs(df_calculated_estimates) %>%
-      {if (spatial == FALSE) . else dplyr::right_join(., geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
+      {if (!needs_tigris || spatial == FALSE) . else dplyr::right_join(., geometries %>% dplyr::select(GEOID, data_source_year), by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
   })})
 
   ## attach the codebook as an attribute named "codebook" to the returned dataset
@@ -547,28 +341,6 @@ this function returns.")}
 
 utils::globalVariables(c(
   "ALAND", "AWATER", "area_land_sq_kilometer", "area_water_sq_kilometer", "total_population_universe",
-  "state", "GEOID", "data_source_year", "snap_received", "snap_universe",
-  "public_assistance_received", "public_assistance_universe", ".",
-  "race_nonhispanic_white_alone_percent", "sex_by_age_female", "sex_by_age_universe",
-  "sex_by_age_male", "sex_by_age_female_under_5_years_male", "sex_by_age_female_10_14_years_male",
-  "sex_by_age_female_5_9_years_male", "sex_by_age_female_10_14_years_male",
-  "sex_by_age_female_15_17_years_male", "sex_by_age_by_disability_status_universe",
-  "age_under_5_years", "age_5_9_years", "age_10_14_years", "age_15_17_years",
-  "tenure_renter_occupied", "tenure_universe", "tenure_owner_occupied",
-  "tenure_by_units_in_structure_renter_occupied_housing_units_owner_occupied",
-  "tenure_by_occupants_per_room_universe", "tenure_by_occupants_per_room_renter_occupied",
-  "year_structure_built_universe", "means_transportation_work_universe", "means_transportation_work_universe",
-  "means_transportation_work_worked_from_home", "educational_attainment_population_25_years_over_universe",
-  "year_structure_built_built_since_1960_percent", "travel_time_work_universe",
-  "educational_attainment_population_25_years_over_ged_alternative_credential",
-  "educational_attainment_population_25_years_over_regular_high_school_diploma",
-  "educational_attainment_population_25_years_over_associates_degree",
-  "educational_attainment_population_25_years_over_bachelors_degree", "school_enrollment_universe",
-  "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native",
-  "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
-  "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born",
-  "ability_speak_english_very_well_better_percent", "employment_civilian_labor_force_employed",
-  "employment_civilian_labor_force_universe", "health_insurance_coverage_status_type_by_employment_status_universe",
-  "health_insurance_coverage_status_covered_percent",
-  "health_insurance_coverage_status_type_by_employment_status_in_labor_force", "state_code",
-  "county_code", "county_fips", "state_name", "county"))
+  "state", "GEOID", "data_source_year", ".",
+  "state_code", "county_code", "county_fips", "state_name", "county",
+  "needs_tigris", "resolved_tables"))
