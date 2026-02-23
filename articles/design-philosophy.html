@@ -35,6 +35,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
     <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
@@ -74,9 +75,8 @@ process it, what relevant derived variables to calculate, and even which
 types of geographies to support.</p>
 <p>“Opinionated” doesn’t mean that these decisions are the best ones for
 every user or use-case, but these decisions are designed to either speed
-or improve the accuracy of a particular (and relatively common) workflow
-and use-case involving a large set of variables common across social
-science applications.</p>
+or improve the accuracy of a common use-case involving a large set of
+variables (optionally over multiple years).</p>
 <div class="section level2">
 <h2 id="design-choices">Design choices<a class="anchor" aria-label="anchor" href="#design-choices"></a>
 </h2>
@@ -124,7 +124,7 @@ variables, <code><a href="https://walker-data.com/tidycensus/" class="external-l
 approach, and you can still use functions like
 <code><a href="../reference/select_variables_by_name.html">urbnindicators::select_variables_by_name()</a></code>,
 <code><a href="../reference/filter_variables.html">urbnindicators::filter_variables()</a></code>, and
-<code><a href="../reference/list_acs_variables.html">urbnindicators::list_acs_variables()</a></code> to select and sensibly
+<code><a href="../reference/list_variables.html">urbnindicators::list_variables()</a></code> to select and sensibly
 name variables returned from <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code>. In the
 future, we’ll add caching options so that you don’t have to repeatedly
 make the same queries and can instead read results in from a local

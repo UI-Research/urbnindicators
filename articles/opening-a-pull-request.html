@@ -35,6 +35,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
     <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
@@ -79,42 +80,45 @@ project. They allow you to suggest changes, improvements, or fixes to
 the code, and they provide a platform for discussion and review before
 those changes are merged into the main codebase.</p>
 <p>For <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code>, a common use-case for a PR
-is to propose a new variable or series of variable. This vignette will
-illustrate the complete PR process for a new series of variables,
-including where the PR should propose codebase updates and the
-supporting tests and verifications submitted with the PR to assert that
-the newly-created variables are correctly calculated and appropriately
-documented.</p>
+is to propose a new variable or series of variables. This vignette will
+illustrate the complete PR process for a new series of variables. The
+core of the PR is a single <code>register_table()</code> call in
+<code>R/table_registry.R</code> that declares the raw ACS variables and
+uses the <code>define_*</code> DSL to specify how derived variables are
+computed. The codebook, coefficients of variation, and variable listings
+are all generated automatically from this registration.</p>
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>There are five places in the codebase that should either be updated
-or quality-checked as part of the process of adding a new variable(s).
-These include:</p>
+<p>Adding a new table requires a single code change:</p>
 <ol style="list-style-type: decimal">
-<li><p><code>R/list_acs_variables.R</code>: this is where the desired
-variable codes are selected before being passed to
-<code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">tidycensus::get_acs()</a></code>.</p></li>
-<li><p><code>R/compile_acs_data.R</code>, specifically within
-<code><a href="../reference/internal_compute_acs_variables.html">internal_compute_acs_variables()</a></code>: this is where new derived
-variables are created, e.g., by standardizing counts by their table
-denominators.</p></li>
-<li><p><code>R/generate_codebook.R</code>: this is where we use
-meta-programming to evaluate the code in
-<code>R/compile_acs_data.R</code> to document the variables and
-operations used to calculate derived variables.</p></li>
-<li><p><code>R/calculate_cvs.R</code>: this is where we leverage
-metadata from the codebook to calculate coefficients of variation (and
-other measures of error) for all of the returned variables.</p></li>
-<li><p><code>R/make_pretty_names.R</code>: this facilitates using
-variable names in charts and tables, so we want to ensure that the
-programmatically-generated names of new variables return reasonable
-pretty-printed names.</p></li>
+<li>
+<strong><code>R/table_registry.R</code></strong>: Add a
+<code>register_table()</code> call that declares (a) the raw ACS
+variable codes and (b) a <code>definitions</code> list that uses the
+<code>define_*</code> helpers to specify how derived variables (e.g.,
+percentages) are calculated.</li>
 </ol>
-<p>Our last step is to integrate our proposed changes, execute
-<code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>, and evaluate the results to ensure that
-the changes not only work in isolation, but that they also work as part
-of the broader codebase.</p>
+<p>Everything else–the codebook, coefficients of variation, variable
+listings, and the <code>tables</code>/<code>indicators</code> API–is
+generated automatically from this registration. After writing the
+registration, the PR should include quality checks to verify that the
+new variables are correctly calculated and appropriately documented.</p>
+<p>The quality-check steps are:</p>
+<ol start="2" style="list-style-type: decimal">
+<li>
+<strong>Codebook</strong>: Verify that each new variable is
+documented in the codebook and that its documentation is accurate.</li>
+<li>
+<strong>Coefficients of variation</strong>: Verify that CVs appear
+reasonable.</li>
+<li>
+<strong>Pretty names</strong>: Verify that
+<code><a href="../reference/make_pretty_names.html">make_pretty_names()</a></code> produces reasonable labels.</li>
+<li>
+<strong>Integration test</strong>: Call
+<code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code> end-to-end and inspect the results.</li>
+</ol>
 </div>
 <div class="section level2">
 <h2 id="our-variable-series">Our Variable Series<a class="anchor" aria-label="anchor" href="#our-variable-series"></a>
@@ -140,49 +144,40 @@ variables by navigating the codebook returned by
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> B11001A_006 Estimate!!Total:!!Family households:!!Other fam… Househ… block gr…</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="rlist_acs_variables">1: <code>R/list_acs_variables()</code><a class="anchor" aria-label="anchor" href="#rlist_acs_variables"></a>
+<h2 id="step-1-identify-the-raw-variables">Step 1: Identify the Raw Variables<a class="anchor" aria-label="anchor" href="#step-1-identify-the-raw-variables"></a>
 </h2>
 <p>We can see how these variables will be renamed behind the scenes in
 <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> by providing the table name to
 <code><a href="../reference/select_variables_by_name.html">urbnindicators::select_variables_by_name()</a></code>.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/select_variables_by_name.html">select_variables_by_name</a></span><span class="op">(</span><span class="st">"B11001_"</span>, census_codebook <span class="op">=</span> <span class="va">codebook</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="st">"including_living_alone_"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;                                                            household_type_universe_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_001" </span></span>
+<span><span class="co">#&gt;                                                   household_type_family_households_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_002" </span></span>
+<span><span class="co">#&gt;                             household_type_family_households_married_couple_family_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_003" </span></span>
+<span><span class="co">#&gt;                                      household_type_family_households_other_family_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_004" </span></span>
+<span><span class="co">#&gt;   household_type_family_households_other_family_male_householder_no_spouse_present_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_005" </span></span>
+<span><span class="co">#&gt; household_type_family_households_other_family_female_householder_no_spouse_present_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_006" </span></span>
+<span><span class="co">#&gt;                                                household_type_nonfamily_households_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_007" </span></span>
+<span><span class="co">#&gt;                       household_type_nonfamily_households_householder_living_alone_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_008" </span></span>
+<span><span class="co">#&gt;                   household_type_nonfamily_households_householder_not_living_alone_ </span></span>
+<span><span class="co">#&gt;                                                                        "B11001_009"</span></span></code></pre></div>
 <p>These are auto-named reasonably well, but we can make the names more
 concise by removing the repeated substring
-<code>"including_living_alone_"</code>. Note that each variable names
+<code>"including_living_alone_"</code>. Note that each variable name
 ends in an <code>_</code>; this is intentional.</p>
-<p>This code is then the code that should be added within
-<code><a href="../reference/list_acs_variables.html">list_acs_variables()</a></code> under the appropriate commented
-header, which in this case is
-<code>####----HOUSEHOLD COMPOSITION----####</code>. We’ll then add the
-table name in comments above this new code, so that the resulting block
-of code will look like the below:</p>
-<pre><code>####----EMPLOYMENT----####
-  ## EMPLOYMENT STATUS FOR THE POPULATION 16 YEARS AND OVER
-  employment_civilian_labor_force_universe_ = "B23025_003",
-  employment_civilian_labor_force_employed_ = "B23025_004",
-
-####----HOUSEHOLD COMPOSITION----####
-  ## AVERAGE HOUSEHOLD SIZE OF OCCUPIED HOUSING UNITS BY TENURE
-  household_size_average_ = "B25010_001",
-  household_size_average_owneroccupied_ = "B25010_002",
-  household_size_average_renteroccupied_ = "B25010_003",
-  
-  ## HOUSEHOLD TYPE (INCLUDING LIVING ALONE)
-  select_variables_by_name("B11001_", census_codebook = codebook) %&gt;%
-    stats::setNames(names(.) %&gt;% stringr::str_remove_all("including_living_alone_")),
-
-####----HEALTH INSURANCE----####
-  ## HEALTH INSURANCE COVERAGE STATUS AND TYPE BY EMPLOYMENT STATUS
-  select_variables("B27011"),</code></pre>
 </div>
 <div class="section level2">
-<h2 id="rcompile_acs_data">2: <code>R/compile_acs_data</code><a class="anchor" aria-label="anchor" href="#rcompile_acs_data"></a>
+<h2 id="step-2-choose-denominators-for-derived-variables">Step 2: Choose Denominators for Derived Variables<a class="anchor" aria-label="anchor" href="#step-2-choose-denominators-for-derived-variables"></a>
 </h2>
-<p>Now we need to calculate any desired variables. In virtually all
-cases (excepting, for example, estimates that reflect non-count
-quantities, such as medians or percentiles), we will want to calculate
-percentages. In some cases, however, we will first want to create
-intermediate count variables, such as by summing or subtracting multiple
-count variables. In this case, we’ll just calculate percentages.</p>
 <p>Selecting an appropriate denominator for percentage variables is
 critical, and at times, complex. The basic approach is to simply divide
 every variable by the table universe, which should contain
@@ -193,8 +188,8 @@ were headed by single male householders, we would want to divide
 <code>household_type_family_households_other_family_male_householder_no_spouse_present</code>
 by <code>household_type_family_households_</code> rather than by
 <code>household_type_universe_</code>.</p>
-<p>At this point, we’ll want to obtain some sample data to ensure our
-first-pass code is functional. We can do this as so:</p>
+<p>At this point, we’ll want to obtain some sample data to verify that
+our variable choices and denominator logic are correct:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sample_data</span> <span class="op">=</span> <span class="fu">tidycensus</span><span class="fu">::</span><span class="fu"><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">get_acs</a></span><span class="op">(</span></span>
 <span>  years <span class="op">=</span> <span class="fl">2022</span>,</span>
@@ -202,25 +197,21 @@ first-pass code is functional. We can do this as so:</p>
 <span>  state <span class="op">=</span> <span class="st">"NJ"</span>,</span>
 <span>  variables <span class="op">=</span> <span class="fu"><a href="../reference/select_variables_by_name.html">select_variables_by_name</a></span><span class="op">(</span><span class="st">"B11001_"</span>, census_codebook <span class="op">=</span> <span class="va">codebook</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>    <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="st">"including_living_alone_"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  output <span class="op">=</span> <span class="st">"wide"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="co">## urbnindicators returns wide, not long, data</span></span>
-<span>  <span class="co">## when urbnindicators calculates variables, it does so after de-selecting all </span></span>
-<span>  <span class="co">## MOE variables (it joins them back later in the process)</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">GEOID</span>, <span class="va">NAME</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"_E"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
-<span>  <span class="co">## urbnindicators also systematically drops all "_E" suffices, which denote </span></span>
-<span>  <span class="co">## "ESTIMATE" variables</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename_with</a></span><span class="op">(</span>cols <span class="op">=</span> <span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html" class="external-link">everything</a></span><span class="op">(</span><span class="op">)</span>, <span class="op">~</span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="va">.x</span>, <span class="st">"_E"</span><span class="op">)</span><span class="op">)</span> </span>
+<span>  output <span class="op">=</span> <span class="st">"wide"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">GEOID</span>, <span class="va">NAME</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"_E"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename_with</a></span><span class="op">(</span>cols <span class="op">=</span> <span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html" class="external-link">everything</a></span><span class="op">(</span><span class="op">)</span>, <span class="op">~</span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="va">.x</span>, <span class="st">"_E"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">sample_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 11</span></span></span>
 <span><span class="co">#&gt;   GEOID NAME                       household_type_unive…¹ household_type_famil…²</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                       <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 34001 Atlantic County, New Jers…                 <span style="text-decoration: underline;">108</span>712                  <span style="text-decoration: underline;">70</span>517</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 34003 Bergen County, New Jersey                  <span style="text-decoration: underline;">353</span>307                 <span style="text-decoration: underline;">252</span>639</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 34005 Burlington County, New Je…                 <span style="text-decoration: underline;">176</span>046                 <span style="text-decoration: underline;">120</span>137</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 34007 Camden County, New Jersey                  <span style="text-decoration: underline;">200</span>569                 <span style="text-decoration: underline;">131</span>150</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 34009 Cape May County, New Jers…                  <span style="text-decoration: underline;">44</span>369                  <span style="text-decoration: underline;">29</span>171</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 34011 Cumberland County, New Je…                  <span style="text-decoration: underline;">53</span>341                  <span style="text-decoration: underline;">36</span>155</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 34001 Atlantic County, New Jers…                 <span style="text-decoration: underline;">109</span>557                  <span style="text-decoration: underline;">71</span>330</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 34003 Bergen County, New Jersey                  <span style="text-decoration: underline;">355</span>127                 <span style="text-decoration: underline;">254</span>633</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 34005 Burlington County, New Je…                 <span style="text-decoration: underline;">177</span>222                 <span style="text-decoration: underline;">120</span>721</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 34007 Camden County, New Jersey                  <span style="text-decoration: underline;">202</span>540                 <span style="text-decoration: underline;">131</span>748</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> 34009 Cape May County, New Jers…                  <span style="text-decoration: underline;">44</span>884                  <span style="text-decoration: underline;">29</span>154</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> 34011 Cumberland County, New Je…                  <span style="text-decoration: underline;">53</span>781                  <span style="text-decoration: underline;">36</span>601</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ abbreviated names: ¹​household_type_universe,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ²​household_type_family_households</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 7 more variables:</span></span></span>
@@ -228,95 +219,215 @@ first-pass code is functional. We can do this as so:</p>
 <span><span class="co">#&gt; <span style="color: #949494;">#   household_type_family_households_other_family &lt;dbl&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   household_type_family_households_other_family_male_householder_no_spouse_present &lt;dbl&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   household_type_family_households_other_family_female_householder_no_spouse_present &lt;dbl&gt;, …</span></span></span></code></pre></div>
-<p>We calculate percentages across a series of variables using
-<code><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">dplyr::across()</a></code>; the general pattern is:</p>
-<pre><code>dplyr::across(
-  .cols = dplyr::matches("[UNIQUE REGEX TO MATCH DESIRED NUMERATOR VARIABLES]),
-  .fns = ~ .x / [UNIVERSE VARIABLE],
-  .names = "{.col}_percent")</code></pre>
-<p>In our case, that will be as follows. Note that we explicitly exclude
-the universe variable from our selection of numerators–this is an easy
-step to forget!</p>
-<p>Defining an appropriate selection term for the numerators can be
-particularly challenging because we must ensure both that we select the
-desired variables and that we don’t unintentionally select any undesired
-variables, which can be especially difficult when applied to the real
-case, where we’re not selecting from our <code>sample_data</code> object
-but from the full suite of variables returned by
-<code>urbnindicators</code>. To help evaluate and prevent such issues,
-users should call <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code> and ensure that the
-selection term they develop during this stage does not select any of the
-variables that are already returned by
-<code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>.</p>
-<p>Note the use of <code><a href="../reference/safe_divide.html">urbnindicators::safe_divide()</a></code>, which is
-a normal division operation except that when the denominator is zero, it
-returns <code>0</code> rather than <code>NaN</code>.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<p>We can test our percentage calculations on the sample data. Note the
+use of <code><a href="../reference/safe_divide.html">urbnindicators::safe_divide()</a></code>, which returns
+<code>0</code> rather than <code>NaN</code> when the denominator is
+zero.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sample_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
 <span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">across</a></span><span class="op">(</span></span>
 <span>      .cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"household_type"</span><span class="op">)</span>, <span class="op">-</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"universe"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>      .fns <span class="op">=</span> <span class="op">~</span> <span class="fu"><a href="../reference/safe_divide.html">safe_divide</a></span><span class="op">(</span><span class="va">.x</span>, <span class="va">household_type_universe</span><span class="op">)</span>,</span>
 <span>      .names <span class="op">=</span> <span class="st">"{.col}_percent"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="co">## just to print out a subset of our results</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 3</span></span></span>
 <span><span class="co">#&gt;   household_type_family_househol…¹ household_type_famil…² household_type_famil…³</span></span>
 <span><span class="co">#&gt;                              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>                            0.649                  0.444                  0.205</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>                            0.715                  0.558                  0.157</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>                            0.682                  0.524                  0.159</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>                            0.654                  0.441                  0.213</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>                            0.657                  0.517                  0.141</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>                            0.678                  0.420                  0.258</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>                            0.651                  0.448                  0.203</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>                            0.717                  0.555                  0.162</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span>                            0.681                  0.521                  0.160</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>                            0.650                  0.435                  0.215</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>                            0.650                  0.516                  0.134</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>                            0.681                  0.442                  0.239</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ abbreviated names: ¹​household_type_family_households_percent,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ²​household_type_family_households_married_couple_family_percent,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ³​household_type_family_households_other_family_percent</span></span></span></code></pre></div>
-<p>If we’re satisfied with the resulting estimates, we can add this code
-into <code>compile_acs_data.R</code>, within
-<code><a href="../reference/internal_compute_acs_variables.html">internal_compute_acs_variables()</a></code>. Akin to our preceding
-step, this new code should be organized under the
-<code>####----HOUSEHOLD COMPOSITION----####</code> comment header.</p>
 </div>
 <div class="section level2">
-<h2 id="rgenerate_codebook-r">3: <code>R/generate_codebook.R</code><a class="anchor" aria-label="anchor" href="#rgenerate_codebook-r"></a>
+<h2 id="step-3-write-the-register_table-call">Step 3: Write the <code>register_table()</code> Call<a class="anchor" aria-label="anchor" href="#step-3-write-the-register_table-call"></a>
 </h2>
-<p>If all has gone well, there will be no new code to add to
-<code><a href="../reference/generate_codebook.html">generate_codebook()</a></code>– new variables should be automatically
-documented by the function and included in the resulting codebook object
-that is attached as an attribute to the primary dataframe returned by
-<code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>. However, we should meticulously verify
-that each new variable is in fact documented in the codebook, and that
-its documentation is accurate. If the documentation is incorrect, the
-error we estimate for derived variables will also be incorrect.</p>
-<p>Note that if the documentation is incorrect, the user creating the PR
-should still open the PR and should note the issue with the
-documentation; the PR should not include any changes to
-<code><a href="../reference/generate_codebook.html">generate_codebook()</a></code>.</p>
+<p>Once we’re satisfied with the raw variables and derived logic, we
+express it as a <code>register_table()</code> call. This is the primary
+code change in the PR.</p>
+<p>The <code>definitions</code> list uses the <code>define_*</code>
+helpers to declaratively specify how each derived variable is computed.
+The package uses this specification to both execute the computation and
+auto-generate the codebook documentation and CV calculations.</p>
+<div class="section level3">
+<h3 id="the-define_-dsl">The <code>define_*</code> DSL<a class="anchor" aria-label="anchor" href="#the-define_-dsl"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Helper</th>
+<th>Use case</th>
+<th>Key arguments</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code><a href="../reference/define_percent.html">define_percent()</a></code></td>
+<td>Single output: numerator / denominator</td>
+<td>
+<code>output</code>, <code>numerator</code>,
+<code>denominator</code> (simple) or <code>numerator_variables</code>,
+<code>denominator_variables</code>, regex variants (complex)</td>
+</tr>
+<tr class="even">
+<td><code><a href="../reference/define_across_percent.html">define_across_percent()</a></code></td>
+<td>Percentages across a regex-matched set of columns</td>
+<td>
+<code>input_regex</code>, <code>output_suffix</code>,
+<code>denominator</code> or <code>denominator_function</code>, optional
+<code>exclude_regex</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../reference/define_across_sum.html">define_across_sum()</a></code></td>
+<td>Summing paired columns (e.g., male + female)</td>
+<td>
+<code>input_regex</code>, <code>addend_function</code>,
+<code>output_naming_function</code>
+</td>
+</tr>
+<tr class="even">
+<td><code><a href="../reference/define_one_minus.html">define_one_minus()</a></code></td>
+<td>Complement of an existing percentage (1 - x)</td>
+<td>
+<code>output</code>, <code>source_variable</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../reference/define_metadata.html">define_metadata()</a></code></td>
+<td>Non-computed variables (e.g., medians)</td>
+<td>
+<code>output</code>, <code>definition_text</code>
+</td>
+</tr>
+</tbody>
+</table>
 </div>
-<div class="section level2">
-<h2 id="rcalculate_cvs-r">4: <code>R/calculate_cvs.R</code><a class="anchor" aria-label="anchor" href="#rcalculate_cvs-r"></a>
-</h2>
-<p>Like with step 3 above, if all has gone well, there will be no new
-code to add to <code><a href="../reference/calculate_cvs.html">calculate_cvs()</a></code>. Here again, the primary
-task is to check that coefficients of variation appear reasonable (and
-if not, to flag any concerns in the PR).</p>
-<p>At this stage, users should also check the magnitude of errors for
-all variables –raw ACS estimates and
-<code>urbnindicators</code>-calculated variables alike–across smaller
-geographies, such as all tracts in one or more states. If CVs are large
-(e.g., over 50) for a large share of all tracts, this may indicate that
-the series of interest is not appropriate for tract-level analysis.
-Because <code>urbnindicators</code> is designed to facilitate
-tract-level analysis, variables that are consistently unreliable at the
-tract-level will not be integrated into the codebase.</p>
+<div class="section level3">
+<h3 id="household-type-registration">Household type registration<a class="anchor" aria-label="anchor" href="#household-type-registration"></a>
+</h3>
+<p>For our household type example, the <code>register_table()</code>
+call is:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">register_table</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  name <span class="op">=</span> <span class="st">"household_type"</span>,</span>
+<span>  description <span class="op">=</span> <span class="st">"Household type (including living alone)"</span>,</span>
+<span>  acs_tables <span class="op">=</span> <span class="st">"B11001"</span>,</span>
+<span>  depends_on <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  raw_variable_source <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>type <span class="op">=</span> <span class="st">"select_variables"</span><span class="op">)</span>,</span>
+<span>  raw_variables_transform <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">vars</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">vars</span>, <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">vars</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>      <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="st">"including_living_alone_"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  definitions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="../reference/define_across_percent.html">define_across_percent</a></span><span class="op">(</span></span>
+<span>      input_regex <span class="op">=</span> <span class="st">"^household_type"</span>,</span>
+<span>      exclude_regex <span class="op">=</span> <span class="st">"universe|percent"</span>,</span>
+<span>      output_suffix <span class="op">=</span> <span class="st">"_percent"</span>,</span>
+<span>      denominator <span class="op">=</span> <span class="st">"household_type_universe"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>This single block replaces what previously required separate changes
+across three files (<code>R/list_acs_variables.R</code>,
+<code>R/compile_acs_data.R</code>, and manual codebook
+verification).</p>
 </div>
-<div class="section level2">
-<h2 id="rmake_pretty_names-r">5: <code>R/make_pretty_names.R</code><a class="anchor" aria-label="anchor" href="#rmake_pretty_names-r"></a>
-</h2>
-<p>Finally, we need to ensure that the new variables have reasonable
-names. We can evaluate this easily with our sample data:</p>
+<div class="section level3">
+<h3 id="more-examples">More examples<a class="anchor" aria-label="anchor" href="#more-examples"></a>
+</h3>
+<p><strong>Simple percentage</strong> (one numerator, one
+denominator):</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">## from the SNAP table</span></span>
+<span><span class="va">definitions</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/define_percent.html">define_percent</a></span><span class="op">(</span><span class="st">"snap_received_percent"</span>,</span>
+<span>                 numerator <span class="op">=</span> <span class="st">"snap_received"</span>,</span>
+<span>                 denominator <span class="op">=</span> <span class="st">"snap_universe"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Across-percent with a complement</strong> (percentages for
+all race categories, plus a person-of-color complement):</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">## from the race table</span></span>
+<span><span class="va">definitions</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/define_across_percent.html">define_across_percent</a></span><span class="op">(</span></span>
+<span>    input_regex <span class="op">=</span> <span class="st">"^race_nonhispanic|^race_hispanic"</span>,</span>
+<span>    exclude_regex <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    output_suffix <span class="op">=</span> <span class="st">"_percent"</span>,</span>
+<span>    denominator <span class="op">=</span> <span class="st">"race_universe"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/define_one_minus.html">define_one_minus</a></span><span class="op">(</span><span class="st">"race_personofcolor_percent"</span>,</span>
+<span>                   source_variable <span class="op">=</span> <span class="st">"race_nonhispanic_white_alone_percent"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><strong>Across-sum followed by across-percent</strong> (sum male +
+female counts into combined age variables, then calculate
+percentages):</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">## from the sex_by_age table (age construct)</span></span>
+<span><span class="va">definitions</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/define_across_sum.html">define_across_sum</a></span><span class="op">(</span></span>
+<span>    input_regex <span class="op">=</span> <span class="st">"sex_by_age_female_.*years($|_over$)"</span>,</span>
+<span>    addend_function <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">column</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">column</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_replace.html" class="external-link">str_replace</a></span><span class="op">(</span><span class="st">"female"</span>, <span class="st">"male"</span><span class="op">)</span></span>
+<span>    <span class="op">}</span>,</span>
+<span>    output_naming_function <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">column</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">column</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_replace.html" class="external-link">str_replace</a></span><span class="op">(</span><span class="st">"sex_by_age_female_"</span>, <span class="st">"age_"</span><span class="op">)</span></span>
+<span>    <span class="op">}</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/define_across_percent.html">define_across_percent</a></span><span class="op">(</span></span>
+<span>    input_regex <span class="op">=</span> <span class="st">"^age.*years($|_over$)"</span>,</span>
+<span>    output_suffix <span class="op">=</span> <span class="st">"_percent"</span>,</span>
+<span>    denominator <span class="op">=</span> <span class="st">"sex_by_age_universe"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="placement-in-the-file">Placement in the file<a class="anchor" aria-label="anchor" href="#placement-in-the-file"></a>
+</h3>
+<p>The <code>register_table()</code> call should be added to
+<code>R/table_registry.R</code> under the appropriate comment header.
+For our example, this would be under
+<code>####----TABLE REGISTRATIONS: HOUSEHOLD COMPOSITION----####</code>.</p>
+<p>If any new column names are created by <code>compute_fn</code> logic,
+add them to the <code><a href="https://rdrr.io/r/utils/globalVariables.html" class="external-link">utils::globalVariables()</a></code> call at the bottom
+of <code>R/table_registry.R</code> to avoid R CMD check notes.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="step-4-verify-the-codebook">Step 4: Verify the Codebook<a class="anchor" aria-label="anchor" href="#step-4-verify-the-codebook"></a>
+</h2>
+<p>After writing the registration, load the package with
+<code>devtools::load_all()</code> and run a test call. New variables
+should be automatically documented by <code><a href="../reference/generate_codebook.html">generate_codebook()</a></code>
+and included in the codebook attribute of the dataframe returned by
+<code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>. Verify that each new variable is
+documented and that its documentation is accurate. If the documentation
+is incorrect, the error we estimate for derived variables will also be
+incorrect.</p>
+<p>If the documentation is incorrect, the PR should note the issue; it
+should not include changes to <code>R/generate_codebook.R</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="step-5-verify-coefficients-of-variation">Step 5: Verify Coefficients of Variation<a class="anchor" aria-label="anchor" href="#step-5-verify-coefficients-of-variation"></a>
+</h2>
+<p>Like the codebook, CVs are computed automatically from the
+<code>definitions</code> metadata. Check that coefficients of variation
+appear reasonable.</p>
+<p>Users should also check the magnitude of errors for all variables–raw
+ACS estimates and <code>urbnindicators</code>-calculated variables
+alike–across smaller geographies, such as all tracts in one or more
+states. If CVs are large (e.g., over 50) for a large share of all
+tracts, this may indicate that the series of interest is not appropriate
+for tract-level analysis. Because <code>urbnindicators</code> is
+designed to facilitate tract-level analysis, variables that are
+consistently unreliable at the tract level will not be integrated into
+the codebase.</p>
+</div>
+<div class="section level2">
+<h2 id="step-6-verify-pretty-names">Step 6: Verify Pretty Names<a class="anchor" aria-label="anchor" href="#step-6-verify-pretty-names"></a>
+</h2>
+<p>Ensure that the new variables have reasonable names:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sample_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/across.html" class="external-link">across</a></span><span class="op">(</span></span>
@@ -351,19 +462,31 @@ leave it to users to make other adjustments, such as removing the
 substring “Household Type”, if they want even more concise names.</p>
 </div>
 <div class="section level2">
-<h2 id="evaluate-changes-by-calling-compile_acs_data">6: Evaluate Changes by Calling <code>compile_acs_data()</code><a class="anchor" aria-label="anchor" href="#evaluate-changes-by-calling-compile_acs_data"></a>
+<h2 id="step-7-integration-test">Step 7: Integration Test<a class="anchor" aria-label="anchor" href="#step-7-integration-test"></a>
 </h2>
-<p>Lastly, users should ensure that the code they’ve developed in
-isolation for their PR functions as intended, and without unanticipated
-side effects, by integrating their proposed changes into the codebase
-(on their branch), loading the current version of
-<code>urbnindicators</code> (which is done by calling
-<code>devtools::load_all()</code> in the console), and then calling
-<code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code> in a scratch file and interactively
-exploring both the data and codebook.</p>
+<p>Integrate the proposed changes into the codebase (on a branch), load
+the current version of <code>urbnindicators</code> (via
+<code>devtools::load_all()</code>), and call
+<code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>. Verify that the new table works both in
+isolation and as part of the full suite:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">## test the new table in isolation</span></span>
+<span><span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
+<span>  tables <span class="op">=</span> <span class="st">"household_type"</span>,</span>
+<span>  years <span class="op">=</span> <span class="fl">2022</span>,</span>
+<span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
+<span>  states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## test the full suite</span></span>
+<span><span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
+<span>  years <span class="op">=</span> <span class="fl">2022</span>,</span>
+<span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
+<span>  states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span></code></pre></div>
+<p>Interactively explore both the data and the codebook (accessed via
+<code>attr(result, "codebook")</code>).</p>
 </div>
 <div class="section level2">
-<h2 id="quality-check-results">7: Quality Check Results<a class="anchor" aria-label="anchor" href="#quality-check-results"></a>
+<h2 id="step-8-quality-check-results">Step 8: Quality Check Results<a class="anchor" aria-label="anchor" href="#step-8-quality-check-results"></a>
 </h2>
 <p>There are a few strategies for quality-checking the results of a
 series of variables:</p>
@@ -398,7 +521,7 @@ may be an indication that a calculation has gone awry.</p></li>
 </ol>
 </div>
 <div class="section level2">
-<h2 id="open-the-pr">8: Open the PR<a class="anchor" aria-label="anchor" href="#open-the-pr"></a>
+<h2 id="step-9-open-the-pr">Step 9: Open the PR<a class="anchor" aria-label="anchor" href="#step-9-open-the-pr"></a>
 </h2>
 <p>Once users are satisfied with the proposed code (and/or have noted
 any issues), they should click on their branch in the GitHub repository

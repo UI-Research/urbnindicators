@@ -4,6 +4,8 @@
 
 - [The urbnindicators
   Codebook](https://ui-research.github.io/urbnindicators/articles/codebook.md):
+- [Aggregating to Custom
+  Geographies](https://ui-research.github.io/urbnindicators/articles/custom-geographies.md):
 - [Design
   Philosophy](https://ui-research.github.io/urbnindicators/articles/design-philosophy.md):
 - [How to Open a Pull

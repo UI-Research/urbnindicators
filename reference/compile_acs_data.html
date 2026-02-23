@@ -24,6 +24,7 @@ the Census Bureau API."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
     <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
@@ -53,12 +54,14 @@ the Census Bureau API.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">compile_acs_data</span><span class="op">(</span></span>
-<span>  variables <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tables <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  indicators <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2022</span><span class="op">)</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  counties <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  spatial <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  spatial <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -66,14 +69,21 @@ the Census Bureau API.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-variables">variables<a class="anchor" aria-label="anchor" href="#arg-variables"></a></dt>
-<dd><p>A named vector of ACS variables such as that returned from
-<code><a href="list_acs_variables.html">urbnindicators::list_acs_variables()</a></code>.</p></dd>
+<dl><dt id="arg-tables">tables<a class="anchor" aria-label="anchor" href="#arg-tables"></a></dt>
+<dd><p>A character vector of table names to include (e.g.,
+<code>c("race", "snap")</code>). Use <code><a href="list_tables.html">list_tables()</a></code> to see available tables.
+When NULL (default) and <code>indicators</code> is also NULL, all tables are included.</p></dd>
+
+
+<dt id="arg-indicators">indicators<a class="anchor" aria-label="anchor" href="#arg-indicators"></a></dt>
+<dd><p>A character vector of indicator names to include (e.g.,
+<code>c("snap_received_percent")</code>). Each indicator's parent table is
+automatically included.</p></dd>
 
 
 <dt id="arg-years">years<a class="anchor" aria-label="anchor" href="#arg-years"></a></dt>
-<dd><p>A character vector (or coercible to the same) comprising one or more
-four-digit years for which to pull five-year American Community Survey estimates.</p></dd>
+<dd><p>A numeric vector of four-digit years for which to pull five-year
+American Community Survey estimates.</p></dd>
 
 
 <dt id="arg-geography">geography<a class="anchor" aria-label="anchor" href="#arg-geography"></a></dt>
@@ -96,10 +106,15 @@ state(s) specified in the <code>states</code> parameter will be included.</p></d
 <dt id="arg-spatial">spatial<a class="anchor" aria-label="anchor" href="#arg-spatial"></a></dt>
 <dd><p>Boolean. Return a simple features (sf), spatially-enabled dataframe?</p></dd>
 
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Deprecated arguments. If <code>variables</code> is passed, a deprecation
+warning is issued and the value is ignored.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A dataframe containing the requested <code>variables</code>, their MOEs,
+    <p>A dataframe containing the requested variables, their MOEs,
 a series of derived variables, such as percentages, and the year of the data.
 Returned data are formatted wide. A codebook generated with <code><a href="generate_codebook.html">generate_codebook()</a></code>
 is attached and can be accessed via <code>compile_acs_data() %&gt;% attr("codebook")</code>.</p>
@@ -112,14 +127,16 @@ is attached and can be accessed via <code>compile_acs_data() %&gt;% attr("codebo
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="va">acs_variables</span> <span class="op">=</span> <span class="fu"><a href="list_acs_variables.html">list_acs_variables</a></span><span class="op">(</span>year <span class="op">=</span> <span class="st">"2022"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  variables <span class="op">=</span> <span class="va">acs_variables</span>,</span></span>
-<span class="r-in"><span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2021</span>, <span class="fl">2022</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span></span>
-<span class="r-in"><span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span></span>
-<span class="r-in"><span>  counties <span class="op">=</span> <span class="cn">NULL</span>,</span></span>
-<span class="r-in"><span>  spatial <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co">## Pull all tables (default, backward-compatible)</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2022</span><span class="op">)</span>, geography <span class="op">=</span> <span class="st">"county"</span>, states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## Pull specific tables</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"race"</span>, <span class="st">"snap"</span><span class="op">)</span>, years <span class="op">=</span> <span class="fl">2022</span>,</span></span>
+<span class="r-in"><span>                      geography <span class="op">=</span> <span class="st">"county"</span>, states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## Pull by indicator name (returns the full parent table)</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>indicators <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_received_percent"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                      years <span class="op">=</span> <span class="fl">2022</span>, geography <span class="op">=</span> <span class="st">"county"</span>, states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

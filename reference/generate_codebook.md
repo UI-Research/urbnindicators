@@ -7,7 +7,7 @@ are calculated.
 ## Usage
 
 ``` r
-generate_codebook(.data)
+generate_codebook(.data, resolved_tables = NULL)
 ```
 
 ## Arguments
@@ -16,6 +16,11 @@ generate_codebook(.data)
 
   The dataset returned from
   [`urbnindicators::compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
+
+- resolved_tables:
+
+  A character vector of resolved table names from the table registry.
+  When NULL (default), all registered tables are used.
 
 ## Value
 
@@ -32,12 +37,12 @@ each variable was created.
 ``` r
 if (FALSE) { # \dontrun{
 df = compile_acs_data(
-  variables = list_acs_variables(year = 2022),
-  years = c(2022),
+  years = c(2024),
   geography = "county",
   states = "NJ",
   counties = NULL,
-  spatial = FALSE)
+  spatial = FALSE) %>%
+  dplyr::select(-dplyr::matches("_M$|_SE$|_CV$"))
 codebook = generate_codebook(.data = df)
 } # }
 ```

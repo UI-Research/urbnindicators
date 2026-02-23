@@ -131,11 +131,41 @@ geographies.
 Note that selecting more geographic units–either by selecting a
 `geography` option comprising more units, by selecting more states, or
 selecting more years–can significantly increase the query time. A
-tract-level query of the entire US can take 30+ minutes.
+tract-level query of the entire US for all supported variables can take
+30+ minutes.
+
+Use
+[`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
+to see which tables are available:
+
+``` r
+list_tables()
+#>  [1] "age"                          "computing_devices"           
+#>  [3] "cost_burden"                  "disability"                  
+#>  [5] "educational_attainment"       "employment"                  
+#>  [7] "gini"                         "health_insurance"            
+#>  [9] "household_size"               "income_quintiles"            
+#> [11] "internet"                     "language"                    
+#> [13] "median_household_income"      "median_housing_cost"         
+#> [15] "median_income_by_tenure"      "mortgage_status"             
+#> [17] "nativity"                     "occupants_per_room"          
+#> [19] "population_density"           "poverty"                     
+#> [21] "public_assistance"            "race"                        
+#> [23] "school_enrollment"            "sex"                         
+#> [25] "snap"                         "tenure"                      
+#> [27] "tenure_by_housing_costs"      "tenure_by_units_in_structure"
+#> [29] "total_population"             "transportation_to_work"      
+#> [31] "travel_time_to_work"          "units_in_structure"          
+#> [33] "vehicles_available"           "year_structure_built"
+```
+
+Here we request just two tables–`disability` and
+`transportation_to_work`:
 
 ``` r
 df_urbnindicators = urbnindicators::compile_acs_data(
   years = 2022,
+  tables = c("disability", "transportation_to_work"),
   geography = "county",
   states = "NJ",
   spatial = TRUE)
@@ -150,14 +180,14 @@ df_urbnindicators %>%
   ggplot() +
     geom_sf(aes(fill = disability_percent)) +
     theme_urbn_map() +
-    scale_fill_continuous(labels = scales::percent, trans = "reverse") +
+    scale_fill_continuous(labels = scales::percent, transform = "reverse") +
     labs(
-      title = "Disability rates appear higher in southern NJ",
+      title = "Disability Rates Appear Higher in Southern NJ",
       subtitle = "Disability rates by county, NJ, 2018-2022 ACS",
       fill = "Population with an ACS-defined disability (%)" %>% str_wrap(20))
 ```
 
-![](urbnindicators_files/figure-html/unnamed-chunk-5-1.png)
+![](urbnindicators_files/figure-html/unnamed-chunk-6-1.png)
 
 ### Document data
 
@@ -172,31 +202,30 @@ here](https://ui-research.github.io/urbnindicators/articles/articles/codebook.md
 ``` r
 df_urbnindicators %>%
   attr("codebook") %>%
-  head(20) %>%
   reactable::reactable()
 ```
 
 The codebook specifies the variable type and provides a definition of
 how the variable was calculated. Most (though not all) variables that
-are directly available from the ACS are count variables, such as the
-number of people receiving public assistance. Many of the variables that
-are calculated by
+are directly available from the ACS are count variables. Many of the
+variables that are calculated by
 [`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
-are percent variables, where we divide two count variables.
+are percent variables, where we divide two count variables. For example,
+`disability_percent` is simply a numerator divided by a denominator:
 
 ``` r
 df_urbnindicators %>%
   attr("codebook") %>%
-  filter(str_detect(calculated_variable, "public_assistance")) %>%
+  filter(str_detect(calculated_variable, "^disability_percent$")) %>%
   reactable::reactable()
 ```
 
 The most common convention is that a percent variable is calculated by
-dividing a count variable (e.g., `public_assistance_received`) by the
-universe variable for the corresponding table (e.g.,
-`public_assistance_universe`). But other derived variables are more
-complex, such as those for commute mode. Here, we’ve aggregated three
-counts representing different types of individual motor vehicle
+dividing a count variable (e.g., `means_transportation_work_walked`) by
+the universe variable for the corresponding table (e.g.,
+`means_transportation_work_universe`). But other derived variables are
+more complex, such as those for commute mode. Here, we’ve aggregated
+three counts representing different types of individual motor vehicle
 transportation to create the numerator, while the denominator is the
 table universe minus individuals who work from home.
 
@@ -210,41 +239,13 @@ df_urbnindicators %>%
 This allows us say something along the lines of: “Of individuals who
 commute to work, XX% use a motor vehicle as their primary commute mode.”
 
-## So What’s the Value Add?
+## Summary
 
-Hopefully the process above has illustrated some of the advantages,
-which fall into two buckets:
-
-1.  Speed:
-
-    1.  Sensible decisions about variable and table selection eliminate
-        the need to hunt for the right variables.
-
-    2.  Raw ACS variables are included alongside pre-calculated
-        variables, such as percentages, that are not directly available
-        from the ACS.
-
-    3.  Query multiple years and/or multiple states in a single function
-        call– no need to loop over your desired years or states.
-
-2.  Accuracy:
-
-    1.  Alphanumeric variable codes (e.g., `B18101_001`) are replaced
-        with meaningful variable names (e.g.,
-        `disability_percent`)–eliminating a common source of confusion
-        and error.
-
-    2.  Data are returned with a codebook that documents how variables
-        were created and what they represent.
-
-    3.  Behind-the-scenes quality checks help to ensure (though do not
-        guarantee) that calculations are correct, though users still
-        should verify results themselves.
-
-    4.  Both straight-from-the-ACS and derived variables include margins
-        of error and coefficients of variation that enable users to
-        conduct statistical significance testing and can inform other
-        data quality decision-making, such as whether to suppress
-        certain observations or whether data should be aggregated–across
-        geographies or across variables, or both–to improve the accuracy
-        of estimates.
+In short,
+[`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
+trades the flexibility of
+[`library(tidycensus)`](https://walker-data.com/tidycensus/) for speed
+and reliability: meaningful variable names replace opaque codes, a
+codebook documents every calculation, and margins of error and
+coefficients of variation are carried through automatically so users can
+make informed decisions about statistical significance and data quality.

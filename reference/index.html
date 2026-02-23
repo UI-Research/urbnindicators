@@ -20,6 +20,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
     <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
@@ -54,6 +55,13 @@
 
         </dt>
         <dd>Analysis-ready social science measures</dd>
+
+        <dt>
+
+          <code><a href="calculate_custom_geographies.html">calculate_custom_geographies()</a></code>
+
+        </dt>
+        <dd>Aggregate ACS data to custom geographies</dd>
       </dl></div><div class="section level2">
       <h2 id="measuring-error">Measuring error<a class="anchor" aria-label="anchor" href="#measuring-error"></a></h2>
 
@@ -103,10 +111,17 @@
 
       <dl><dt>
 
-          <code><a href="safe_divide.html">safe_divide()</a></code>
+          <code><a href="list_tables.html">list_tables()</a></code>
 
         </dt>
-        <dd>Division without NAs</dd>
+        <dd>List available table names</dd>
+
+        <dt>
+
+          <code><a href="list_variables.html">list_variables()</a></code>
+
+        </dt>
+        <dd>List all variables and their tables</dd>
 
         <dt>
 
@@ -124,17 +139,24 @@
 
         <dt>
 
-          <code><a href="list_acs_variables.html">list_acs_variables()</a></code>
-
-        </dt>
-        <dd>Return ACS variables codes and names</dd>
-
-        <dt>
-
           <code><a href="make_pretty_names.html">make_pretty_names()</a></code>
 
         </dt>
         <dd>Pretty-ify variable names</dd>
+
+        <dt>
+
+          <code><a href="safe_divide.html">safe_divide()</a></code>
+
+        </dt>
+        <dd>Division without NAs</dd>
+
+        <dt>
+
+          <code><a href="list_acs_variables.html">list_acs_variables()</a></code>
+          <span class="badge lifecycle lifecycle-deprecated">deprecated</span>
+        </dt>
+        <dd>Return ACS variables codes and names</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

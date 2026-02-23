@@ -7,9 +7,8 @@ geographies to support.
 
 “Opinionated” doesn’t mean that these decisions are the best ones for
 every user or use-case, but these decisions are designed to either speed
-or improve the accuracy of a particular (and relatively common) workflow
-and use-case involving a large set of variables common across social
-science applications.
+or improve the accuracy of a common use-case involving a large set of
+variables (optionally over multiple years).
 
 ## Design choices
 
@@ -61,7 +60,7 @@ science applications.
   [`urbnindicators::select_variables_by_name()`](https://ui-research.github.io/urbnindicators/reference/select_variables_by_name.md),
   [`urbnindicators::filter_variables()`](https://ui-research.github.io/urbnindicators/reference/filter_variables.md),
   and
-  [`urbnindicators::list_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/list_acs_variables.md)
+  [`urbnindicators::list_variables()`](https://ui-research.github.io/urbnindicators/reference/list_variables.md)
   to select and sensibly name variables returned from
   [`library(tidycensus)`](https://walker-data.com/tidycensus/). In the
   future, we’ll add caching options so that you don’t have to repeatedly

@@ -76,16 +76,18 @@ aggregate estimates, either across geographies or across variables, or
 We plan to add utilities to support users in aggregating estimates and
 calculating adjusted measurements of error. For now, we warn that any
 aggregation should be done with care, as error cannot be simply added
-(or otherwise summarize) the way that estimates can.
+(or otherwise summarized) the way that estimates can.
 
 ``` r
 acs_df_county = compile_acs_data(
-  years = c(2022),
+  years = c(2024),
+  tables = "age",
   geography = "county",
   states = "NJ")
 
 acs_df_tract = compile_acs_data(
-  years = c(2022),
+  years = c(2024),
+  tables = "age",
   geography = "tract",
   states = "NJ",
   spatial = TRUE)
@@ -93,45 +95,43 @@ acs_df_tract = compile_acs_data(
 
 ``` r
 plot_df = bind_rows(
-      acs_df_county %>% dplyr::mutate(geography = "County"),
-      acs_df_tract %>% dplyr::mutate(geography = "Tract")) %>%
-    sf::st_drop_geometry() %>%
-    dplyr::select(
-      geography, 
-      c(dplyr::matches("^age.*percent.*CV") & dplyr::matches("(_6|_7|_8)"))) %>%
-    dplyr::rename_with(
-      .cols = dplyr::everything(), 
-      .fn = ~ .x %>% 
-        stringr::str_replace_all(c("_" = " ", "percent" = "(%)", "age|CV" = "")) %>%
-        stringr::str_squish() %>% stringr::str_trim()) %>%
-    tidyr::pivot_longer(-geography) %>%
-    dplyr::mutate(plot_title = stringr::str_c(geography, ": ", name))
+      acs_df_county %>% mutate(geography = "County"),
+      acs_df_tract %>% mutate(geography = "Tract")) %>%
+    st_drop_geometry() %>%
+    select(
+      geography,
+      c(matches("^age.*percent.*CV") & matches("(_6|_7|_8)"))) %>%
+    rename_with(
+      .cols = everything(),
+      .fn = ~ .x %>%
+        str_replace_all(c("_" = " ", "percent" = "(%)", "age|CV" = "")) %>%
+        str_squish() %>% str_trim()) %>%
+    pivot_longer(-geography) %>%
+    mutate(plot_title = str_c(geography, ": ", name))
 
-factor_levels = plot_df %>% 
-  dplyr::arrange(name) %>%
-  dplyr::distinct(plot_title, .keep_all = TRUE) %>%
-  dplyr::pull(plot_title)
+factor_levels = plot_df %>%
+  arrange(name) %>%
+  distinct(plot_title, .keep_all = TRUE) %>%
+  pull(plot_title)
 
 plot_df %>%
-  dplyr::mutate(
+  mutate(
     plot_title = factor(plot_title, levels = factor_levels, ordered = TRUE)) %>%
-  ggplot2::ggplot() +
-    ggplot2::geom_histogram(
-      ggplot2::aes(x = value), fill = urbnthemes::palette_urbn_main[1], bins = 50) +
-    ggplot2::geom_vline(xintercept = 30, linetype = "dashed") +
-    ggplot2::facet_wrap(~ plot_title, ncol = 2, scales = "free") +
-    ggplot2::scale_x_continuous(limits = c(0, 150)) +
-    ggplot2::guides(fill =  "none") +
-    urbnthemes::theme_urbn_print() +
+  ggplot() +
+    geom_histogram(
+      aes(x = value), fill = palette_urbn_main[1], bins = 50) +
+    geom_vline(xintercept = 30, linetype = "dashed") +
+    facet_wrap(~ plot_title, ncol = 2, scales = "free") +
+    scale_x_continuous(limits = c(0, 150)) +
+    guides(fill =  "none") +
+    theme_urbn_print() +
     theme(axis.text.y = element_blank()) +
-    ggplot2::labs(
-      x = "CV", 
+    labs(
+      x = "CV",
       y = "Distribution",
       title = "County CVs are Smaller than Tract CVs\nCVs for Wider Age Ranges are Smaller than CVs for Narrow Age Ranges",
       subtitle = "Coefficients of variation (CV) at the county and tract levels for various age groupings")
 ```
-
-![](quantified-survey-error_files/figure-html/unnamed-chunk-3-1.png)
 
 ## Conduct Statistical Significance Testing
 
@@ -139,7 +139,7 @@ Statistical significance testing is critical to understanding whether
 estimates are meaningfully different. Estimates that may appear
 substantially different in isolation are frequently, especially at
 smaller geographies, not statistically significantly different because
-there errors are so significant.
+their errors are so significant.
 
 We’ll illustrate this numerically and demonstrate the impacts of
 accounting for error when visualizing data, leveraging
@@ -154,23 +154,23 @@ cv_to_moe = function(cv, estimate) {
 }
 
 plot_data = acs_df_tract %>%
-  dplyr::filter(str_detect(NAME, "Atlantic")) %>%
-  dplyr::select(GEOID, dplyr::matches("age_over_64_percent")) %>%
-  dplyr::mutate(county_geoid = stringr::str_sub(GEOID, 1, 5)) %>%
-  dplyr::left_join(
+  filter(str_detect(NAME, "Atlantic")) %>%
+  select(GEOID, matches("age_over_64_percent")) %>%
+  mutate(county_geoid = str_sub(GEOID, 1, 5)) %>%
+  left_join(
     acs_df_county %>%
-      dplyr::filter(stringr::str_detect(NAME, "Atlantic")) %>%
-      dplyr::select(GEOID, dplyr::matches("age_over_64_percent")) %>%
-      dplyr::rename_with(
-        .cols = dplyr::matches("age_over_64_percent"), 
-        .fn = ~ stringr::str_c(.x, "_county")),
+      filter(str_detect(NAME, "Atlantic")) %>%
+      select(GEOID, matches("age_over_64_percent")) %>%
+      rename_with(
+        .cols = matches("age_over_64_percent"),
+        .fn = ~ str_c(.x, "_county")),
     by = c("county_geoid" = "GEOID")) %>%
-  dplyr::mutate(
-    naive_difference = dplyr::case_when(
+  mutate(
+    naive_difference = case_when(
       age_over_64_percent > age_over_64_percent_county ~ "Larger",
       age_over_64_percent < age_over_64_percent_county ~ "Smaller",
       TRUE ~ "Equal"),
-    significance = tidycensus::significance(
+    significance = significance(
       est1 = age_over_64_percent,
       est2 = age_over_64_percent_county,
       moe1 = cv_to_moe(
@@ -178,76 +178,72 @@ plot_data = acs_df_tract %>%
       moe2 = cv_to_moe(
         cv = age_over_64_percent_CV_county, estimate = age_over_64_percent_county),
       clevel = 0.9),
-    statistical_difference = dplyr::case_when(
+    statistical_difference = case_when(
       significance == FALSE ~ "Not significant",
-      significance == TRUE & age_over_64_percent > age_over_64_percent_county ~ 
+      significance == TRUE & age_over_64_percent > age_over_64_percent_county ~
         "Larger",
       significance == TRUE & age_over_64_percent < age_over_64_percent_county ~
-        "Smaller")) 
+        "Smaller"))
 
 plot_data %>%
-  dplyr::select(GEOID, naive_difference, statistical_difference) %>%
-  tidyr::pivot_longer(cols = -c(GEOID, geometry)) %>%
-  dplyr::mutate(
+  select(GEOID, naive_difference, statistical_difference) %>%
+  pivot_longer(cols = -c(GEOID, geometry)) %>%
+  mutate(
     name = if_else(
-      name == "naive_difference", 
+      name == "naive_difference",
       "Difference in point estimates",
       "Statistically-significant difference")) %>%
-  ggplot2::ggplot() +
-    ggplot2::geom_sf(aes(fill = value)) +
-    ggplot2::scale_fill_manual(
+  ggplot() +
+    geom_sf(aes(fill = value)) +
+    scale_fill_manual(
       values = c(
-        "Larger" = urbnthemes::palette_urbn_main[1] %>% as.character,
-        "Smaller" = urbnthemes::palette_urbn_main[2] %>% as.character(),
-        "Not significant" = urbnthemes::palette_urbn_main[4] %>% as.character())) +
-    urbnthemes::theme_urbn_map() +
-    ggplot2::facet_wrap(~ name) +
-    ggplot2::theme(legend.position = "bottom", legend.direction = "horizontal") +
-    ggplot2::labs(
+        "Larger" = palette_urbn_main[1] %>% as.character(),
+        "Smaller" = palette_urbn_main[2] %>% as.character(),
+        "Not significant" = palette_urbn_main[4] %>% as.character())) +
+    theme_urbn_map() +
+    facet_wrap(~ name) +
+    theme(legend.position = "bottom", legend.direction = "horizontal") +
+    labs(
       fill = "",
-      title = "Many Tract-Level Estimates Are Not Statistically Significantly Different from the County-Level Estimate" %>% stringr::str_wrap(90),
+      title = "Many Tract-Level Estimates Are Not Statistically Significantly Different from the County-Level Estimate" %>% str_wrap(90),
       subtitle = "Tract-level share of the population 65+ vs. county-level estimate, Atlantic County, NJ")
 ```
 
-![](quantified-survey-error_files/figure-html/unnamed-chunk-4-1.png)
-
 ``` r
-signficance_test_data = plot_data %>%
-  dplyr::filter(GEOID %in% c("34001011901", "34001001900"))
+significance_test_data = plot_data %>%
+  filter(GEOID %in% c("34001011901", "34001001900"))
 
 ## TRUE
-significant_difference = tidycensus::significance(
-  est1 = signficance_test_data %>% 
-    dplyr::filter(GEOID == "34001001900") %>% 
-    dplyr::pull(age_over_64_percent),
-  est2 = signficance_test_data %>% 
-    dplyr::filter(GEOID == "34001011901") %>% 
-    dplyr::pull(age_over_64_percent),
-  moe1 = signficance_test_data %>% 
-    dplyr::filter(GEOID == "34001001900") %>% 
-    dplyr::pull(age_over_64_percent_M),
-  moe2 = signficance_test_data %>% 
-    dplyr::filter(GEOID == "34001011901") %>% 
-    dplyr::pull(age_over_64_percent_M))
+significant_difference = significance(
+  est1 = significance_test_data %>%
+    filter(GEOID == "34001001900") %>%
+    pull(age_over_64_percent),
+  est2 = significance_test_data %>%
+    filter(GEOID == "34001011901") %>%
+    pull(age_over_64_percent),
+  moe1 = significance_test_data %>%
+    filter(GEOID == "34001001900") %>%
+    pull(age_over_64_percent_M),
+  moe2 = significance_test_data %>%
+    filter(GEOID == "34001011901") %>%
+    pull(age_over_64_percent_M))
 
 plot_data %>%
-  dplyr::filter(GEOID %in% c("34001011901", "34001001900")) %>%
-  ggplot2::ggplot(aes(y = GEOID, x = age_over_64_percent, color = GEOID)) +
-    ggplot2::geom_point() +
-    ggplot2::geom_errorbar(
-      ggplot2::aes(
+  filter(GEOID %in% c("34001011901", "34001001900")) %>%
+  ggplot(aes(y = GEOID, x = age_over_64_percent, color = GEOID)) +
+    geom_point() +
+    geom_errorbar(
+      aes(
         xmin = age_over_64_percent - age_over_64_percent_M,
-        xmax = age_over_64_percent + age_over_64_percent_M,
-      width = 0.2)) +
-  urbnthemes::theme_urbn_print() +
-  ggplot2::labs(
+        xmax = age_over_64_percent + age_over_64_percent_M),
+      width = 0.2) +
+  theme_urbn_print() +
+  labs(
     x = "Share of population over 64",
     y = "Tract",
-    title = "One Tract Estimate Triples That of the Other, But the Difference is Barely Statistically Significant Owing to the Error" %>% str_wrap(100),
+    title = "One Tract Estimate Doubles That of the Other, But There is No Statistically Significant Difference" %>% str_wrap(100),
     subtitle = "Share of population over the age of 64, point estimates and margins of error")
 ```
-
-![](quantified-survey-error_files/figure-html/unnamed-chunk-5-1.png)
 
 ## Report and Visualize Error
 
@@ -301,13 +297,13 @@ imperfect for at least two reasons:
 2.  Errors for derived estimates are calculated using (Census
     Bureau-recommended) formulae that inherently inflate error when
     multiple variables are combined. For example, `age_over_64_percent`
-    (see figure 1) is calculated by summing numerous raw estimates to
-    produce the numerator and then dividing this numerator by the table
-    universe. As shown, this process produces a much more precise
-    estimate than is available for any of the component variables used
-    to calculate the numerator–but the error for this newly-derived
-    estimate is likely larger than the directly-calculated (and more
-    accurate) error when using individual-level data.
+    (see the first figure above) is calculated by summing numerous raw
+    estimates to produce the numerator and then dividing this numerator
+    by the table universe. As shown, this process produces a much more
+    precise estimate than is available for any of the component
+    variables used to calculate the numerator–but the error for this
+    newly-derived estimate is likely larger than the directly-calculated
+    (and more accurate) error when using individual-level data.
 
 ***So what to do?***
 

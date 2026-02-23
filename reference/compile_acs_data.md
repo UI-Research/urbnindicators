@@ -9,27 +9,37 @@ to acquire raw estimates from the Census Bureau API.
 
 ``` r
 compile_acs_data(
-  variables = NULL,
+  tables = NULL,
+  indicators = NULL,
   years = c(2022),
   geography = "county",
   states = NULL,
   counties = NULL,
-  spatial = FALSE
+  spatial = FALSE,
+  ...
 )
 ```
 
 ## Arguments
 
-- variables:
+- tables:
 
-  A named vector of ACS variables such as that returned from
-  [`urbnindicators::list_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/list_acs_variables.md).
+  A character vector of table names to include (e.g.,
+  `c("race", "snap")`). Use
+  [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
+  to see available tables. When NULL (default) and `indicators` is also
+  NULL, all tables are included.
+
+- indicators:
+
+  A character vector of indicator names to include (e.g.,
+  `c("snap_received_percent")`). Each indicator's parent table is
+  automatically included.
 
 - years:
 
-  A character vector (or coercible to the same) comprising one or more
-  four-digit years for which to pull five-year American Community Survey
-  estimates.
+  A numeric vector of four-digit years for which to pull five-year
+  American Community Survey estimates.
 
 - geography:
 
@@ -54,10 +64,15 @@ compile_acs_data(
 
   Boolean. Return a simple features (sf), spatially-enabled dataframe?
 
+- ...:
+
+  Deprecated arguments. If `variables` is passed, a deprecation warning
+  is issued and the value is ignored.
+
 ## Value
 
-A dataframe containing the requested `variables`, their MOEs, a series
-of derived variables, such as percentages, and the year of the data.
+A dataframe containing the requested variables, their MOEs, a series of
+derived variables, such as percentages, and the year of the data.
 Returned data are formatted wide. A codebook generated with
 [`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)
 is attached and can be accessed via
@@ -72,13 +87,15 @@ which this function wraps.
 
 ``` r
 if (FALSE) { # \dontrun{
-acs_variables = list_acs_variables(year = "2022")
-df = compile_acs_data(
-  variables = acs_variables,
-  years = c(2021, 2022),
-  geography = "county",
-  states = "NJ",
-  counties = NULL,
-  spatial = FALSE)
+## Pull all tables (default, backward-compatible)
+df = compile_acs_data(years = c(2022), geography = "county", states = "NJ")
+
+## Pull specific tables
+df = compile_acs_data(tables = c("race", "snap"), years = 2022,
+                      geography = "county", states = "NJ")
+
+## Pull by indicator name (returns the full parent table)
+df = compile_acs_data(indicators = c("snap_received_percent"),
+                      years = 2022, geography = "county", states = "NJ")
   } # }
 ```
