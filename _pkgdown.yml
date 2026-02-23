@@ -7,6 +7,7 @@ reference:
 - title: Acquire data
   contents:
   - compile_acs_data
+  - calculate_custom_geographies
 - title: Measuring error
   contents:
   - se_simple
