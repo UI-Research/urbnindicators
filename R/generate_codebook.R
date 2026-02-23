@@ -94,7 +94,11 @@ generate_codebook = function(.data, resolved_tables = NULL) {
       if (is.null(table_entry) || is.null(table_entry[["definitions"]]) || length(table_entry[["definitions"]]) == 0) {
         return(tibble::tibble(calculated_variable = character(0),
                               variable_type = character(0),
-                              definition = character(0)))
+                              definition = character(0),
+                              numerator_vars = list(),
+                              numerator_subtract_vars = list(),
+                              denominator_vars = list(),
+                              denominator_subtract_vars = list()))
       }
       purrr::map(
         table_entry[["definitions"]],
@@ -109,17 +113,35 @@ generate_codebook = function(.data, resolved_tables = NULL) {
     purrr::keep(~ .x %in% colnames(.data))
 
   ####----Assemble Codebook----####
-  result1 = tibble::tibble(calculated_variable = raw_variable_names) %>%
+  ## raw variables: populate list columns with empty vectors
+  raw_rows = tibble::tibble(
+    calculated_variable = raw_variable_names,
+    numerator_vars = purrr::map(raw_variable_names, ~ character(0)),
+    numerator_subtract_vars = purrr::map(raw_variable_names, ~ character(0)),
+    denominator_vars = purrr::map(raw_variable_names, ~ character(0)),
+    denominator_subtract_vars = purrr::map(raw_variable_names, ~ character(0)))
+
+  ## metadata entries: populate list columns with empty vectors
+  metadata_names = c("data_source_year", "GEOID", "NAME", "area_land_sq_kilometer",
+                     "area_water_sq_kilometer", "area_land_water_sq_kilometer", "geometry")
+  metadata_rows = tibble::tribble(
+    ~calculated_variable, ~definition, ~variable_type,
+    "data_source_year", "End year of five-year ACS period from which the estimates were queried.", "Metadata",
+    "GEOID", "A federally-issued identifier of the geographic unit.", "Metadata",
+    "NAME", "The name of the geographic unit.", "Metadata",
+    "area_land_sq_kilometer", "Land area of the geographic unit, in square kilometers.", "Metadata",
+    "area_water_sq_kilometer", "Water area of the geographic unit, in square kilometers.", "Metadata",
+    "area_land_water_sq_kilometer", "Combined land and water area of the geographic unit, in square kilometers.", "Metadata",
+    "geometry", "The spatial geometry attributes of the geographic unit.", "Metadata") %>%
+    dplyr::mutate(
+      numerator_vars = purrr::map(metadata_names, ~ character(0)),
+      numerator_subtract_vars = purrr::map(metadata_names, ~ character(0)),
+      denominator_vars = purrr::map(metadata_names, ~ character(0)),
+      denominator_subtract_vars = purrr::map(metadata_names, ~ character(0)))
+
+  result1 = raw_rows %>%
     dplyr::bind_rows(partial_documentation) %>%
-    dplyr::bind_rows(tibble::tribble(
-      ~calculated_variable, ~definition, ~variable_type,
-      "data_source_year", "End year of five-year ACS period from which the estimates were queried.", "Metadata",
-      "GEOID", "A federally-issued identifier of the geographic unit.", "Metadata",
-      "NAME", "The name of the geographic unit.", "Metadata",
-      "area_land_sq_kilometer", "Land area of the geographic unit, in square kilometers.", "Metadata",
-      "area_water_sq_kilometer", "Water area of the geographic unit, in square kilometers.", "Metadata",
-      "area_land_water_sq_kilometer", "Combined land and water area of the geographic unit, in square kilometers.", "Metadata",
-      "geometry", "The spatial geometry attributes of the geographic unit.", "Metadata")) %>%
+    dplyr::bind_rows(metadata_rows) %>%
     dplyr::mutate(
       definition = dplyr::case_when(
         calculated_variable %in% raw_variable_names ~ "This is a raw ACS estimate.",
@@ -142,6 +164,32 @@ generate_codebook = function(.data, resolved_tables = NULL) {
         stringr::str_detect(definition, "household_income_by_gross_rent") ~ stringr::str_replace_all(definition, "percent ", "pct "),
         TRUE ~ definition))
 
+  ####----Add SE Calculation Type and Aggregation Strategy----####
+  result1 = result1 %>%
+    dplyr::mutate(
+      numerator_count = purrr::map_int(numerator_vars, length) +
+        purrr::map_int(numerator_subtract_vars, length),
+      denominator_count = purrr::map_int(denominator_vars, length) +
+        purrr::map_int(denominator_subtract_vars, length),
+      se_calculation_type = dplyr::case_when(
+        definition == "This is a raw ACS estimate." ~ "raw",
+        variable_type == "Metadata" ~ "metadata",
+        variable_type %in% c("Median ($)", "Median", "Average", "Quintile ($)", "Index") ~ "weighted_average",
+        stringr::str_detect(definition, "^One minus") ~ "one_minus",
+        variable_type == "Sum" ~ "sum",
+        numerator_count == 1 & denominator_count == 1 ~ "simple_percent",
+        numerator_count > 1 & denominator_count == 1 ~ "complex_numerator",
+        numerator_count == 1 & denominator_count > 1 ~ "complex_denominator",
+        numerator_count > 1 & denominator_count > 1 ~ "complex_both",
+        TRUE ~ "unknown"),
+      aggregation_strategy = dplyr::case_when(
+        variable_type %in% c("Count", "Sum") ~ "sum",
+        variable_type == "Percent" ~ "recalculate_percent",
+        variable_type %in% c("Median ($)", "Median", "Average", "Quintile ($)", "Index") ~ "weighted_average",
+        variable_type == "Metadata" ~ "metadata",
+        TRUE ~ "unknown")) %>%
+    dplyr::select(-numerator_count, -denominator_count)
+
   return(result1)
 }
 
@@ -150,4 +198,6 @@ utils::globalVariables(c(
   "raw_variable_name", "raw_name", "clean_name", "variable_definition_year", "value",
   "calculated_variable", "replacement", "denominators", "inputs", "denominators1",
   "denominators2", "inputs_formatted", "denominators_formatted", "variable_crosswalk",
-  "inputs_raw", "denominators_raw", "outputs", "count"))
+  "inputs_raw", "denominators_raw", "outputs", "count",
+  "numerator_vars", "numerator_subtract_vars", "denominator_vars", "denominator_subtract_vars",
+  "numerator_count", "denominator_count", "se_calculation_type", "aggregation_strategy"))

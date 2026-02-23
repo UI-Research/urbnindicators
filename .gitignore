@@ -11,4 +11,3 @@ inst/doc
 *.rds
 /inst
 tests/testthat/fixtures
-testing_variables_over_time.qmd

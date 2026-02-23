@@ -122,18 +122,132 @@ cv = function(estimate, se) {
   return(cv)
 }
 
-## helper function -- pull out the numerator and denominator from the definition
-extract_definition_terms = function(.definition, .type) {
-  .definition %>%
-    stringr::str_extract_all(paste0(.type, " .*?\\.")) %>%
-    stringr::str_remove_all("Numerator = |Denominator = |Sum of: |\\.") %>%
-    stringr::str_remove_all("\\(.*?\\)") %>%
-    stringr::str_trim() %>% stringr::str_squish() %>%
-    stringr::str_replace_all(c(" ," = ",", " -" = ","))
+#' @title Calculate standard error for a product of two estimates
+#' @details Calculate the standard error for an estimate derived by multiplying
+#'   two estimates together. For example, multiplying a proportion by a population
+#'   count to get a subgroup count. Formula from Census Bureau ACS Accuracy
+#'   documentation: SE(X*Y) = sqrt((X*SE(Y))^2 + (Y*SE(X))^2).
+#' @param estimate_x The first estimate (X)
+#' @param estimate_y The second estimate (Y)
+#' @param se_x The standard error of estimate X (or NULL if providing MOE)
+#' @param se_y The standard error of estimate Y (or NULL if providing MOE)
+#' @param moe_x The margin of error of estimate X (or NULL if providing SE)
+#' @param moe_y The margin of error of estimate Y (or NULL if providing SE)
+#' @returns The standard error of the product X*Y
+#' @keywords internal
+se_product = function(
+    estimate_x,
+    estimate_y,
+    se_x = NULL,
+    se_y = NULL,
+    moe_x = NULL,
+    moe_y = NULL) {
+
+  if (is.null(se_x) && is.null(moe_x)) {
+    stop("Either se_x or moe_x must be provided for estimate X.")
+  }
+  if (is.null(se_y) && is.null(moe_y)) {
+    stop("Either se_y or moe_y must be provided for estimate Y.")
+  }
+
+  if (!is.null(moe_x) && is.null(se_x)) {
+    se_x = se_simple(moe_x)
+  }
+  if (!is.null(moe_y) && is.null(se_y)) {
+    se_y = se_simple(moe_y)
+  }
+
+  se = sqrt(
+    ((estimate_x)^2 * (se_y)^2) +
+    ((estimate_y)^2 * (se_x)^2))
+
+  return(se)
+}
+
+#' @title Calculate standard error for population-weighted mean
+#' @details Calculate the standard error for a population-weighted average,
+#'   used when aggregating median or average variables across geographies.
+#'   Uses a multi-step approach following Census Bureau guidance:
+#'   1. Calculate SE for each product (value * weight) using se_product()
+#'   2. Calculate SE for the sum of products (numerator) using se_sum()
+#'   3. Calculate SE for the sum of weights (denominator) using se_sum()
+#'   4. Calculate SE for the ratio using se_proportion_ratio(type = "ratio")
+#' @param values A numeric vector of values being averaged (e.g., median incomes)
+#' @param weights A numeric vector of population weights
+#' @param se_values Standard errors for the values (or NULL if providing moe_values)
+#' @param se_weights Standard errors for the weights (or NULL if providing moe_weights)
+#' @param moe_values Margins of error for the values (or NULL if providing se_values)
+#' @param moe_weights Margins of error for the weights (or NULL if providing se_weights)
+#' @returns The standard error of the weighted mean
+#' @keywords internal
+se_weighted_mean = function(
+    values,
+    weights,
+    se_values = NULL,
+    se_weights = NULL,
+    moe_values = NULL,
+    moe_weights = NULL) {
+
+  if (is.null(se_values) && is.null(moe_values)) {
+    stop("Either se_values or moe_values must be provided.")
+  }
+  if (is.null(se_weights) && is.null(moe_weights)) {
+    stop("Either se_weights or moe_weights must be provided.")
+  }
+
+  if (!is.null(moe_values) && is.null(se_values)) {
+    se_values = se_simple(moe_values)
+  }
+  if (!is.null(moe_weights) && is.null(se_weights)) {
+    se_weights = se_simple(moe_weights)
+  }
+
+  ## remove observations where any component is NA
+  valid_idx = !is.na(values) & !is.na(weights) & !is.na(se_values) & !is.na(se_weights)
+  values = values[valid_idx]
+  weights = weights[valid_idx]
+  se_values = se_values[valid_idx]
+  se_weights = se_weights[valid_idx]
+
+  if (length(values) == 0) {
+    return(NA_real_)
+  }
+
+  ## Step 1: SE for each product (value_i * weight_i)
+  product_estimates = values * weights
+  product_ses = se_product(
+    estimate_x = values,
+    estimate_y = weights,
+    se_x = se_values,
+    se_y = se_weights)
+
+  ## Step 2: SE for the sum of products (numerator)
+  numerator_estimate = sum(product_estimates)
+  numerator_se = se_sum(
+    as.list(product_ses * 1.645),
+    as.list(product_estimates))
+
+  ## Step 3: SE for the sum of weights (denominator)
+  denominator_estimate = sum(weights)
+  denominator_se = se_sum(
+    as.list(se_weights * 1.645),
+    as.list(weights))
+
+  ## Step 4: SE for the ratio (numerator / denominator)
+  se = se_proportion_ratio(
+    estimate_numerator = numerator_estimate,
+    estimate_denominator = denominator_estimate,
+    se_numerator = numerator_se,
+    se_denominator = denominator_se,
+    type = "ratio")
+
+  return(se)
 }
 
 #' @title Calculate coefficients of variation
-#' @details Create CVs for all ACS estimates and derived indicators
+#' @details Create CVs for all ACS estimates and derived indicators.
+#'   Uses pre-parsed codebook columns (numerator_vars, denominator_vars,
+#'   se_calculation_type) to determine how to calculate standard errors.
 #' @param .df The dataset returned from \code{compile_acs_data()}.
 #'  The argument to this parameter must have an attribute named `codebook` (as is
 #'  true of results from \code{compile_acs_data())}.
@@ -152,201 +266,141 @@ calculate_cvs = function(.df) {
   ## these are the variables (at least for 2023) that at times have controlled
   ## estimates. for these variables, if the MOE in the raw data is missing, we
   ## set the MOE equal to 0, as controlled estimates have no sampling error.
-  ## (note that group quarters estimates are also controlled at the state and national
-  ## levels, but this package does not return group quarters estimates)
   controlled_variables = c(
     "total_population_universe", "sex_by_age_universe", "race_universe",
     "race_hispanic_allraces", "race_nonhispanic_allraces") %>% stringr::str_c("_M")
-  
+
   .df = .df %>%
     dplyr::mutate(
       dplyr::across(
         .cols = dplyr::any_of(controlled_variables),
-        .fns = ~ dplyr::if_else(is.na(.x), 0, .x) ))
+        .fns = ~ dplyr::if_else(is.na(.x), 0, .x)))
 
-  ## modified codebook prepared for calculating CVs
+  ## Use pre-parsed codebook columns
   codebook1 = codebook %>%
     dplyr::distinct(calculated_variable, .keep_all = TRUE) %>%
-    dplyr::filter(!stringr::str_detect(calculated_variable, "_M$")) %>%
-    dplyr::mutate(
-      numerator_count = dplyr::case_when(
-        definition == "This is a raw ACS estimate." ~ NA_real_,
-        variable_type %in% c("Metadata", "Sum") ~ NA_real_,
-        # Extract numerator definition and count comma-separated variables
-        TRUE ~ stringr::str_extract(definition, "Numerator = .*\\.") %>% stringr::str_count(",") + 1),
-      denominator_count = dplyr::case_when(
-        definition == "This is a raw ACS estimate." ~ NA_real_,
-        variable_type %in% c("Metadata", "Sum") ~ NA_real_,
-        # Extract denominator definition and count comma or dash-separated variables
-        TRUE ~ stringr::str_extract(definition, "Denominator = .*\\.") %>% stringr::str_count(",|-") + 1),
-      numerator = dplyr::case_when(
-        definition == "This is a raw ACS estimate." ~ NA_character_,
-        variable_type %in% c("Metadata") ~ NA_character_,
-        variable_type == "Sum" ~ extract_definition_terms(definition, .type = "Sum"),
-        TRUE ~ extract_definition_terms(definition, .type = "Numerator")),
-      denominator = dplyr::case_when(
-        definition == "This is a raw ACS estimate." ~ NA_character_,
-        variable_type %in% c("Metadata", "Sum") ~ NA_character_,
-        TRUE ~ extract_definition_terms(definition, .type = "Denominator")),
-      moe_type = dplyr::case_when(
-        stringr::str_detect(definition,"This is a raw ACS estimate") ~ "raw",
-        stringr::str_detect(definition, "minus") ~ "minus",
-        stringr::str_detect(definition, "(Sum|sum)") & variable_type == "Sum" ~ "sum",
-        numerator_count == 1 & denominator_count == 1 ~ "simple percent",
-        numerator_count == 1 & denominator_count > 1 ~ "complex denominator percent",
-        numerator_count > 1 & denominator_count == 1 ~ "complex numerator percent",
-        numerator_count > 1 & denominator_count > 1 ~ "complex numerator and complex denominator percent",
-        TRUE ~ "unspecified"),
-      variable_class = dplyr::case_when(
-        ## for example: snap_received_percent
-        moe_type == "simple percent" ~ "simple percent, no calculated variables",
-        ## for example: disability_percent
-        moe_type == "complex numerator percent" ~ "numerator sum percent",
-        ## for example: means_transportation_work_bicycle_percent
-        moe_type == "complex denominator percent" ~ "denominator sum percent",
-        ## for example: cost_burdened_30percentormore_allincomes_percent
-        moe_type == "complex numerator and complex denominator percent" ~ "numerator and denominator sum percent",
-        ## for example: age_10_14_years
-        moe_type == "sum" ~ "sum",
-        ## basic SE calculations with se_simple
-        ## for example: snap_universe
-        moe_type == "raw" ~ "raw",
-        moe_type == "minus" ~ "one minus percentage",
-        TRUE ~ "non-ACS variable"))
+    dplyr::filter(!stringr::str_detect(calculated_variable, "_M$"))
 
   ## all variables for which to calculate CVs
   cv_variables = codebook1 %>%
-    dplyr::filter(!variable_class %in% c("non-ACS variable", "no MOE count")) %>%
+    dplyr::filter(!se_calculation_type %in% c("metadata", "unknown")) %>%
     dplyr::pull(calculated_variable)
 
-  ## a named list of of variables, with each list element named by the
-  ## variable class it encompasses
-  variable_class_groups = codebook1 %>%
+  ## a named list of variables, grouped by SE calculation type
+  se_type_groups = codebook1 %>%
     dplyr::filter(calculated_variable %in% cv_variables) %>%
-    dplyr::group_split(variable_class)
-  variable_class_names = variable_class_groups %>%
-    purrr::map_chr(~ .x %>% dplyr::pull(variable_class) %>% unique())
-  variable_classes = variable_class_groups %>%
+    dplyr::group_split(se_calculation_type)
+  se_type_names = se_type_groups %>%
+    purrr::map_chr(~ .x %>% dplyr::pull(se_calculation_type) %>% unique())
+  se_types = se_type_groups %>%
     purrr::map(~ .x %>% dplyr::pull(calculated_variable)) %>%
-    stats::setNames(variable_class_names)
+    stats::setNames(se_type_names)
 
-  df_cvs1 = .df %>%
+  ## Step 1: calculate MOEs for derived sum variables
+  df_with_sum_moes = .df %>%
     sf::st_drop_geometry() %>%
     dplyr::mutate(
-      ## derived sum variables - calculate MOEs that can be used in subsequent calculations
-      ## for example: age_10_14_years
       dplyr::across(
-        .cols = dplyr::any_of(variable_classes$sum),
+        .cols = dplyr::any_of(se_types$sum),
         .fns = function(x) {
           current_column = dplyr::cur_column()
 
+          ## Get pre-parsed numerator variables from codebook
           numerator_estimate_variables = codebook1 %>%
             dplyr::filter(calculated_variable == current_column) %>%
-            dplyr::pull(numerator) %>%
-            stringr::str_remove_all("_count_estimate") %>%
-            stringr::str_split(", ") %>%
+            dplyr::pull(numerator_vars) %>%
             unlist()
 
           numerator_moe_variables = numerator_estimate_variables %>%
             paste0("_M")
 
-          # Calculate pooled standard error for sum, then convert to MOE
           se = se_sum(
             purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
             purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x)))
 
           moe = se * 1.645
 
-          return(moe) },
+          return(moe)},
         .names = "{.col}_M"))
 
-  df_cvs1 = df_cvs1 %>%
+  ## Step 2: calculate SEs for all variables (using df_with_sum_moes which has derived MOEs)
+  df_cvs1 = df_with_sum_moes %>%
     dplyr::mutate(
-      ## count variables
-      ## raw ACS variables
       dplyr::across(
         .cols = dplyr::any_of(cv_variables),
         .fns = function(x) {
 
           current_column = dplyr::cur_column()
 
-          ## this effectively returns error calculations for the underlying variable
-          ## under the assumption that the `1 - ` operation has no effect on the calculation
-          ## of error
-          if (current_column %in% variable_classes[["one minus percentage"]]) {
+          ## for "one minus" variables, use the underlying variable for error calculation
+          if (current_column %in% se_types[["one_minus"]]) {
             current_column = codebook1 %>%
               dplyr::filter(calculated_variable == current_column) %>%
-              dplyr::pull(definition) %>%
-              stringr::str_remove_all("One minus |\\.") }
+              dplyr::pull(numerator_vars) %>%
+              unlist()}
 
-          ## variable metadata from the codebook
-          codebook_variable = codebook1 %>%
-            dplyr::filter(calculated_variable == current_column) %>%
-            dplyr::mutate(
-              dplyr::across(
-                .cols = c(numerator, denominator),
-                .fns = ~ .x %>%
-                  stringr::str_remove_all("_count_estimate") %>%
-                  stringr::str_split(", ")))
-          numerator_estimate_variables = codebook_variable %>%
-            dplyr::pull(numerator) %>% unlist() %>% 
-            stringr::str_replace_all("percent$", "pct")
+          ## Get pre-parsed variables from codebook
+          codebook_row = codebook1 %>%
+            dplyr::filter(calculated_variable == current_column)
+
+          numerator_estimate_variables = codebook_row %>%
+            dplyr::pull(numerator_vars) %>%
+            unlist()
           numerator_moe_variables = numerator_estimate_variables %>%
             stringr::str_c("_M")
-          denominator_estimate_variables = codebook_variable %>%
-            dplyr::pull(denominator) %>% unlist() %>% 
-            stringr::str_replace_all("percent$", "pct")
+          denominator_estimate_variables = codebook_row %>%
+            dplyr::pull(denominator_vars) %>%
+            unlist()
           denominator_moe_variables = denominator_estimate_variables %>%
             stringr::str_c("_M")
 
-          ## for variables where we already have an MOE, this is simple:
-          ## we have already calculated MOEs for derived sum variables as well
-          if (current_column %in% c(c(variable_classes$raw, variable_classes$sum) %>% stringr::str_remove("_count_estimate"))) {
-            SE = se_simple(get(dplyr::cur_column() %>% paste0("_M"))) }
+          ## for variables where we already have an MOE, this is simple
+          if (current_column %in% c(se_types$raw, se_types$sum)) {
+            SE = se_simple(get(dplyr::cur_column() %>% paste0("_M")))}
 
-          ## for simple percent variables with one numerator, one denominator:
-          if (current_column %in% variable_classes[["simple percent, no calculated variables"]]) {
+          ## for simple percent variables with one numerator, one denominator
+          if (current_column %in% se_types[["simple_percent"]]) {
             SE = se_proportion_ratio(
               estimate_numerator = get(numerator_estimate_variables),
               estimate_denominator = get(denominator_estimate_variables),
               moe_numerator = get(numerator_moe_variables),
-              moe_denominator = get(denominator_moe_variables)) }
+              moe_denominator = get(denominator_moe_variables))}
 
           ## for percents with summed/subtracted numerators, one denominator
-          if (current_column %in% variable_classes[["numerator sum percent"]]) {
+          if (current_column %in% se_types[["complex_numerator"]]) {
             SE = se_proportion_ratio(
               estimate_numerator = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables))),
               estimate_denominator = get(denominator_estimate_variables),
               se_numerator = se_sum(
-                purrr::map(numerator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)),
-                purrr::map(numerator_estimate_variables, ~ df_cvs1 %>% dplyr::pull(.x))),
+                purrr::map(numerator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)),
+                purrr::map(numerator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))),
               se_denominator = se_simple(
-                purrr::map(denominator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)) %>% unlist())) }
+                purrr::map(denominator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)) %>% unlist()))}
 
           ## for percents with one numerator, summed/subtracted denominators
-          if (current_column %in% variable_classes[["denominator sum percent"]]) {
+          if (current_column %in% se_types[["complex_denominator"]]) {
             SE = se_proportion_ratio(
               estimate_numerator = get(numerator_estimate_variables),
               estimate_denominator = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables))),
               se_numerator = se_simple(
-                purrr::map(numerator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)) %>% unlist()),
+                purrr::map(numerator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)) %>% unlist()),
               se_denominator = se_sum(
-                purrr::map(denominator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)),
-                purrr::map(denominator_estimate_variables, ~ df_cvs1 %>% dplyr::pull(.x)))) }
+                purrr::map(denominator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)),
+                purrr::map(denominator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))))}
 
           ## for percents with summed numerators and summed denominators
-          if (current_column %in% variable_classes[["numerator and denominator sum percent"]]) {
+          if (current_column %in% se_types[["complex_both"]]) {
             SE = se_proportion_ratio(
               estimate_numerator = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables))),
               estimate_denominator = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables))),
               se_numerator = se_sum(
-                purrr::map(numerator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)),
-                purrr::map(numerator_estimate_variables, ~ df_cvs1 %>% dplyr::pull(.x))),
+                purrr::map(numerator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)),
+                purrr::map(numerator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))),
               se_denominator = se_sum(
-                purrr::map(denominator_moe_variables, ~ df_cvs1 %>% dplyr::pull(.x)),
-                purrr::map(denominator_estimate_variables, ~ df_cvs1 %>% dplyr::pull(.x)))) }
+                purrr::map(denominator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)),
+                purrr::map(denominator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))))}
 
-          return(SE) },
+          return(SE)},
         .names = "{.col}_SE")) %>%
     dplyr::mutate(
       ## create coefficients of variation from standard errors
@@ -379,28 +433,9 @@ calculate_cvs = function(.df) {
         .cols = dplyr::where(is.numeric),
         .fns = ~ round(.x, digits = 4)))
 
-  ####----quick tests for making updates to the script----####
-
-  # moe_variables = df_cvs %>% dplyr::select(matches("_M$")) %>% colnames() %>% stringr::str_remove("_M$")
-  # se_variables = df_cvs %>% dplyr::select(matches("_SE$")) %>% colnames() %>% stringr::str_remove("_SE$")
-
-  ## should be none
-  # se_variables[!se_variables %in% moe_variables]
-  # moe_variables[!moe_variables %in% se_variables]
-
-  # df_cvs %>%
-  #   dplyr::select(dplyr::matches("_SE|_M|_CV")) %>%
-  #   tidyr::pivot_longer(dplyr::everything()) %>%
-  #   dplyr::summarize(
-  #     mean = mean(value),
-  #     min = min(value),
-  #     median = median(value),
-  #     max = max(value))
-
-  ####----####
   return(df_cvs)
 }
 
 utils::globalVariables(c(
-  "calculated_variable", "numerator_variable_count", "denominator_variable_count",
-  "numerator", "denominator", "observation", "type", "estimate", "moe", "variable_class"))
+  "calculated_variable", "observation", "type", "estimate", "moe",
+  "se_calculation_type", "numerator_vars", "denominator_vars"))

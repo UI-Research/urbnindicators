@@ -331,8 +331,9 @@ this function returns.")}
       {if (!needs_tigris || spatial == FALSE) . else dplyr::right_join(., geometries %>% dplyr::select(GEOID, data_source_year), by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
   })})
 
-  ## attach the codebook as an attribute named "codebook" to the returned dataset
+  ## attach the codebook and resolved tables as attributes to the returned dataset
   attr(df_cvs, "codebook") = codebook
+  attr(df_cvs, "resolved_tables") = resolved_tables
 
   if (isTRUE(spatial)) { df_cvs = sf::st_as_sf(df_cvs) }
 

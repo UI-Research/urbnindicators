@@ -557,7 +557,11 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
     return(tibble::tibble(
       calculated_variable = entry[["output"]],
       variable_type = "Percent",
-      definition = paste0("Numerator = ", numerator_formatted, ". Denominator = ", denominator_formatted, ".")))
+      definition = paste0("Numerator = ", numerator_formatted, ". Denominator = ", denominator_formatted, "."),
+      numerator_vars = list(entry[["numerator"]]),
+      numerator_subtract_vars = list(character(0)),
+      denominator_vars = list(entry[["denominator"]]),
+      denominator_subtract_vars = list(character(0))))
   }
 
   if (type == "across_percent") {
@@ -592,10 +596,17 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
         denominator_formatted = paste0(denominator_formatted, " - ", subtract_formatted)
       }
 
+      ## determine subtract column for pre-parsed columns
+      subtract_col = if (!is.null(entry[["denominator_subtract"]])) entry[["denominator_subtract"]] else character(0)
+
       tibble::tibble(
         calculated_variable = output_column,
         variable_type = "Percent",
-        definition = paste0("Numerator = ", numerator_formatted, ". Denominator = ", denominator_formatted, "."))
+        definition = paste0("Numerator = ", numerator_formatted, ". Denominator = ", denominator_formatted, "."),
+        numerator_vars = list(column),
+        numerator_subtract_vars = list(character(0)),
+        denominator_vars = list(denominator_column),
+        denominator_subtract_vars = list(subtract_col))
     }) %>% purrr::list_rbind()
   }
 
@@ -620,7 +631,11 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       tibble::tibble(
         calculated_variable = output_column,
         variable_type = "Sum",
-        definition = paste0("Sum of: ", column_formatted, ", ", addend_formatted, "."))
+        definition = paste0("Sum of: ", column_formatted, ", ", addend_formatted, "."),
+        numerator_vars = list(c(column, addend)),
+        numerator_subtract_vars = list(character(0)),
+        denominator_vars = list(character(0)),
+        denominator_subtract_vars = list(character(0)))
     }) %>% purrr::list_rbind()
   }
 
@@ -692,31 +707,55 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       denominator_formatted = paste0(denominator_formatted, " - ", subtract_formatted)
     }
 
+    ## pre-parsed columns for complex type
+    num_sub_cols = if (!is.null(numerator_subtract_columns) && length(numerator_subtract_columns) > 0) {
+      numerator_subtract_columns
+    } else { character(0) }
+    denom_sub_cols = if (!is.null(subtract_columns) && length(subtract_columns) > 0) {
+      subtract_columns
+    } else { character(0) }
+
     return(tibble::tibble(
       calculated_variable = entry[["output"]],
       variable_type = "Percent",
-      definition = paste0("Numerator = ", numerator_formatted, ". Denominator = ", denominator_formatted, ".")))
+      definition = paste0("Numerator = ", numerator_formatted, ". Denominator = ", denominator_formatted, "."),
+      numerator_vars = list(numerator_columns),
+      numerator_subtract_vars = list(num_sub_cols),
+      denominator_vars = list(denominator_columns),
+      denominator_subtract_vars = list(denom_sub_cols)))
   }
 
   else if (type == "one_minus") {
     return(tibble::tibble(
       calculated_variable = entry[["output"]],
       variable_type = "Percent",
-      definition = paste0("One minus ", entry[["source_variable"]], ".")))
+      definition = paste0("One minus ", entry[["source_variable"]], "."),
+      numerator_vars = list(entry[["source_variable"]]),
+      numerator_subtract_vars = list(character(0)),
+      denominator_vars = list(character(0)),
+      denominator_subtract_vars = list(character(0))))
   }
 
   else if (type == "metadata") {
     return(tibble::tibble(
       calculated_variable = entry[["output"]],
       variable_type = "Metadata",
-      definition = entry[["definition_text"]]))
+      definition = entry[["definition_text"]],
+      numerator_vars = list(character(0)),
+      numerator_subtract_vars = list(character(0)),
+      denominator_vars = list(character(0)),
+      denominator_subtract_vars = list(character(0))))
   }
 
   else {
     return(tibble::tibble(
       calculated_variable = entry[["output"]],
       variable_type = "Error",
-      definition = paste0("Unrecognized codebook entry type: ", type)))
+      definition = paste0("Unrecognized codebook entry type: ", type),
+      numerator_vars = list(character(0)),
+      numerator_subtract_vars = list(character(0)),
+      denominator_vars = list(character(0)),
+      denominator_subtract_vars = list(character(0))))
   }
 }
 
