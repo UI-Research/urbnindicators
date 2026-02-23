@@ -13,9 +13,10 @@ Description: There are many packages available that facilitate queries to the Ce
   commonly-used social sciences measures from the ACS.
 Encoding: UTF-8
 LazyData: true
-Imports: 
+Imports:
     dplyr,
     janitor,
+    lifecycle,
     magrittr,
     purrr,
     stats,
@@ -25,9 +26,10 @@ Imports:
     tigris,
     rlang,
     tibble,
-    sf,
-    lifecycle
+    sf
 Suggests:
+    distributional,
+    ggdist,
     ggplot2,
     gridExtra,
     knitr,
@@ -39,7 +41,7 @@ Suggests:
     urbnthemes (>= 0.0.2)
 Remotes: 
     UrbanInstitute/urbnthemes
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://ui-research.github.io/urbnindicators/
 VignetteBuilder: knitr, rmarkdown
 Config/testthat/edition: 3

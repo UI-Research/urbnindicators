@@ -23,9 +23,8 @@ geographies to support.
 
 "Opinionated" doesn't mean that these decisions are the best ones for
 every user or use-case, but these decisions are designed to either speed
-or improve the accuracy of a particular (and relatively common) workflow
-and use-case involving a large set of variables common across social
-science applications.
+or improve the accuracy of a common use-case involving a large set of variables
+(optionally over multiple years).
 
 ## Design choices
 
@@ -76,7 +75,7 @@ science applications.
     approach, and you can still use functions like
     `urbnindicators::select_variables_by_name()`,
     `urbnindicators::filter_variables()`, and
-    `urbnindicators::list_acs_variables()` to select and sensibly name
+    `urbnindicators::list_variables()` to select and sensibly name
     variables returned from `library(tidycensus)`. In the future, we'll
     add caching options so that you don't have to repeatedly make the
     same queries and can instead read results in from a local directory.

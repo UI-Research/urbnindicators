@@ -27,5 +27,9 @@ reactable::reactable(
       Variable = calculated_variable, 
       Type = variable_type, 
       Definition = definition), 
+  columns = list(
+    Variable = reactable::colDef(minWidth = 200), 
+    Type = reactable::colDef(minWidth = 50),
+    Type = reactable::colDef(minWidth = 100)),
   filterable = TRUE)
 ```

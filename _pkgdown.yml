@@ -15,8 +15,11 @@ reference:
   - cv
 - title: Helper functions
   contents:
-  - safe_divide
+  - list_tables
+  - list_variables 
   - select_variables_by_name
   - filter_variables
-  - list_acs_variables
   - make_pretty_names
+  - safe_divide
+  - list_acs_variables
+

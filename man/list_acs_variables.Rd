@@ -4,20 +4,27 @@
 \alias{list_acs_variables}
 \title{Return ACS variables codes and names}
 \usage{
-list_acs_variables(year = "2022")
+list_acs_variables(year = "2022", tables = NULL)
 }
 \arguments{
 \item{year}{The year for which variable names should be selected.}
+
+\item{tables}{An optional character vector of table names from the table
+registry (e.g., \code{c("race", "snap")}). When provided, only variables
+for the specified tables are returned. Use \code{list_tables()} to see
+available table names.}
 }
 \value{
-A named vector of variable codes (as specified in the Census Bureau's API)
-with semantically-meaningful names (e.g., "race_black_alone_nonhispanic").
+\code{NULL}, invisibly. Previously returned a named vector of variable codes.
 }
 \description{
-Generate meaningful names for ACS variable codes based on their metadata
-and return these as a vector, along with their semantic names. Intended for
-use with \code{\link[=compile_acs_data]{compile_acs_data()}}.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
+
+Use \code{\link[=list_variables]{list_variables()}} instead to see available variables, or pass
+\code{tables}/\code{indicators} to \code{\link[=compile_acs_data]{compile_acs_data()}}.
 }
 \examples{
-list_acs_variables(year = "2022") \%>\% head()
+\dontrun{
+list_acs_variables()
+}
 }

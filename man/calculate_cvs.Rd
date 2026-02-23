@@ -18,6 +18,8 @@ A modified dataframe that includes newly calculated indicators.
 Calculate coefficients of variation
 }
 \details{
-Create CVs for all ACS estimates and derived indicators
+Create CVs for all ACS estimates and derived indicators.
+Uses pre-parsed codebook columns (numerator_vars, denominator_vars,
+se_calculation_type) to determine how to calculate standard errors.
 }
 \keyword{internal}

@@ -1,8 +1,12 @@
+test_data_path = test_path("fixtures", "test_data_2026-02-08.rds")
+test_codebook_path = test_path("fixtures", "codebook_2026-02-08.rds")
+
 testthat::test_that(
   "No CV has missing values for all observations",
   {
+    testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     ## Statistics for CA and TX tracts
-    df = readRDS(testthat::test_path("test-data", "test_data_2025-11-06.rds"))
+    df = readRDS(test_data_path)
 
     measure_level_quality = df %>%
       dplyr::select(dplyr::matches("_CV$")) %>%
@@ -33,8 +37,9 @@ testthat::test_that(
 testthat::test_that(
   "All measures have at least some values with modest CVs",
   {
+    testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     ## Statistics for CA and TX tracts
-    df = readRDS(testthat::test_path("test-data", "test_data_2025-11-06.rds"))
+    df = readRDS(test_data_path)
 
     measure_level_quality = df %>%
       dplyr::select(dplyr::matches("_CV$")) %>%
@@ -65,7 +70,8 @@ testthat::test_that(
 testthat::test_that(
   "There is a CV for every variable that has an MOE (or for which one can be calculated)",
   {
-    df = readRDS(testthat::test_path("test-data", "test_data_2025-11-06.rds"))
+    testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
+    df = readRDS(test_data_path)
     moes = df %>%
       dplyr::select(dplyr::matches("_M$")) %>%
       colnames() %>%
@@ -77,6 +83,36 @@ testthat::test_that(
 
     testthat::expect_equal(
       moes[!moes %in% cvs] %>% length(),
-      3) ## there are three controlled variables for which MOEs are not provided by Census
+      0)
   }
 )
+
+testthat::test_that(
+  "All _pct variables have CVs calculated",
+  {
+    testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
+    testthat::skip_if_not(file.exists(test_codebook_path), "Test fixture not available")
+    df = readRDS(test_data_path)
+    codebook = readRDS(test_codebook_path)
+
+    ## _pct variables are raw ACS count variables renamed from _percent
+    pct_vars = colnames(df) %>%
+      stringr::str_subset("_pct$") %>%
+      stringr::str_subset("_M$|_SE$|_CV$", negate = TRUE)
+
+    ## all _pct variables should be in the codebook
+    pct_in_codebook = pct_vars[pct_vars %in% codebook$calculated_variable]
+    testthat::expect_equal(length(pct_in_codebook), length(pct_vars))
+
+    ## all _pct variables should have corresponding _CV columns
+    pct_cvs = paste0(pct_vars, "_CV")
+    pct_cvs_present = pct_cvs[pct_cvs %in% colnames(df)]
+    testthat::expect_equal(length(pct_cvs_present), length(pct_vars))
+
+    ## all _pct variables should have corresponding _SE columns
+    pct_ses = paste0(pct_vars, "_SE")
+    pct_ses_present = pct_ses[pct_ses %in% colnames(df)]
+    testthat::expect_equal(length(pct_ses_present), length(pct_vars))
+  }
+)
+
