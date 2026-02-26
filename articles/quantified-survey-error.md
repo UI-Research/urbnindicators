@@ -73,11 +73,6 @@ smaller CVs. Typically, there are two strategies to reduce CVs: (1)
 aggregate estimates, either across geographies or across variables, or
 (2) use larger geographies.
 
-We plan to add utilities to support users in aggregating estimates and
-calculating adjusted measurements of error. For now, we warn that any
-aggregation should be done with care, as error cannot be simply added
-(or otherwise summarized) the way that estimates can.
-
 ``` r
 acs_df_county = compile_acs_data(
   years = c(2024),
@@ -132,6 +127,8 @@ plot_df %>%
       title = "County CVs are Smaller than Tract CVs\nCVs for Wider Age Ranges are Smaller than CVs for Narrow Age Ranges",
       subtitle = "Coefficients of variation (CV) at the county and tract levels for various age groupings")
 ```
+
+![](quantified-survey-error_files/figure-html/unnamed-chunk-3-1.png)
 
 ## Conduct Statistical Significance Testing
 
@@ -209,6 +206,8 @@ plot_data %>%
       subtitle = "Tract-level share of the population 65+ vs. county-level estimate, Atlantic County, NJ")
 ```
 
+![](quantified-survey-error_files/figure-html/unnamed-chunk-4-1.png)
+
 ``` r
 significance_test_data = plot_data %>%
   filter(GEOID %in% c("34001011901", "34001001900"))
@@ -244,6 +243,8 @@ plot_data %>%
     title = "One Tract Estimate Doubles That of the Other, But There is No Statistically Significant Difference" %>% str_wrap(100),
     subtitle = "Share of population over the age of 64, point estimates and margins of error")
 ```
+
+![](quantified-survey-error_files/figure-html/unnamed-chunk-5-1.png)
 
 ## Report and Visualize Error
 

@@ -44,25 +44,3 @@ variables (optionally over multiple years).
   from the codebook returned by this package!) of a variable named, for
   example, `race_personofcolor_percent`. Variables in the codebook have
   their original API names included in their definitions.
-
-- **Return a very large, wide dataset.** The underlying
-  [`library(tidycensus)`](https://walker-data.com/tidycensus/) interface
-  to the Census Bureau API can return a single variable or table, and
-  often this is how users employ it. Conversely, it’s common to want
-  dozens or perhaps even hundreds of variables–this is the use case
-  around which
-  [`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
-  was designed. Queries at small geographies can be slow, but the result
-  is a dataset containing everything you could want. If you’re just
-  looking for one, or a few, variables,
-  [`library(tidycensus)`](https://walker-data.com/tidycensus/) is
-  probably a better approach, and you can still use functions like
-  [`urbnindicators::select_variables_by_name()`](https://ui-research.github.io/urbnindicators/reference/select_variables_by_name.md),
-  [`urbnindicators::filter_variables()`](https://ui-research.github.io/urbnindicators/reference/filter_variables.md),
-  and
-  [`urbnindicators::list_variables()`](https://ui-research.github.io/urbnindicators/reference/list_variables.md)
-  to select and sensibly name variables returned from
-  [`library(tidycensus)`](https://walker-data.com/tidycensus/). In the
-  future, we’ll add caching options so that you don’t have to repeatedly
-  make the same queries and can instead read results in from a local
-  directory.

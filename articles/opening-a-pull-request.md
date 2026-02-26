@@ -18,11 +18,10 @@ For
 a common use-case for a PR is to propose a new variable or series of
 variables. This vignette will illustrate the complete PR process for a
 new series of variables. The core of the PR is a single
-`register_table()` call in `R/table_registry.R` that declares the raw
-ACS variables and uses the `define_*` DSL to specify how derived
-variables are computed. The codebook, coefficients of variation, and
-variable listings are all generated automatically from this
-registration.
+`register_table()` call in `R/table_registry.R` that defines the raw ACS
+variables and specifies how derived variables are computed. The codebook
+and measures of error are all generated automatically from the table
+registry.
 
 ## Overview
 
@@ -33,11 +32,9 @@ Adding a new table requires a single code change:
     that uses the `define_*` helpers to specify how derived variables
     (e.g., percentages) are calculated.
 
-Everything else–the codebook, coefficients of variation, variable
-listings, and the `tables`/`indicators` API–is generated automatically
-from this registration. After writing the registration, the PR should
-include quality checks to verify that the new variables are correctly
-calculated and appropriately documented.
+After writing the registration, the PR should include quality checks to
+verify that the new variables are correctly calculated and appropriately
+documented.
 
 The quality-check steps are:
 
@@ -46,33 +43,31 @@ The quality-check steps are:
 3.  **Coefficients of variation**: Verify that CVs appear reasonable.
 4.  **Pretty names**: Verify that
     [`make_pretty_names()`](https://ui-research.github.io/urbnindicators/reference/make_pretty_names.md)
-    produces reasonable labels.
+    consistently clearly renames the new variables.
 5.  **Integration test**: Call
     [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
     end-to-end and inspect the results.
 
 ## Our Variable Series
 
-We’re going to add a series of estimates that describe “Household Type”,
-which are contained in table B11001. We can find the relevant variables
-by navigating the codebook returned by
+We’re going to add a series of estimates that describe “Household Type
+(White Alone)”, which are contained in table B11001. We can find the
+relevant variables by navigating the codebook returned by
 [`tidycensus::load_variables()`](https://walker-data.com/tidycensus/reference/load_variables.html).
 
 ``` r
-codebook = load_variables(dataset = "acs5", year = 2023)
+codebook = load_variables(dataset = "acs5", year = 2024)
 
 codebook %>%
   filter(str_detect(name, "B11001")) %>%
-  head()
-#> # A tibble: 6 × 4
-#>   name        label                                            concept geography
-#>   <chr>       <chr>                                            <chr>   <chr>    
-#> 1 B11001A_001 Estimate!!Total:                                 Househ… block gr…
-#> 2 B11001A_002 Estimate!!Total:!!Family households:             Househ… block gr…
-#> 3 B11001A_003 Estimate!!Total:!!Family households:!!Married-c… Househ… block gr…
-#> 4 B11001A_004 Estimate!!Total:!!Family households:!!Other fam… Househ… block gr…
-#> 5 B11001A_005 Estimate!!Total:!!Family households:!!Other fam… Househ… block gr…
-#> 6 B11001A_006 Estimate!!Total:!!Family households:!!Other fam… Househ… block gr…
+  head(2) %>%
+  glimpse()
+#> Rows: 2
+#> Columns: 4
+#> $ name      <chr> "B11001A_001", "B11001A_002"
+#> $ label     <chr> "Estimate!!Total:", "Estimate!!Total:!!Family households:"
+#> $ concept   <chr> "Household Type (Including Living Alone) (White Alone)", "Ho…
+#> $ geography <chr> NA, NA
 ```
 
 ## Step 1: Identify the Raw Variables
@@ -127,33 +122,32 @@ variable choices and denominator logic are correct:
 
 ``` r
 sample_data = tidycensus::get_acs(
-  years = 2022,
+  years = 2024,
   geography = "county",
   state = "NJ",
   variables = select_variables_by_name("B11001_", census_codebook = codebook) %>%
     stats::setNames(names(.) %>% stringr::str_remove_all("including_living_alone_")),
   output = "wide") %>%
+  ## selecting only estimate ("_E") variables, not margin of error ("_M") variables
   select(GEOID, NAME, matches("_E")) %>%
   rename_with(cols = everything(), ~ str_remove_all(.x, "_E"))
 
 sample_data %>%
-  head()
-#> # A tibble: 6 × 11
-#>   GEOID NAME                       household_type_unive…¹ household_type_famil…²
-#>   <chr> <chr>                                       <dbl>                  <dbl>
-#> 1 34001 Atlantic County, New Jers…                 109557                  71330
-#> 2 34003 Bergen County, New Jersey                  355127                 254633
-#> 3 34005 Burlington County, New Je…                 177222                 120721
-#> 4 34007 Camden County, New Jersey                  202540                 131748
-#> 5 34009 Cape May County, New Jers…                  44884                  29154
-#> 6 34011 Cumberland County, New Je…                  53781                  36601
-#> # ℹ abbreviated names: ¹​household_type_universe,
-#> #   ²​household_type_family_households
-#> # ℹ 7 more variables:
-#> #   household_type_family_households_married_couple_family <dbl>,
-#> #   household_type_family_households_other_family <dbl>,
-#> #   household_type_family_households_other_family_male_householder_no_spouse_present <dbl>,
-#> #   household_type_family_households_other_family_female_householder_no_spouse_present <dbl>, …
+  head(2) %>%
+  glimpse()
+#> Rows: 2
+#> Columns: 11
+#> $ GEOID                                                                              <chr> …
+#> $ NAME                                                                               <chr> …
+#> $ household_type_universe                                                            <dbl> …
+#> $ household_type_family_households                                                   <dbl> …
+#> $ household_type_family_households_married_couple_family                             <dbl> …
+#> $ household_type_family_households_other_family                                      <dbl> …
+#> $ household_type_family_households_other_family_male_householder_no_spouse_present   <dbl> …
+#> $ household_type_family_households_other_family_female_householder_no_spouse_present <dbl> …
+#> $ household_type_nonfamily_households                                                <dbl> …
+#> $ household_type_nonfamily_households_householder_living_alone                       <dbl> …
+#> $ household_type_nonfamily_households_householder_not_living_alone                   <dbl> …
 ```
 
 We can test our percentage calculations on the sample data. Note the use
@@ -163,24 +157,23 @@ which returns `0` rather than `NaN` when the denominator is zero.
 
 ``` r
 sample_data %>%
-  dplyr::transmute(
-    dplyr::across(
-      .cols = c(dplyr::matches("household_type"), -dplyr::matches("universe")),
+  transmute(
+    across(
+      .cols = c(matches("household_type"), -matches("universe")),
       .fns = ~ safe_divide(.x, household_type_universe),
       .names = "{.col}_percent")) %>%
-  head() %>% select(1:3)
-#> # A tibble: 6 × 3
-#>   household_type_family_househol…¹ household_type_famil…² household_type_famil…³
-#>                              <dbl>                  <dbl>                  <dbl>
-#> 1                            0.651                  0.448                  0.203
-#> 2                            0.717                  0.555                  0.162
-#> 3                            0.681                  0.521                  0.160
-#> 4                            0.650                  0.435                  0.215
-#> 5                            0.650                  0.516                  0.134
-#> 6                            0.681                  0.442                  0.239
-#> # ℹ abbreviated names: ¹​household_type_family_households_percent,
-#> #   ²​household_type_family_households_married_couple_family_percent,
-#> #   ³​household_type_family_households_other_family_percent
+  head() %>% 
+  glimpse()
+#> Rows: 6
+#> Columns: 8
+#> $ household_type_family_households_percent                                                   <dbl> …
+#> $ household_type_family_households_married_couple_family_percent                             <dbl> …
+#> $ household_type_family_households_other_family_percent                                      <dbl> …
+#> $ household_type_family_households_other_family_male_householder_no_spouse_present_percent   <dbl> …
+#> $ household_type_family_households_other_family_female_householder_no_spouse_present_percent <dbl> …
+#> $ household_type_nonfamily_households_percent                                                <dbl> …
+#> $ household_type_nonfamily_households_householder_living_alone_percent                       <dbl> …
+#> $ household_type_nonfamily_households_householder_not_living_alone_percent                   <dbl> …
 ```
 
 ## Step 3: Write the `register_table()` Call
@@ -192,9 +185,9 @@ in the PR.
 The `definitions` list uses the `define_*` helpers to declaratively
 specify how each derived variable is computed. The package uses this
 specification to both execute the computation and auto-generate the
-codebook documentation and CV calculations.
+codebook documentation and error calculations.
 
-### The `define_*` DSL
+### The `define_*` Helpers
 
 | Helper                                                                                                       | Use case                                          | Key arguments                                                                                                             |
 |--------------------------------------------------------------------------------------------------------------|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
@@ -228,10 +221,6 @@ register_table(list(
 ))
 ```
 
-This single block replaces what previously required separate changes
-across three files (`R/list_acs_variables.R`, `R/compile_acs_data.R`,
-and manual codebook verification).
-
 ### More examples
 
 **Simple percentage** (one numerator, one denominator):
@@ -255,6 +244,8 @@ definitions = list(
     exclude_regex = NULL,
     output_suffix = "_percent",
     denominator = "race_universe"),
+  ## race_personofcolor_percent is the share of all individuals who are not
+  ## non-Hispanic, White alone, i.e, the complement
   define_one_minus("race_personofcolor_percent",
                    source_variable = "race_nonhispanic_white_alone_percent"))
 ```
@@ -262,8 +253,17 @@ definitions = list(
 **Across-sum followed by across-percent** (sum male + female counts into
 combined age variables, then calculate percentages):
 
+This one is a bit tricky–the source table includes variables for each
+age group, split by sex. To get age groups, we have to add the two
+sex-specific estimates for the given age group. This requires us to
+specify an `input_regex`, which selects, in this case, all
+female-specific age variables. The `addend_function` then
+programmatically identifies the same-named, male-specific variables. The
+`output_naming_function` simplifies the resulting combined variable,
+removing the sex category and other extraneous words.
+
 ``` r
-## from the sex_by_age table (age construct)
+## from the sex_by_age table
 definitions = list(
   define_across_sum(
     input_regex = "sex_by_age_female_.*years($|_over$)",
@@ -285,25 +285,19 @@ The `register_table()` call should be added to `R/table_registry.R`
 under the appropriate comment header. For our example, this would be
 under `####----TABLE REGISTRATIONS: HOUSEHOLD COMPOSITION----####`.
 
-If any new column names are created by `compute_fn` logic, add them to
-the
-[`utils::globalVariables()`](https://rdrr.io/r/utils/globalVariables.html)
-call at the bottom of `R/table_registry.R` to avoid R CMD check notes.
-
 ## Step 4: Verify the Codebook
 
 After writing the registration, load the package with
-`devtools::load_all()` and run a test call. New variables should be
-automatically documented by
-[`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)
-and included in the codebook attribute of the dataframe returned by
+`devtools::load_all()` and call
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
-Verify that each new variable is documented and that its documentation
-is accurate. If the documentation is incorrect, the error we estimate
-for derived variables will also be incorrect.
+New variables should be automatically documented by
+[`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)
+and included in the codebook. Verify that each new variable is
+documented and that its documentation is accurate. If the documentation
+is incorrect, the error we estimate for derived variables will also be
+incorrect.
 
-If the documentation is incorrect, the PR should note the issue; it
-should not include changes to `R/generate_codebook.R`.
+If the documentation is incorrect, the PR should note the issue.
 
 ## Step 5: Verify Coefficients of Variation
 
@@ -311,13 +305,13 @@ Like the codebook, CVs are computed automatically from the `definitions`
 metadata. Check that coefficients of variation appear reasonable.
 
 Users should also check the magnitude of errors for all variables–raw
-ACS estimates and `urbnindicators`-calculated variables alike–across
-smaller geographies, such as all tracts in one or more states. If CVs
-are large (e.g., over 50) for a large share of all tracts, this may
-indicate that the series of interest is not appropriate for tract-level
-analysis. Because `urbnindicators` is designed to facilitate tract-level
-analysis, variables that are consistently unreliable at the tract level
-will not be integrated into the codebase.
+ACS estimates and derived variables alike–across smaller geographies,
+such as all tracts in one or more states. If CVs are large (e.g., over
+50) for a large share of all tracts, this may indicate that the series
+of interest is not appropriate for tract-level analysis. Because
+`urbnindicators` is designed to facilitate tract-level analysis, tables
+that are consistently unreliable at the tract level will not be
+integrated into the codebase.
 
 ## Step 6: Verify Pretty Names
 
@@ -325,12 +319,12 @@ Ensure that the new variables have reasonable names:
 
 ``` r
 sample_data %>%
-  dplyr::mutate(
-    dplyr::across(
-      .cols = c(dplyr::matches("household_type"), -dplyr::matches("universe")),
+  mutate(
+    across(
+      .cols = c(matches("household_type"), -matches("universe")),
       .fns = ~ .x / household_type_universe,
       .names = "{.col}_percent")) %>%
-  urbnindicators::make_pretty_names() %>%
+  make_pretty_names() %>%
   colnames()
 #>  [1] "Geoid"                                                                                 
 #>  [2] "Name"                                                                                  
@@ -359,34 +353,7 @@ pretty-ifying process (e.g., acronyms, series of numbers, etc.). We can
 leave it to users to make other adjustments, such as removing the
 substring “Household Type”, if they want even more concise names.
 
-## Step 7: Integration Test
-
-Integrate the proposed changes into the codebase (on a branch), load the
-current version of `urbnindicators` (via `devtools::load_all()`), and
-call
-[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
-Verify that the new table works both in isolation and as part of the
-full suite:
-
-``` r
-## test the new table in isolation
-compile_acs_data(
-  tables = "household_type",
-  years = 2022,
-  geography = "county",
-  states = "NJ")
-
-## test the full suite
-compile_acs_data(
-  years = 2022,
-  geography = "county",
-  states = "NJ")
-```
-
-Interactively explore both the data and the codebook (accessed via
-`attr(result, "codebook")`).
-
-## Step 8: Quality Check Results
+## Step 7: Quality Check Results
 
 There are a few strategies for quality-checking the results of a series
 of variables:
@@ -400,19 +367,17 @@ of variables:
     example of one of multiple reasons that `urbnindicators` exclusively
     uses data from the detailed tables.)
 
-2.  Manually compute a benchmark value. This works well for all those
-    derived variables that aren’t reported in any Census Bureau product.
-    Identify the relevant numerator and denominator variables (in the
-    case of a derived percentage) and manually calculate the derived
-    variable, then compare the manually-computed benchmark to the
-    programmatically-calculated version. This seems very simple for our
-    example here, where each derived variable is a given variable
-    divided by the table universe, but with more complex variables–e.g.,
-    where a numerator is a summed variable itself–this is a very useful
-    quality check.
+2.  Manually compute a benchmark value. Identify the relevant numerator
+    and denominator variables (in the case of a derived percentage) and
+    manually calculate the derived variable, then compare the
+    manually-computed benchmark to the programmatically-calculated
+    version. This seems very simple for our example here, where each
+    derived variable is a given variable divided by the table universe,
+    but with more complex variables–e.g., where a numerator is a summed
+    variable itself–this is a very useful quality check.
 
-3.  Plot a histogram of the computed variable(s) (if multiple variables
-    in a series, use
+3.  Plot a histogram of the computed variable(s). If there are multiple
+    variables in a series, use
     [`pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html)
     to turn the dataframe long, then use `facet_wrap()` to plot each
     histogram side-by-side. Check for unexpected spikes and outlier
@@ -422,7 +387,7 @@ of variables:
     or no missingness, so any substantial number of missing observations
     may be an indication that a calculation has gone awry.
 
-## Step 9: Open the PR
+## Step 8: Open the PR
 
 Once users are satisfied with the proposed code (and/or have noted any
 issues), they should click on their branch in the GitHub repository and

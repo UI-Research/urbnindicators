@@ -7,8 +7,11 @@ the American Community Survey (ACS).
 
 With a single function call, you get:
 
-- Access to hundreds of standardized variables, such as percentages, in
-  addition to the raw count variables used to produce them.
+- Access to hundreds of standardized variables, such as percentages and
+  the raw count variables used to produce them.
+
+- Margins of error and coefficients of variation for all variables–those
+  direct from the API as well as derived variables.
 
 - Meaningful, consistent variable names.
 
@@ -20,11 +23,10 @@ With a single function call, you get:
 - Supplemental measures, such as population density, that aren’t
   available from the ACS.
 
-- Built-in quality checks to help ensure that calculated variables are
-  accurate. Plus some good, old-fashioned manual QC.
-
-- Margins of error and coefficients of variation for all variables–those
-  direct from the API as well as derived variables.
+- Built-in quality checks to help ensure that calculated variables and
+  measures of error are accurate. Plus some good, old-fashioned manual
+  QC. That said–use at your own risk. We cannot and do not guarantee
+  there aren’t bugs.
 
 # Installation
 
@@ -32,11 +34,11 @@ Install the development version of `urbnindicators` from
 [GitHub](https://github.com/) with:
 
 ``` r
-install.packages("renv")
+# install.packages("renv")
 renv::install("UI-Research/urbnindicators")
 ```
 
-You’ll need a Census API key ([request one
+You’ll want a Census API key ([request one
 here](https://api.census.gov/data/key_signup.html)). Set it once with:
 
 ``` r
@@ -51,26 +53,16 @@ updates–check to ensure you have the most recent version installed!
 ## Discover Available Data
 
 ``` r
-list_tables()
-#>  [1] "age"                          "computing_devices"           
-#>  [3] "cost_burden"                  "disability"                  
-#>  [5] "educational_attainment"       "employment"                  
-#>  [7] "gini"                         "health_insurance"            
-#>  [9] "household_size"               "income_quintiles"            
-#> [11] "internet"                     "language"                    
-#> [13] "median_household_income"      "median_housing_cost"         
-#> [15] "median_income_by_tenure"      "mortgage_status"             
-#> [17] "nativity"                     "occupants_per_room"          
-#> [19] "population_density"           "poverty"                     
-#> [21] "public_assistance"            "race"                        
-#> [23] "school_enrollment"            "sex"                         
-#> [25] "snap"                         "tenure"                      
-#> [27] "tenure_by_housing_costs"      "tenure_by_units_in_structure"
-#> [29] "total_population"             "transportation_to_work"      
-#> [31] "travel_time_to_work"          "units_in_structure"          
-#> [33] "vehicles_available"           "year_structure_built"
-list_variables()
-#> # A tibble: 861 × 2
+list_tables() |> head(10)
+#>  [1] "age"                    "computing_devices"      "cost_burden"           
+#>  [4] "disability"             "educational_attainment" "employment"            
+#>  [7] "gini"                   "health_insurance"       "household_size"        
+#> [10] "income_quintiles"
+```
+
+``` r
+list_variables() |> head(10)
+#> # A tibble: 10 × 2
 #>    variable                                table            
 #>    <chr>                                   <chr>            
 #>  1 total_population_universe               total_population 
@@ -82,8 +74,7 @@ list_variables()
 #>  7 snap_received_percent                   snap             
 #>  8 household_income_quintile_upper_limit_1 income_quintiles 
 #>  9 household_income_quintile_upper_limit_2 income_quintiles 
-#> 10 household_income_quintile_upper_limit_3 income_quintiles 
-#> # ℹ 851 more rows
+#> 10 household_income_quintile_upper_limit_3 income_quintiles
 ```
 
 ## Obtain Data
@@ -100,7 +91,7 @@ df = compile_acs_data(
   geography = "county",
   states = "NJ")
 
-glimpse(df)
+glimpse(df) |> head(10)
 #> Rows: 21
 #> Columns: 175
 #> $ data_source_year                                         <dbl> 2024, 2024, 2…
@@ -278,6 +269,26 @@ glimpse(df)
 #> $ race_hispanic_twoormore_includingotherrace_percent_M     <dbl> 0.0073, 0.003…
 #> $ race_hispanic_twoormore_excludingotherrace_percent_M     <dbl> 0.0017, 0.001…
 #> $ race_personofcolor_percent_M                             <dbl> 0.0023, 0.001…
+#> # A tibble: 10 × 175
+#>    data_source_year GEOID NAME              total_population_uni…¹ race_universe
+#>               <dbl> <chr> <chr>                              <dbl>         <dbl>
+#>  1             2024 34001 Atlantic County,…                 276270        276270
+#>  2             2024 34003 Bergen County, N…                 962316        962316
+#>  3             2024 34005 Burlington Count…                 467805        467805
+#>  4             2024 34007 Camden County, N…                 527257        527257
+#>  5             2024 34009 Cape May County,…                  94941         94941
+#>  6             2024 34011 Cumberland Count…                 153305        153305
+#>  7             2024 34013 Essex County, Ne…                 863002        863002
+#>  8             2024 34015 Gloucester Count…                 306954        306954
+#>  9             2024 34017 Hudson County, N…                 718323        718323
+#> 10             2024 34019 Hunterdon County…                 130160        130160
+#> # ℹ abbreviated name: ¹​total_population_universe
+#> # ℹ 170 more variables: race_nonhispanic_allraces <dbl>,
+#> #   race_nonhispanic_white_alone <dbl>, race_nonhispanic_black_alone <dbl>,
+#> #   race_nonhispanic_aian_alone <dbl>, race_nonhispanic_asian_alone <dbl>,
+#> #   race_nonhispanic_nhpi_alone <dbl>, race_nonhispanic_otherrace_alone <dbl>,
+#> #   race_nonhispanic_twoormore <dbl>,
+#> #   race_nonhispanic_twoormore_includingotherrace <dbl>, …
 ```
 
 ## Visualize Data
@@ -302,8 +313,9 @@ plot_data = df %>%
     data_source_year = factor(data_source_year))
 
 state_averages = plot_data %>%
-  group_by(data_source_year) %>%
-  summarize(mean_pct = mean(race_personofcolor_percent)) %>%
+  summarize(
+    .by = data_source_year,
+    mean_pct = mean(race_personofcolor_percent)) %>%
   arrange(data_source_year) %>%
   pull(mean_pct)
 
@@ -322,9 +334,7 @@ dumbbell_data = plot_data %>%
     names_from = data_source_year,
     values_from = race_personofcolor_percent,
     names_prefix = "year_")
-```
 
-``` r
 ggplot() +
   geom_segment(
     data = dumbbell_data,
@@ -376,7 +386,7 @@ ggplot() +
     title = "All NJ Counties Experienced Racial Diversification from 2019 to 2024",
     subtitle = paste0("Share of population who are people of color, by county, 2019-2024
 Confidence intervals are presented around each point but are extremely small"),
-    x = "County",
+    x = "",
     y = "Share of population who are people of color") +
   scale_x_discrete(expand = expansion(mult = c(.03, .04))) +
   scale_y_continuous(
@@ -391,8 +401,7 @@ Confidence intervals are presented around each point but are extremely small"),
 
 # Learn More
 
-A growing number of vignettes aim to support users in effectively using
-this package. These vignettes include:
+Check out the vignettes for additional details:
 
 - A package overview to help users [**Get
   Started**](https://ui-research.github.io/urbnindicators/articles/urbnindicators.md).
@@ -408,6 +417,11 @@ this package. These vignettes include:
 - An illustration of how [**Quantifying Survey
   Error**](https://ui-research.github.io/urbnindicators/articles/quantified-survey-error.md)
   can improve inference making.
+
+- You can re-create your indicators and their measures of error for
+  [**Custom
+  Geographies**](https://ui-research.github.io/urbnindicators/articles/custom-geographies.md).
+  Neighborhoods? Unincorporated counties? Start here.
 
 # Credits
 
