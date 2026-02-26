@@ -17,19 +17,21 @@ knitr::opts_chunk$set(
 
 ```{r setup, echo = FALSE}
 library(urbnindicators)
+library(dplyr)
+library(reactable)
 
-df = compile_acs_data(year = 2023, geography = "us")
+df = compile_acs_data(year = 2024, geography = "us")
 codebook = attr(df, "codebook")
 
-reactable::reactable(
+reactable(
   codebook %>% 
-    dplyr::rename(
+    transmute(
       Variable = calculated_variable, 
       Type = variable_type, 
       Definition = definition), 
   columns = list(
-    Variable = reactable::colDef(minWidth = 200), 
-    Type = reactable::colDef(minWidth = 50),
-    Type = reactable::colDef(minWidth = 100)),
+    Variable = colDef(minWidth = 200), 
+    Type = colDef(minWidth = 50),
+    Definition = colDef(minWidth = 100)),
   filterable = TRUE)
 ```

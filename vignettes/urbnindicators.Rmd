@@ -44,14 +44,8 @@ This vignette is organized into three parts:
 ## A Typical Workflow
 
 [**tidycensus**](https://walker-data.com/tidycensus/index.html) provides
-a suite of functions for working with ACS data in R. In fact,
-`library(urbnindicators)` is built on top of `library(tidycensus)`, and we highly
-encourage those who are unfamiliar to explore `library(tidycensus)` before using
-`library(urbnindicators)`.
-
-While `tidycensus` is versatile and allows users to access many more
-datasets (and variables within those datasets) than does
-`library(urbnindicators)`, it can require a significant amount of knowledge and
+a suite of functions for working with ACS data in R. While it's versatile 
+and comprehensive, it can require a significant amount of knowledge and
 time to support a robust analysis, leading many users to fall into
 common pitfalls without realizing they've made an error(s).
 
@@ -61,10 +55,11 @@ We load the built-in codebook and search for our construct of interest
 (disability). This leaves us 500 variables to choose from.
 
 ```{r}
-acs_codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
+acs_codebook = load_variables(dataset = "acs5", year = 2022)
 
 acs_codebook %>%
-  dplyr::filter(stringr::str_detect(concept, "Disability")) %>% 
+  filter(str_detect(concept, "Disability")) %>% 
+  select(name, label, concept) %>%
   ## only printing three, for brevity
   head(3) %>%
   reactable::reactable()
@@ -85,11 +80,10 @@ because the other characteristics combined with disability status (e.g.,
 health insurance coverage status) may be available only for a subset of
 the individuals for whom disability status is available.
 
-Putting these challenges aside, let's imagine we select the table of
-variables prefixed "B18101", for "Sex by Age by Disability". We think
-that most respondents who respond about their disability status will
-also have responded about their sex and age. We then pass this to
-`library(tidycensus)` as:
+Let's imagine we select the table of variables prefixed "B18101", 
+for "Sex by Age by Disability". We think that most respondents who respond 
+about their disability status will also have responded about their sex and 
+age. We then pass this to `library(tidycensus)` as:
 
 ```{r}
 df_disability = get_acs(
@@ -99,13 +93,10 @@ df_disability = get_acs(
   output = "wide",
   survey = "acs5",
   table = "B18101")
-
-df_disability %>% dim()
-df_disability %>% colnames() %>% head(5)
 ```
 
 This returns us 21 observations–one for each county in NJ--along with an
-intimidating 80 columns with meaningless names along the lines of
+intimidating 80 columns with unintelligble names along the lines of
 `B18101_039E`.
 
 ### Calculating our measure of interest
@@ -118,14 +109,14 @@ error-prone.
 For an analysis that leverages more than a single measure, and
 especially when measures are required from distinct tables, this
 workflow is burdensome and creates significant surface area for
-undetected errors. To acquire data for multiple years, or for multiple
-different types of geographies, also requires repeated calls to
-`tidycensus::get_acs()`.
+undetected errors.
 
 At the same time, many analysts will be overwhelmed by and unsure how to
-combine the margins of error that are returned by `tidycensus::get_acs()`, opting
-simply to drop this critical information from their analysis as they go
-about calculating "% Disabled".
+combine the margins of error that are returned by `tidycensus::get_acs()`
+to calculate pooled errors for the new percent-disabled variable, opting
+simply to drop this critical information from their analysis. (See 
+(quantified-survey-error)[quantified-survey-error.html] to learn more about 
+how `library(urbnindicators)` helps simplify this task.)
 
 ## Using urbnindicators
 
@@ -133,7 +124,7 @@ about calculating "% Disabled".
 of a call to `tidycensus::get_acs()`, a call to
 `urbnindicators::compile_acs_data()` returns a dataset of both raw ACS
 measures and derived estimates (such as the share of all individuals who
-are disabled). And that dataset includes a range of measures–-spanning
+are disabled). And that dataset can include a range of measures–-spanning
 things such as health insurance, employment, housing costs, and race and
 ethnicity–-not just one variable or table from the ACS.
 
@@ -143,22 +134,24 @@ It's as simple as the call below. Note that you can provide a vector of
 years and/or states if you want data over different time periods or
 geographies.
 
-Note that selecting more geographic units--either by selecting a `geography` option
-comprising more units, by selecting more states, or selecting more years--can significantly
-increase the query time. A tract-level query of the entire US for all supported variables
-can take 30+ minutes.
+Note that selecting more tables or more geographic units--either by selecting 
+a `geography` option comprising more units, by selecting more states, or selecting 
+more years--can significantly increase the query time. A tract-level query of the 
+entire US for all supported variables can take 30+ minutes.
 
 Use `list_tables()` to see which tables are available:
 
 ```{r}
-list_tables()
+list_tables() |> head(10)
 ```
 
-Here we request just two tables--`disability` and `transportation_to_work`:
+Here we request just two tables--`disability` and `transportation_to_work`.
+Alternately, you can set `tables = NULL` (the default) and get a very wide
+dataset comprising every variable supported by the package. 
 
 ```{r, message = FALSE, warning = FALSE}
-df_urbnindicators = urbnindicators::compile_acs_data(
-  years = 2022,
+df_urbnindicators = compile_acs_data(
+  years = 2024,
   tables = c("disability", "transportation_to_work"),
   geography = "county",
   states = "NJ",
@@ -186,14 +179,8 @@ df_urbnindicators %>%
 There's a lot happening behind the scenes, so it's important to
 understand what each variable represents and how it was calculated.
 `library(urbnindicators)` includes a codebook as an attribute of the dataframe
-returned from `urbnindicators::compile_acs_data()`. View and navigate through the [full codebook
-here](articles/codebook.html).
-
-```{r}
-df_urbnindicators %>%
-  attr("codebook") %>%
-  reactable::reactable()
-```
+returned from `urbnindicators::compile_acs_data()`. View and navigate through the 
+[full codebook here](articles/codebook.html).
 
 The codebook specifies the variable type and provides a definition of
 how the variable was calculated. Most (though not all) variables that
@@ -206,6 +193,7 @@ variables, where we divide two count variables. For example,
 df_urbnindicators %>%
   attr("codebook") %>%
   filter(str_detect(calculated_variable, "^disability_percent$")) %>%
+  select(calculated_variable, variable_type, definition) %>%
   reactable::reactable()
 ```
 
@@ -222,17 +210,9 @@ from home.
 df_urbnindicators %>%
   attr("codebook") %>%
   filter(str_detect(calculated_variable, "means.*motor_vehicle")) %>%
+  select(calculated_variable, variable_type, definition) %>%
   reactable::reactable()
 ```
 
 This allows us say something along the lines of: "Of individuals who commute to work, 
 XX% use a motor vehicle as their primary commute mode."
-
-## Summary
-
-In short, `library(urbnindicators)` trades the flexibility of
-`library(tidycensus)` for speed and reliability: meaningful variable
-names replace opaque codes, a codebook documents every calculation,
-and margins of error and coefficients of variation are carried through
-automatically so users can make informed decisions about statistical
-significance and data quality.

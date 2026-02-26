@@ -332,7 +332,8 @@ this function returns.")}
   })})
 
   ## attach the codebook and resolved tables as attributes to the returned dataset
-  attr(df_cvs, "codebook") = codebook
+  attr(df_cvs, "codebook") = codebook %>%
+    dplyr::select(calculated_variable, variable_type, definition, dplyr::everything())
   attr(df_cvs, "resolved_tables") = resolved_tables
 
   if (isTRUE(spatial)) { df_cvs = sf::st_as_sf(df_cvs) }

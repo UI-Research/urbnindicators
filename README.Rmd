@@ -37,8 +37,11 @@ the American Community Survey (ACS).
 
 With a single function call, you get:
 
--   Access to hundreds of standardized variables, such as percentages, in addition
-    to the raw count variables used to produce them.
+-   Access to hundreds of standardized variables, such as percentages and
+    the raw count variables used to produce them.
+
+-   Margins of error and coefficients of variation for all
+    variables--those direct from the API as well as derived variables.
 
 -   Meaningful, consistent variable names.
 
@@ -50,11 +53,11 @@ With a single function call, you get:
 -   Supplemental measures, such as population density, that aren't
     available from the ACS.
 
--   Built-in quality checks to help ensure that calculated variables are
-    accurate. Plus some good, old-fashioned manual QC.
+-   Built-in quality checks to help ensure that calculated variables 
+    and measures of error are accurate. Plus some good, old-fashioned manual QC.
+    That said--use at your own risk. We cannot and do not guarantee there aren't bugs.
 
--   Margins of error and coefficients of variation for all
-    variables--those direct from the API as well as derived variables.
+
 
 # Installation
 
@@ -62,11 +65,11 @@ Install the development version of `urbnindicators` from
 [GitHub](https://github.com/) with:
 
 ```r
-install.packages("renv")
+# install.packages("renv")
 renv::install("UI-Research/urbnindicators")
 ```
 
-You'll need a Census API key
+You'll want a Census API key
 ([request one here](https://api.census.gov/data/key_signup.html)).
 Set it once with:
 
@@ -95,8 +98,11 @@ library(urbnindicators)
 ## Discover Available Data
 
 ```{r, warning = FALSE, message = FALSE}
-list_tables()
-list_variables()
+list_tables() |> head(10)
+```
+
+```{r, warning = FALSE, message = FALSE}
+list_variables() |> head(10)
 ```
 
 ## Obtain Data
@@ -112,7 +118,7 @@ df = compile_acs_data(
   geography = "county",
   states = "NJ")
 
-glimpse(df)
+glimpse(df) |> head(10)
 ```
 
 ## Visualize Data
@@ -136,8 +142,9 @@ plot_data = df %>%
     data_source_year = factor(data_source_year))
 
 state_averages = plot_data %>%
-  group_by(data_source_year) %>%
-  summarize(mean_pct = mean(race_personofcolor_percent)) %>%
+  summarize(
+    .by = data_source_year,
+    mean_pct = mean(race_personofcolor_percent)) %>%
   arrange(data_source_year) %>%
   pull(mean_pct)
 
@@ -156,9 +163,7 @@ dumbbell_data = plot_data %>%
     names_from = data_source_year,
     values_from = race_personofcolor_percent,
     names_prefix = "year_")
-```
 
-```{r, warning = FALSE, message = FALSE}
 ggplot() +
   geom_segment(
     data = dumbbell_data,
@@ -210,7 +215,7 @@ ggplot() +
     title = "All NJ Counties Experienced Racial Diversification from 2019 to 2024",
     subtitle = paste0("Share of population who are people of color, by county, 2019-2024
 Confidence intervals are presented around each point but are extremely small"),
-    x = "County",
+    x = "",
     y = "Share of population who are people of color") +
   scale_x_discrete(expand = expansion(mult = c(.03, .04))) +
   scale_y_continuous(
@@ -223,8 +228,7 @@ Confidence intervals are presented around each point but are extremely small"),
 
 # Learn More
 
-A growing number of vignettes aim to support users in effectively using
-this package. These vignettes include:
+Check out the vignettes for additional details:
 
 -   A package overview to help users [**Get
     Started**](articles/urbnindicators.html).
@@ -240,6 +244,10 @@ this package. These vignettes include:
 -   An illustration of how [**Quantifying Survey
     Error**](articles/quantified-survey-error.html) can improve
     inference making.
+
+-   You can re-create your indicators and their measures of error
+    for [**Custom Geographies**](articles/custom-geographies.html).
+    Neighborhoods? Unincorporated counties? Start here.
 
 # Credits
 

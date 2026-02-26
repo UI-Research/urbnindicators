@@ -433,7 +433,8 @@ calculate_custom_geographies = function(
           paste0(definition, " [Percentage recalculated from summed components.]"),
         aggregation_strategy == "weighted_average" ~
           paste0(definition, " [Aggregated via population-weighted average using ", weight_variable, ".]"),
-        TRUE ~ definition))
+        TRUE ~ definition)) %>%
+    dplyr::select(calculated_variable, variable_type, definition, dplyr::everything())
 
   attr(result, "codebook") = updated_codebook
 

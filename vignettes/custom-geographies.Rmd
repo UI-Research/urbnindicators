@@ -36,19 +36,20 @@ data, these imprecise estimates make it difficult to detect meaningful
 differences between areas---even when real differences exist.
 
 `calculate_custom_geographies()` addresses this by aggregating
-tract-level data to user-defined geographies (e.g., neighborhoods,
+tract-level (or really any level of data) data to user-defined geographies (e.g., neighborhoods,
 planning districts, or school zones). This aggregation increases sample
 sizes, reduces coefficients of variation, and enables more reliable
 statistical inference.
 
-# Example: DC Tract Data
+# Example: DC Quadrants
 
 We'll demonstrate using tract-level data for Washington, DC, comparing
-the share of population receiving SNAP benefits across areas.
+the share of population receiving SNAP benefits across areas "quadrants".
 
 ```{r, message = FALSE}
 dc_tracts = compile_acs_data(
   years = 2024,
+  tables = "snap",
   geography = "tract",
   states = "DC",
   spatial = TRUE)
@@ -83,57 +84,40 @@ dc_quadrants = calculate_custom_geographies(
   spatial = TRUE)
 ```
 
-# Comparing Precision: Tracts vs. Custom Geographies
+# Comparing Precision
 
 The maps below show the share of households receiving SNAP benefits.
 Notice how aggregating to quadrants produces more precise estimates with
-smaller coefficients of variation.
+smaller coefficients of variation. Indeed, the median coefficient of variation
+for tract level is greater than 30, a common upper bound for "reliable" estimates.
 
 ```{r, fig.height = 4}
 # Tract-level map
-map_tracts = dc_tracts %>%
+  bind_rows(
+    dc_tracts %>% mutate(geography = "Tract"),
+    dc_quadrants %>% mutate(geography = "Quadrant")) %>%
+  mutate(
+    .by = geography,
+    median_cv = round(median(snap_received_percent_CV, na.rm = TRUE)),
+    label = str_c(geography, " - median CV: ", median_cv)) %>%
   ggplot() +
-  geom_sf(aes(fill = snap_received_percent), color = "white", linewidth = 0.1) +
-  scale_fill_gradientn(
-    colors = c("#CFE8F3", "#1696D2", "#0A4C6A"),
-    limits = c(0, 0.5),
-    labels = scales::percent,
-    na.value = "grey80") +
-  urbnthemes::theme_urbn_map() +
-  theme(legend.position = "bottom") +
-  labs(
-    fill = "SNAP Receipt",
-    title = "Tract-Level Estimates",
-    subtitle = paste0("Median CV: ", round(median(dc_tracts$snap_received_percent_CV, na.rm = TRUE), 1)))
-
-# Quadrant-level map
-map_quadrants = dc_quadrants %>%
-  ggplot() +
-  geom_sf(aes(fill = snap_received_percent), color = "white", linewidth = 0.3) +
-  scale_fill_gradientn(
-    colors = c("#CFE8F3", "#1696D2", "#0A4C6A"),
-    limits = c(0, 0.5),
-    labels = scales::percent,
-    na.value = "grey80") +
-  urbnthemes::theme_urbn_map() +
-  theme(legend.position = "bottom") +
-  labs(
-    fill = "SNAP Receipt",
-    title = "Quadrant-Level Estimates",
-    subtitle = paste0("Median CV: ", round(median(dc_quadrants$snap_received_percent_CV, na.rm = TRUE), 1)))
-
-map_tracts
-map_quadrants
+    geom_sf(aes(fill = snap_received_percent), color = "white", linewidth = 0.1) +
+    scale_fill_continuous(palette = palette_urbn_cyan[c(3, 5, 7)], labels = scales::percent) +
+    theme_urbn_map() +
+    labs(fill = "SNAP Receipt (%)") +
+    facet_wrap(~ label)
 ```
 
 The quadrant-level estimates have substantially lower CVs, indicating
-more reliable estimates. This precision gain enables meaningful
-statistical comparisons.
+more reliable estimates. 
 
 # Detecting Statistically Significant Differences
 
-With more precise estimates, we can better identify where SNAP receipt
-rates differ significantly from the citywide average.
+By aggregating our tract observations, we can also calculate
+statistically significant differences at greater geographic scales.
+This enables analysis for more policy-relevant areas and helps mitigate
+shortcomings associated with high measures of error for smaller-population
+observations, which can lead to findings of no statistically significant differences.
 
 ```{r, fig.height = 4}
 # Calculate DC-wide SNAP rate for comparison
@@ -181,7 +165,7 @@ map_tracts_sig = tracts_sig %>%
   scale_fill_manual(values = sig_colors, na.value = "grey80") +
   urbnthemes::theme_urbn_map() +
   theme(legend.position = "bottom") +
-  labs(fill = "", title = "Tract-Level")
+  labs(fill = "", subtitle = "Tract-level", title = "")
 
 map_quadrants_sig = quadrants_sig %>%
   ggplot() +
@@ -189,20 +173,16 @@ map_quadrants_sig = quadrants_sig %>%
   scale_fill_manual(values = sig_colors, na.value = "grey80") +
   urbnthemes::theme_urbn_map() +
   theme(legend.position = "bottom") +
-  labs(fill = "", title = "Quadrant-Level")
+  labs(fill = "", subtitle = "Quadrant-level", title = "")
 
 gridExtra::grid.arrange(
   map_tracts_sig, map_quadrants_sig,
   ncol = 2,
   top = grid::textGrob(
-    "Aggregation Enables Detection of Statistically Significant Differences",
+    "Aggregation can mitigate challenges with small-population, high-error observations",
     gp = grid::gpar(fontsize = 12, fontface = "bold")))
 ```
 
-At the tract level, large margins of error prevent many estimates from
-reaching statistical significance. At the quadrant level, the same
-underlying data produces estimates precise enough to detect significant
-differences from the citywide average.
 
 # Key Takeaways
 
@@ -213,11 +193,8 @@ differences from the citywide average.
     statistically significant differences that would otherwise be
     obscured by sampling error.
 
-3.  **Proper error handling**: `calculate_custom_geographies()` correctly
-    recalculates MOEs, SEs, and CVs for aggregated estimates following
-    Census Bureau methodology---simply averaging tract-level statistics
-    would produce incorrect results.
-
-4.  **Flexible boundaries**: The function works with any custom geography
-    defined by a grouping variable, allowing analysis at neighborhood,
-    district, or other policy-relevant scales.
+3.  **More relevant units of analysis**: The ACS reports estimates at 
+    many geographies, but there are many others that are not supported. 
+    Think neighborhoods, wards, continuums of care, school districts, and more.
+    To robustly calculate errors and draw reliable inferences for these
+    other geographies is critical but challenging.  
