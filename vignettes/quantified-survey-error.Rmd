@@ -15,7 +15,6 @@ knitr::opts_chunk$set(
   warning = FALSE,
   message = FALSE,
   collapse = TRUE,
-  eval = nzchar(Sys.getenv("CENSUS_API_KEY")),
   dpi = 600,
   fig.width = 7,
   comment = "#>")
@@ -28,9 +27,6 @@ library(tidyr)
 library(stringr)
 library(urbnindicators)
 library(sf)
-# Note: urbnthemes is an internal Urban Institute package
-# (https://github.com/UrbanInstitute/urbnthemes) and is not on CRAN.
-# Install with renv::install("UI-Research/urbnthemes")
 library(urbnthemes)
 library(tidycensus)
 library(gridExtra)
@@ -118,11 +114,6 @@ As shown below, variables that rely on larger sample sizes tend to have
 smaller CVs. Typically, there are two strategies to reduce CVs: (1)
 aggregate estimates, either across geographies or across variables, or
 (2) use larger geographies.
-
-We plan to add utilities to support users in aggregating estimates and
-calculating adjusted measurements of error. For now, we warn that any
-aggregation should be done with care, as error cannot be simply added
-(or otherwise summarized) the way that estimates can.
 
 ```{r, warning = FALSE, message = FALSE}
 acs_df_county = compile_acs_data(
