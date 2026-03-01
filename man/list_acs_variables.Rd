@@ -21,7 +21,7 @@ available table names.}
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
 Use \code{\link[=list_variables]{list_variables()}} instead to see available variables, or pass
-\code{tables}/\code{indicators} to \code{\link[=compile_acs_data]{compile_acs_data()}}.
+\code{tables} to \code{\link[=compile_acs_data]{compile_acs_data()}}.
 }
 \examples{
 \dontrun{

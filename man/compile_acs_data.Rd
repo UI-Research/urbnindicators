@@ -6,23 +6,34 @@
 \usage{
 compile_acs_data(
   tables = NULL,
-  indicators = NULL,
-  years = c(2022),
+  years = c(2024),
   geography = "county",
   states = NULL,
   counties = NULL,
   spatial = FALSE,
+  denominator = "parent",
   ...
 )
 }
 \arguments{
-\item{tables}{A character vector of table names to include (e.g.,
-\code{c("race", "snap")}). Use \code{list_tables()} to see available tables.
-When NULL (default) and \code{indicators} is also NULL, all tables are included.}
-
-\item{indicators}{A character vector of indicator names to include (e.g.,
-\code{c("snap_received_percent")}). Each indicator's parent table is
-automatically included.}
+\item{tables}{A character vector of table names to include. Two formats are
+accepted:
+\itemize{
+\item \strong{Registered table names} (e.g., \code{"race"}, \code{"snap"}).
+These are pre-built tables with curated variable definitions. Use
+\code{list_tables()} to see all available registered tables.
+\item \strong{Raw ACS table codes} (e.g., \code{"B25070"}, \code{"C15002B"}).
+Any valid ACS Detailed or Collapsed table code can be passed directly.
+These are auto-processed at runtime: raw variables are fetched, the
+label hierarchy is parsed, and percentages are computed automatically.
+Use the \code{denominator} parameter to control how percentages are
+calculated for these tables.
+}
+Both formats can be mixed freely (e.g., \code{c("snap", "B25070")}).
+If an ACS code corresponds to an already-registered table, the registered
+version is used automatically.
+When NULL (default), all registered tables are included (unregistered ACS
+tables must be requested explicitly).}
 
 \item{years}{A numeric vector of four-digit years for which to pull five-year
 American Community Survey estimates.}
@@ -39,6 +50,13 @@ will override the \code{states} parameter. If \code{NULL}, all counties in the t
 state(s) specified in the \code{states} parameter will be included.}
 
 \item{spatial}{Boolean. Return a simple features (sf), spatially-enabled dataframe?}
+
+\item{denominator}{Controls how auto-computed percentages choose their
+denominator. \code{"parent"} (default) uses the nearest parent subtotal from
+the ACS label hierarchy. \code{"total"} uses the table total (variable
+\code{_001}). A specific ACS variable code (e.g., \code{"B25070_001"}) uses
+that variable. Only affects unregistered (auto) tables; registered tables
+always use their predefined definitions.}
 
 \item{...}{Deprecated arguments. If \code{variables} is passed, a deprecation
 warning is issued and the value is ignored.}
@@ -63,9 +81,17 @@ df = compile_acs_data(years = c(2022), geography = "county", states = "NJ")
 df = compile_acs_data(tables = c("race", "snap"), years = 2022,
                       geography = "county", states = "NJ")
 
-## Pull by indicator name (returns the full parent table)
-df = compile_acs_data(indicators = c("snap_received_percent"),
-                      years = 2022, geography = "county", states = "NJ")
+## Pull an unregistered ACS table by code
+df = compile_acs_data(tables = "B25070", years = 2022,
+                      geography = "state", states = "DC")
+
+## Mix registered and unregistered tables
+df = compile_acs_data(tables = c("snap", "B25070"), years = 2022,
+                      geography = "state", states = "DC")
+
+## Use table total as denominator instead of parent subtotals
+df = compile_acs_data(tables = "B25070", denominator = "total",
+                      years = 2022, geography = "state", states = "DC")
   }
 }
 \seealso{

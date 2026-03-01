@@ -139,20 +139,38 @@ a `geography` option comprising more units, by selecting more states, or selecti
 more years--can significantly increase the query time. A tract-level query of the 
 entire US for all supported variables can take 30+ minutes.
 
-Use `list_tables()` to see which tables are available:
+Use `list_tables()` to see some of the most commonly-used tables:
 
 ```{r}
 list_tables() |> head(10)
 ```
 
+Or use `get_acs_codebook()` to see every table supported by the Census Bureau API:
+
+```{r}
+get_acs_codebook() |>
+  ## just showing a sample of the 28,000+ variables available
+  slice_sample(n = 10)
+```
+
 Here we request just two tables--`disability` and `transportation_to_work`.
-Alternately, you can set `tables = NULL` (the default) and get a very wide
-dataset comprising every variable supported by the package. 
 
 ```{r, message = FALSE, warning = FALSE}
 df_urbnindicators = compile_acs_data(
   years = 2024,
   tables = c("disability", "transportation_to_work"),
+  geography = "county",
+  states = "NJ",
+  spatial = TRUE)
+```
+
+Alternately, you can pass the name of a variable or table from `get_acs_codebook()`
+to `compile_acs_data()`. The equivalent would be:
+
+```{r}
+df_urbnindicators = compile_acs_data(
+  years = 2024,
+  tables = c("sex_by_age_by_disability_status_universe", "B08301"),
   geography = "county",
   states = "NJ",
   spatial = TRUE)
@@ -186,33 +204,15 @@ The codebook specifies the variable type and provides a definition of
 how the variable was calculated. Most (though not all) variables that
 are directly available from the ACS are count variables. Many of the
 variables that are calculated by `library(urbnindicators)` are percent
-variables, where we divide two count variables. For example,
-`disability_percent` is simply a numerator divided by a denominator:
+variables, where we divide two count variables. 
+
+Others, however, are quite complex. For example, `disability_percent` is 
+the sum of all of the sex-by-age groupings for people with disabilities (numerator)
+divided by the table universe.
 
 ```{r}
 df_urbnindicators %>%
   attr("codebook") %>%
   filter(str_detect(calculated_variable, "^disability_percent$")) %>%
-  select(calculated_variable, variable_type, definition) %>%
-  reactable::reactable()
+  pull(definition)
 ```
-
-The most common convention is that a percent variable is calculated by
-dividing a count variable (e.g., `means_transportation_work_walked`) by the
-universe variable for the corresponding table (e.g., `means_transportation_work_universe`). 
-But other derived variables are more complex, such as those for commute
-mode. Here, we've aggregated three counts representing different types
-of individual motor vehicle transportation to create the numerator,
-while the denominator is the table universe minus individuals who work
-from home. 
-
-```{r}
-df_urbnindicators %>%
-  attr("codebook") %>%
-  filter(str_detect(calculated_variable, "means.*motor_vehicle")) %>%
-  select(calculated_variable, variable_type, definition) %>%
-  reactable::reactable()
-```
-
-This allows us say something along the lines of: "Of individuals who commute to work, 
-XX% use a motor vehicle as their primary commute mode."

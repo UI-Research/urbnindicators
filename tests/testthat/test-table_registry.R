@@ -84,54 +84,6 @@ testthat::test_that(
   })
 
 testthat::test_that(
-  "list_indicators() returns construct-level table names",
-  {
-    indicators = list_indicators()
-
-    testthat::expect_true(tibble::is_tibble(indicators))
-    testthat::expect_true("indicator" %in% colnames(indicators))
-    testthat::expect_true("table" %in% colnames(indicators))
-    testthat::expect_gt(nrow(indicators), 0)
-
-    ## spot-check specific indicators
-    testthat::expect_true("snap_received_percent" %in% indicators$indicator)
-    testthat::expect_true("race_personofcolor_percent" %in% indicators$indicator)
-
-    ## verify construct-level table names for sex_by_age split
-    age_indicators = indicators %>% dplyr::filter(table == "age")
-    testthat::expect_true("age_over_64_percent" %in% age_indicators$indicator)
-    testthat::expect_true("age_under_18_percent" %in% age_indicators$indicator)
-
-    sex_indicators = indicators %>% dplyr::filter(table == "sex")
-    testthat::expect_true("sex_female_percent" %in% sex_indicators$indicator)
-    testthat::expect_true("sex_male_percent" %in% sex_indicators$indicator)
-
-    ## verify construct-level table names for nativity_language split
-    nativity_indicators = indicators %>% dplyr::filter(table == "nativity")
-    testthat::expect_true("nativity_native_born_percent" %in% nativity_indicators$indicator)
-
-    language_indicators = indicators %>% dplyr::filter(table == "language")
-    testthat::expect_true("ability_speak_english_very_well_better_percent" %in% language_indicators$indicator)
-  })
-
-testthat::test_that(
-  "resolve_tables() resolves indicators to parent tables",
-  {
-    ## indicators with construct-level table names should still resolve correctly
-    resolved = resolve_tables(indicators = "snap_received_percent")
-    testthat::expect_true("snap" %in% resolved)
-    testthat::expect_true("total_population" %in% resolved)
-
-    ## age indicator should resolve to sex_by_age internal table
-    resolved = resolve_tables(indicators = "age_over_64_percent")
-    testthat::expect_true("sex_by_age" %in% resolved)
-
-    ## sex indicator should resolve to sex_by_age internal table
-    resolved = resolve_tables(indicators = "sex_female_percent")
-    testthat::expect_true("sex_by_age" %in% resolved)
-  })
-
-testthat::test_that(
   "Every registered table has a name and definitions",
   {
     ## iterate internal table names (not construct names)

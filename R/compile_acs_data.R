@@ -16,12 +16,24 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' @description Construct measures frequently used in social sciences
 #'    research, leveraging \code{tidycensus::get_acs()} to acquire raw estimates from
 #'    the Census Bureau API.
-#' @param tables A character vector of table names to include (e.g.,
-#'    \code{c("race", "snap")}). Use \code{list_tables()} to see available tables.
-#'    When NULL (default) and \code{indicators} is also NULL, all tables are included.
-#' @param indicators A character vector of indicator names to include (e.g.,
-#'    \code{c("snap_received_percent")}). Each indicator's parent table is
-#'    automatically included.
+#' @param tables A character vector of table names to include. Two formats are
+#'    accepted:
+#'    \itemize{
+#'      \item \strong{Registered table names} (e.g., \code{"race"}, \code{"snap"}).
+#'        These are pre-built tables with curated variable definitions. Use
+#'        \code{list_tables()} to see all available registered tables.
+#'      \item \strong{Raw ACS table codes} (e.g., \code{"B25070"}, \code{"C15002B"}).
+#'        Any valid ACS Detailed or Collapsed table code can be passed directly.
+#'        These are auto-processed at runtime: raw variables are fetched, the
+#'        label hierarchy is parsed, and percentages are computed automatically.
+#'        Use the \code{denominator} parameter to control how percentages are
+#'        calculated for these tables.
+#'    }
+#'    Both formats can be mixed freely (e.g., \code{c("snap", "B25070")}).
+#'    If an ACS code corresponds to an already-registered table, the registered
+#'    version is used automatically.
+#'    When NULL (default), all registered tables are included (unregistered ACS
+#'    tables must be requested explicitly).
 #' @param years A numeric vector of four-digit years for which to pull five-year
 #'    American Community Survey estimates.
 #' @param geography A geography type that is accepted by \code{tidycensus::get_acs()}, e.g.,
@@ -33,6 +45,12 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'    will override the \code{states} parameter. If \code{NULL}, all counties in the the
 #'    state(s) specified in the \code{states} parameter will be included.
 #' @param spatial Boolean. Return a simple features (sf), spatially-enabled dataframe?
+#' @param denominator Controls how auto-computed percentages choose their
+#'    denominator. \code{"parent"} (default) uses the nearest parent subtotal from
+#'    the ACS label hierarchy. \code{"total"} uses the table total (variable
+#'    \code{_001}). A specific ACS variable code (e.g., \code{"B25070_001"}) uses
+#'    that variable. Only affects unregistered (auto) tables; registered tables
+#'    always use their predefined definitions.
 #' @param ... Deprecated arguments. If \code{variables} is passed, a deprecation
 #'    warning is issued and the value is ignored.
 #' @seealso \code{tidycensus::get_acs()}, which this function wraps.
@@ -49,21 +67,29 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' df = compile_acs_data(tables = c("race", "snap"), years = 2022,
 #'                       geography = "county", states = "NJ")
 #'
-#' ## Pull by indicator name (returns the full parent table)
-#' df = compile_acs_data(indicators = c("snap_received_percent"),
-#'                       years = 2022, geography = "county", states = "NJ")
+#' ## Pull an unregistered ACS table by code
+#' df = compile_acs_data(tables = "B25070", years = 2022,
+#'                       geography = "state", states = "DC")
+#'
+#' ## Mix registered and unregistered tables
+#' df = compile_acs_data(tables = c("snap", "B25070"), years = 2022,
+#'                       geography = "state", states = "DC")
+#'
+#' ## Use table total as denominator instead of parent subtotals
+#' df = compile_acs_data(tables = "B25070", denominator = "total",
+#'                       years = 2022, geography = "state", states = "DC")
 #'   }
 #' @export
 #' @importFrom magrittr %>%
 
 compile_acs_data = function(
     tables = NULL,
-    indicators = NULL,
-    years = c(2022),
+    years = c(2024),
     geography = "county",
     states = NULL,
     counties = NULL,
     spatial = FALSE,
+    denominator = "parent",
     ...) {
 
   ## handle deprecated `variables` parameter and unknown arguments
@@ -72,7 +98,7 @@ compile_acs_data = function(
     lifecycle::deprecate_warn(
       when = "0.1.0",
       what = "compile_acs_data(variables)",
-      details = "The `variables` parameter is ignored. Use `tables` or `indicators` to select specific data, or call with no selection arguments for all tables."
+      details = "The `variables` parameter is ignored. Use `tables` to select specific data, or call with no selection arguments for all tables."
     )
   }
   unknown_args = setdiff(names(dots), "variables")
@@ -99,22 +125,123 @@ compile_acs_data = function(
     stop("`years` must be between 2009 (earliest 5-year ACS) and the current year.")
   }
 
+  ## validate denominator parameter
+  valid_denominator = denominator %in% c("parent", "total") ||
+    grepl("^[BC][0-9]{5}[A-I]?(_[0-9]{3})?$", denominator, perl = TRUE)
+  if (!valid_denominator) {
+    stop(paste0("`denominator` must be \"parent\", \"total\", or a valid ACS variable code (e.g., \"B25070_001\"). Got: \"", denominator, "\"."))
+  }
+
+  ####----Partition tables into registry vs auto (raw ACS codes)----####
+  auto_table_entries = list()
+  registry_tables = tables
+  raw_acs_codes = character(0)
+
+  if (!is.null(tables)) {
+    construct_map = build_construct_map()
+    internal_names = names(.table_registry$tables)
+
+    ## load census variables once for resolve_to_acs_table lookups
+    suppressMessages({suppressWarnings({
+      census_variables_for_resolve = tidycensus::load_variables(year = years[1], dataset = "acs5")
+    })})
+
+    ## collect all acs_tables from registered tables to detect overlap
+    registered_acs_codes = purrr::map(internal_names, function(tn) {
+      entry = get_table(tn)
+      if (!is.null(entry[["acs_tables"]])) entry[["acs_tables"]] else character(0)
+    }) %>% unlist() %>% unique()
+
+    ## helper: find the registered table covering a given ACS code
+    find_covering_table = function(acs_code) {
+      purrr::detect(internal_names, function(tn) {
+        entry = get_table(tn)
+        acs_code %in% entry[["acs_tables"]]
+      })
+    }
+
+    ## classify each user-supplied table name
+    classified = purrr::map(tables, function(tbl) {
+      if (tbl %in% internal_names || tbl %in% names(construct_map)) {
+        ## known registry table or construct name
+        return(list(type = "registry", value = tbl))
+      }
+      if (is_raw_acs_code(tbl)) {
+        ## raw ACS table code — check for overlap with registered tables
+        if (tbl %in% registered_acs_codes) {
+          covering = find_covering_table(tbl)
+          if (!is.null(covering)) return(list(type = "registry", value = covering))
+        }
+        return(list(type = "auto", value = tbl))
+      }
+      ## try resolving as a cleaned variable name
+      resolved_code = resolve_to_acs_table(tbl, year = years[1],
+                                           census_variables = census_variables_for_resolve)
+      if (!is.null(resolved_code)) {
+        if (resolved_code %in% registered_acs_codes) {
+          covering = find_covering_table(resolved_code)
+          if (!is.null(covering)) return(list(type = "registry", value = covering))
+        }
+        return(list(type = "auto", value = resolved_code))
+      }
+      ## not resolvable — pass through to resolve_tables() which will error if invalid
+      list(type = "registry", value = tbl)
+    })
+
+    registry_tables = purrr::map_chr(
+      purrr::keep(classified, ~ .x$type == "registry"), "value") %>% unique()
+    raw_acs_codes = purrr::map_chr(
+      purrr::keep(classified, ~ .x$type == "auto"), "value") %>% unique()
+  }
+
   ####----Resolve tables and variables via the registry----####
   ## resolve which tables to include
-  if (is.null(tables) && is.null(indicators)) {
+  if (is.null(tables)) {
     ## default: all internal table names
     resolved_tables = names(.table_registry$tables)
   } else {
-    resolved_tables = resolve_tables(tables = tables, indicators = indicators)
+    ## pass only registry tables (not raw ACS codes) to resolve_tables
+    registry_tables_input = if (length(registry_tables) > 0) registry_tables else NULL
+    resolved_tables = resolve_tables(tables = registry_tables_input)
   }
 
   ## determine whether tigris geometry is needed
   needs_tigris = isTRUE(spatial) || ("population_density" %in% resolved_tables)
 
+  ####----Build auto table entries for raw ACS codes----####
+  if (length(raw_acs_codes) > 0) {
+    ## determine denominator mode and custom denominator
+    denominator_mode = denominator
+    custom_denominator = NULL
+    if (!denominator %in% c("parent", "total")) {
+      denominator_mode = "custom"
+      custom_denominator = denominator
+    }
+
+    suppressMessages({suppressWarnings({
+      auto_table_entries = purrr::map(raw_acs_codes, function(code) {
+        build_auto_table_entry(
+          table_code = code,
+          year = years[1],
+          denominator_mode = denominator_mode,
+          custom_denominator = custom_denominator,
+          census_variables = census_variables_for_resolve)
+      })
+    })})
+    names(auto_table_entries) = raw_acs_codes
+  }
+
   ## collect raw ACS variables from the registry
   suppressWarnings({suppressMessages({
     variables = collect_raw_variables(resolved_tables = resolved_tables, year = years[1])
   })})
+
+  ## append auto-table raw variables
+  if (length(auto_table_entries) > 0) {
+    auto_variables = purrr::map(auto_table_entries, ~ .x[["raw_variables"]]) %>%
+      unname() %>% unlist()
+    variables = c(variables, auto_variables)
+  }
 
   ## default values for the states argument
   if (length(states) == 0) {
@@ -296,16 +423,23 @@ this function returns.")}
     }
   }, .init = df_calculated_estimates)
 
+  ## apply auto-table definitions
+  if (length(auto_table_entries) > 0) {
+    df_calculated_estimates = purrr::reduce(auto_table_entries, function(.data, auto_entry) {
+      if (!is.null(auto_entry[["definitions"]]) && length(auto_entry[["definitions"]]) > 0) {
+        execute_definitions(.data, auto_entry[["definitions"]])
+      } else {
+        .data
+      }
+    }, .init = df_calculated_estimates)
+  }
+
   ####----Generate codebook----####
-  ## generate codebook BEFORE the _pct rename so that regex matching in
-  ## expand_codebook_entry() works on the original _percent column names;
-  ## the codebook's internal rename (percent -> pct for Count variables)
-  ## produces the correct output names
-  codebook = generate_codebook(.data = df_calculated_estimates, resolved_tables = resolved_tables)
+  codebook = generate_codebook(.data = df_calculated_estimates,
+                               resolved_tables = resolved_tables,
+                               auto_table_entries = auto_table_entries)
 
   df_calculated_estimates = df_calculated_estimates %>%
-    ## these variable names end in "percent", but they're actually count estimates
-    dplyr::rename_with(.cols = dplyr::matches("household_income.*percent$"), .fn = ~ stringr::str_replace(., "percent$", "pct")) %>%
     ## ensure the vintage of the data and the GEOID for each observation are the first columns
     dplyr::select(data_source_year, GEOID, dplyr::everything())
 
@@ -319,30 +453,29 @@ this function returns.")}
   df_calculated_estimates = df_calculated_estimates %>%
     dplyr::left_join(
       .,
-      moes %>%
-        dplyr::rename_with(.cols = dplyr::matches("household_income.*percent_M$"), .fn = ~ stringr::str_replace(., "percent_M$", "pct_M")),
+      moes,
       by = c("GEOID", "data_source_year"))
 
-  ####----Calculate CVs----####
+  ####----Calculate MOEs for derived variables----####
   attr(df_calculated_estimates, "codebook") = codebook
 
   suppressMessages({suppressWarnings({
-    df_cvs = calculate_cvs(df_calculated_estimates) %>%
+    df_moes = calculate_moes(df_calculated_estimates) %>%
       {if (!needs_tigris || spatial == FALSE) . else dplyr::right_join(., geometries %>% dplyr::select(GEOID, data_source_year), by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
   })})
 
   ## attach the codebook and resolved tables as attributes to the returned dataset
-  attr(df_cvs, "codebook") = codebook %>%
+  attr(df_moes, "codebook") = codebook %>%
     dplyr::select(calculated_variable, variable_type, definition, dplyr::everything())
-  attr(df_cvs, "resolved_tables") = resolved_tables
+  attr(df_moes, "resolved_tables") = resolved_tables
 
-  if (isTRUE(spatial)) { df_cvs = sf::st_as_sf(df_cvs) }
+  if (isTRUE(spatial)) { df_moes = sf::st_as_sf(df_moes) }
 
-  return(df_cvs)
+  return(df_moes)
 }
 
 utils::globalVariables(c(
   "ALAND", "AWATER", "area_land_sq_kilometer", "area_water_sq_kilometer", "total_population_universe",
   "state", "GEOID", "data_source_year", ".",
   "state_code", "county_code", "county_fips", "state_name", "county",
-  "needs_tigris", "resolved_tables"))
+  "needs_tigris", "resolved_tables", "auto_table_entries"))

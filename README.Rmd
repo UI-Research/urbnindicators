@@ -40,8 +40,8 @@ With a single function call, you get:
 -   Access to hundreds of standardized variables, such as percentages and
     the raw count variables used to produce them.
 
--   Margins of error and coefficients of variation for all
-    variables--those direct from the API as well as derived variables.
+-   Margins of error for all variables--those direct from the API as
+    well as derived variables.
 
 -   Meaningful, consistent variable names.
 
@@ -119,6 +119,8 @@ df = compile_acs_data(
   states = "NJ")
 
 glimpse(df) |> head(10)
+
+?compile_acs_data
 ```
 
 ## Visualize Data
@@ -138,7 +140,7 @@ plot_data = df %>%
   transmute(
     county_name = NAME %>% str_remove(" County, New Jersey"),
     race_personofcolor_percent,
-    race_personofcolor_percent_SE,
+    race_personofcolor_percent_M,
     data_source_year = factor(data_source_year))
 
 state_averages = plot_data %>%
@@ -179,7 +181,7 @@ ggplot() +
       x = county_name,
       ydist = distributional::dist_normal(
         race_personofcolor_percent,
-        race_personofcolor_percent_SE),
+        race_personofcolor_percent_M / 1.645),
       color = data_source_year),
     point_size = 2,
     .width = .95) +
