@@ -7,7 +7,7 @@ are calculated.
 ## Usage
 
 ``` r
-generate_codebook(.data, resolved_tables = NULL)
+generate_codebook(.data, resolved_tables = NULL, auto_table_entries = list())
 ```
 
 ## Arguments
@@ -21,6 +21,11 @@ generate_codebook(.data, resolved_tables = NULL)
 
   A character vector of resolved table names from the table registry.
   When NULL (default), all registered tables are used.
+
+- auto_table_entries:
+
+  A list of auto-generated table entries from
+  `build_auto_table_entry()`. Default is an empty list.
 
 ## Value
 
@@ -42,7 +47,7 @@ df = compile_acs_data(
   states = "NJ",
   counties = NULL,
   spatial = FALSE) %>%
-  dplyr::select(-dplyr::matches("_M$|_SE$|_CV$"))
+  dplyr::select(-dplyr::matches("_M$"))
 codebook = generate_codebook(.data = df)
 } # }
 ```

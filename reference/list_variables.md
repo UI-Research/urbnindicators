@@ -4,7 +4,9 @@ Returns a tibble mapping all variables (raw ACS variables and computed
 indicators) to their construct-level table name. This provides a
 comprehensive view of every variable that
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
-produces.
+produces for registered tables. Variables from unregistered ACS tables
+passed as raw codes (e.g., `"B25070"`) are not included here; they are
+auto-generated at runtime.
 
 ## Usage
 

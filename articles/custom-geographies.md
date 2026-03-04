@@ -61,18 +61,19 @@ dc_quadrants = calculate_custom_geographies(
 
 The maps below show the share of households receiving SNAP benefits.
 Notice how aggregating to quadrants produces more precise estimates with
-smaller coefficients of variation. Indeed, the median coefficient of
-variation for tract level is greater than 30, a common upper bound for
-“reliable” estimates.
+smaller margins of error. Indeed, the median coefficient of variation
+(derived from the MOE) for tract level is greater than 30, a common
+upper bound for “reliable” estimates.
 
 ``` r
-# Tract-level map
   bind_rows(
     dc_tracts %>% mutate(geography = "Tract"),
     dc_quadrants %>% mutate(geography = "Quadrant")) %>%
   mutate(
     .by = geography,
-    median_cv = round(median(snap_received_percent_CV, na.rm = TRUE)),
+    cv = (snap_received_percent_M / 1.645) / snap_received_percent * 100,
+    cv = if_else(is.infinite(cv), NA_real_, cv),
+    median_cv = round(median(cv, na.rm = TRUE)),
     label = str_c(geography, " - median CV: ", median_cv)) %>%
   ggplot() +
     geom_sf(aes(fill = snap_received_percent), color = "white", linewidth = 0.1) +
@@ -84,8 +85,8 @@ variation for tract level is greater than 30, a common upper bound for
 
 ![](custom-geographies_files/figure-html/unnamed-chunk-4-1.png)
 
-The quadrant-level estimates have substantially lower CVs, indicating
-more reliable estimates.
+The quadrant-level estimates have substantially lower margins of error,
+indicating more reliable estimates.
 
 ## Detecting Statistically Significant Differences
 

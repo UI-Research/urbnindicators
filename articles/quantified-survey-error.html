@@ -122,9 +122,8 @@ methods–our approach to calculating this estimate, 90 of those times we
 would produce a parallel estimate between 15% and 25%, while 10 of those
 times, our estimate would fall outside this range.</p></li>
 <li><p><strong>Standard Errors (SE)</strong> are derived from MOEs by
-dividing the MOE against a confidence level-related value.
-<code>urbnindicators</code> returns 90% SEs, which are calculated by
-dividing an MOE by 1.645.</p></li>
+dividing the MOE against a confidence level-related value. 90% SEs are
+calculated by dividing an MOE by 1.645.</p></li>
 <li><p><strong>Coefficients of Variation (CV)</strong> relate error to
 the size of the estimate. They are calculated by dividing the SE by the
 estimate and then multiplying by 100. CVs are helpful because they
@@ -136,15 +135,15 @@ across variables.</p></li>
 <div class="section level2">
 <h2 id="evaluate-estimate-quality">Evaluate Estimate Quality<a class="anchor" aria-label="anchor" href="#evaluate-estimate-quality"></a>
 </h2>
-<p>CVs allow us to assess whether estimates have problematically large
+<p>MOEs allow us to assess whether estimates have problematically large
 errors. While there’s not a right-or-wrong threshold for what
-constitutes a good or bad CV, many people employ thresholds between 30
-and 40 (that is, where the error is 30-40% of the size of the
-estimate).</p>
+constitutes a problematic MOE, a common approach is to calculate the
+coefficient of variation (CV = SE / estimate * 100, where SE = MOE /
+1.645) and use thresholds between 30 and 40.</p>
 <p>As shown below, variables that rely on larger sample sizes tend to
-have smaller CVs. Typically, there are two strategies to reduce CVs: (1)
-aggregate estimates, either across geographies or across variables, or
-(2) use larger geographies.</p>
+have smaller MOEs. Typically, there are two strategies to reduce error:
+(1) aggregate estimates, either across geographies or across variables,
+or (2) use larger geographies.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">acs_df_county</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2024</span><span class="op">)</span>,</span>
@@ -159,20 +158,33 @@ aggregate estimates, either across geographies or across variables, or
 <span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span>
 <span>  spatial <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">plot_df</span> <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="co">## derive CVs from MOEs for quality evaluation</span></span>
+<span><span class="va">plot_df</span> <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
 <span>      <span class="va">acs_df_county</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>geography <span class="op">=</span> <span class="st">"County"</span><span class="op">)</span>,</span>
 <span>      <span class="va">acs_df_tract</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>geography <span class="op">=</span> <span class="st">"Tract"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>    <span class="fu">st_drop_geometry</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
 <span>      <span class="va">geography</span>,</span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"^age.*percent.*CV"</span><span class="op">)</span> <span class="op">&amp;</span> <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"(_6|_7|_8)"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename_with</a></span><span class="op">(</span></span>
-<span>      .cols <span class="op">=</span> <span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html" class="external-link">everything</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>      .fn <span class="op">=</span> <span class="op">~</span> <span class="va">.x</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>        <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_replace.html" class="external-link">str_replace_all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"_"</span> <span class="op">=</span> <span class="st">" "</span>, <span class="st">"percent"</span> <span class="op">=</span> <span class="st">"(%)"</span>, <span class="st">"age|CV"</span> <span class="op">=</span> <span class="st">""</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>        <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_trim.html" class="external-link">str_squish</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_trim.html" class="external-link">str_trim</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"^age.*percent$"</span><span class="op">)</span> <span class="op">&amp;</span> <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"(_6|_7|_8)"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"^age.*percent_M$"</span><span class="op">)</span> <span class="op">&amp;</span> <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"(_6|_7|_8)"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>    <span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">pivot_longer</a></span><span class="op">(</span><span class="op">-</span><span class="va">geography</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>plot_title <span class="op">=</span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_c.html" class="external-link">str_c</a></span><span class="op">(</span><span class="va">geography</span>, <span class="st">": "</span>, <span class="va">name</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>      base_var <span class="op">=</span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove</a></span><span class="op">(</span><span class="va">name</span>, <span class="st">"_M$"</span><span class="op">)</span>,</span>
+<span>      type <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">name</span>, <span class="st">"_M$"</span><span class="op">)</span>, <span class="st">"moe"</span>, <span class="st">"estimate"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_wider.html" class="external-link">pivot_wider</a></span><span class="op">(</span></span>
+<span>      id_cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">geography</span>, <span class="va">base_var</span><span class="op">)</span>,</span>
+<span>      names_from <span class="op">=</span> <span class="va">type</span>,</span>
+<span>      values_from <span class="op">=</span> <span class="va">value</span>,</span>
+<span>      values_fn <span class="op">=</span> <span class="va">list</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>    <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/unnest.html" class="external-link">unnest</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">estimate</span>, <span class="va">moe</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>      cv <span class="op">=</span> <span class="op">(</span><span class="va">moe</span> <span class="op">/</span> <span class="fl">1.645</span><span class="op">)</span> <span class="op">/</span> <span class="va">estimate</span> <span class="op">*</span> <span class="fl">100</span>,</span>
+<span>      cv <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.infinite</a></span><span class="op">(</span><span class="va">cv</span><span class="op">)</span>, <span class="cn">NA_real_</span>, <span class="va">cv</span><span class="op">)</span>,</span>
+<span>      name <span class="op">=</span> <span class="va">base_var</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>        <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_replace.html" class="external-link">str_replace_all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"_"</span> <span class="op">=</span> <span class="st">" "</span>, <span class="st">"percent"</span> <span class="op">=</span> <span class="st">"(%)"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>        <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_remove.html" class="external-link">str_remove_all</a></span><span class="op">(</span><span class="st">"age"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>        <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_trim.html" class="external-link">str_squish</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_trim.html" class="external-link">str_trim</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      plot_title <span class="op">=</span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_c.html" class="external-link">str_c</a></span><span class="op">(</span><span class="va">geography</span>, <span class="st">": "</span>, <span class="va">name</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">factor_levels</span> <span class="op">=</span> <span class="va">plot_df</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">name</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
@@ -184,7 +196,7 @@ aggregate estimates, either across geographies or across variables, or
 <span>    plot_title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">plot_title</span>, levels <span class="op">=</span> <span class="va">factor_levels</span>, ordered <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">geom_histogram</span><span class="op">(</span></span>
-<span>      <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">value</span><span class="op">)</span>, fill <span class="op">=</span> <span class="va">palette_urbn_main</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, bins <span class="op">=</span> <span class="fl">50</span><span class="op">)</span> <span class="op">+</span></span>
+<span>      <span class="fu">aes</span><span class="op">(</span>x <span class="op">=</span> <span class="va">cv</span><span class="op">)</span>, fill <span class="op">=</span> <span class="va">palette_urbn_main</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, bins <span class="op">=</span> <span class="fl">50</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">geom_vline</span><span class="op">(</span>xintercept <span class="op">=</span> <span class="fl">30</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">facet_wrap</span><span class="op">(</span><span class="op">~</span> <span class="va">plot_title</span>, ncol <span class="op">=</span> <span class="fl">2</span>, scales <span class="op">=</span> <span class="st">"free"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">scale_x_continuous</span><span class="op">(</span>limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">150</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -192,10 +204,10 @@ aggregate estimates, either across geographies or across variables, or
 <span>    <span class="fu">theme_urbn_print</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">theme</span><span class="op">(</span>axis.text.y <span class="op">=</span> <span class="fu">element_blank</span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">labs</span><span class="op">(</span></span>
-<span>      x <span class="op">=</span> <span class="st">"CV"</span>,</span>
+<span>      x <span class="op">=</span> <span class="st">"CV (derived from MOE)"</span>,</span>
 <span>      y <span class="op">=</span> <span class="st">"Distribution"</span>,</span>
 <span>      title <span class="op">=</span> <span class="st">"County CVs are Smaller than Tract CVs\nCVs for Wider Age Ranges are Smaller than CVs for Narrow Age Ranges"</span>,</span>
-<span>      subtitle <span class="op">=</span> <span class="st">"Coefficients of variation (CV) at the county and tract levels for various age groupings"</span><span class="op">)</span></span></code></pre></div>
+<span>      subtitle <span class="op">=</span> <span class="st">"Coefficients of variation at the county and tract levels for various age groupings"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="quantified-survey-error_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="4200"></p>
 </div>
 <div class="section level2">
@@ -212,12 +224,7 @@ accounting for error when visualizing data, leveraging
 Here, we’ll compare each tract-level value within a single county to
 that of the corresponding county.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co">## utility to help us derive an MOE from a CV</span></span>
-<span><span class="va">cv_to_moe</span> <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">cv</span>, <span class="va">estimate</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">cv</span> <span class="op">/</span> <span class="fl">100</span> <span class="op">*</span> <span class="fl">1.645</span> <span class="op">*</span> <span class="va">estimate</span></span>
-<span><span class="op">}</span></span>
-<span></span>
-<span><span class="va">plot_data</span> <span class="op">=</span> <span class="va">acs_df_tract</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<code class="sourceCode R"><span><span class="va">plot_data</span> <span class="op">=</span> <span class="va">acs_df_tract</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">NAME</span>, <span class="st">"Atlantic"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">GEOID</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">matches</a></span><span class="op">(</span><span class="st">"age_over_64_percent"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>county_geoid <span class="op">=</span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_sub.html" class="external-link">str_sub</a></span><span class="op">(</span><span class="va">GEOID</span>, <span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
@@ -237,10 +244,8 @@ that of the corresponding county.</p>
 <span>    significance <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/significance.html" class="external-link">significance</a></span><span class="op">(</span></span>
 <span>      est1 <span class="op">=</span> <span class="va">age_over_64_percent</span>,</span>
 <span>      est2 <span class="op">=</span> <span class="va">age_over_64_percent_county</span>,</span>
-<span>      moe1 <span class="op">=</span> <span class="fu">cv_to_moe</span><span class="op">(</span></span>
-<span>        cv <span class="op">=</span> <span class="va">age_over_64_percent_CV</span>, estimate <span class="op">=</span> <span class="va">age_over_64_percent</span><span class="op">)</span>,</span>
-<span>      moe2 <span class="op">=</span> <span class="fu">cv_to_moe</span><span class="op">(</span></span>
-<span>        cv <span class="op">=</span> <span class="va">age_over_64_percent_CV_county</span>, estimate <span class="op">=</span> <span class="va">age_over_64_percent_county</span><span class="op">)</span>,</span>
+<span>      moe1 <span class="op">=</span> <span class="va">age_over_64_percent_M</span>,</span>
+<span>      moe2 <span class="op">=</span> <span class="va">age_over_64_percent_M_county</span>,</span>
 <span>      clevel <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span>,</span>
 <span>    statistical_difference <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
 <span>      <span class="va">significance</span> <span class="op">==</span> <span class="cn">FALSE</span> <span class="op">~</span> <span class="st">"Not significant"</span>,</span>

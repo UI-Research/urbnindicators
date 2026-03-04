@@ -44,7 +44,7 @@
 
 <div class="section level2">
 <h2 id="what-this-package-does">What this package does<a class="anchor" aria-label="anchor" href="#what-this-package-does"></a></h2>
-<p><strong>urbnindicators</strong> is an R package that provides analysis-ready American Community Survey (ACS) data with minimal user effort. The main entry point is <code><a href="reference/compile_acs_data.html">compile_acs_data()</a></code>, which pulls hundreds of standardized variables (raw counts + calculated percentages), generates a codebook, and computes margins of error and coefficients of variation.</p>
+<p><strong>urbnindicators</strong> is an R package that provides analysis-ready American Community Survey (ACS) data with minimal user effort. The main entry point is <code><a href="reference/compile_acs_data.html">compile_acs_data()</a></code>, which pulls hundreds of standardized variables (raw counts + calculated percentages), generates a codebook, and computes margins of error.</p>
 <ul><li>Five-year ACS estimates only; tract-level geography and up (no block groups)</li>
 <li>Lifecycle stage: experimental</li>
 <li>Repository: <a href="https://github.com/UI-Research/urbnindicators" class="external-link uri">https://github.com/UI-Research/urbnindicators</a>
@@ -81,7 +81,7 @@
 <li>
 <strong>Variable naming pattern</strong>: <code>[concept]_[subconcept]_[characteristic]_[metric]</code> (e.g., <code>race_nonhispanic_white_alone_percent</code>)</li>
 <li>
-<strong>Variable suffixes</strong>: <code>_percent</code> for percentages, <code>_universe</code> or <code>_universe_</code> for universe variables, <code>_M</code> for margins of error, <code>_CV</code> for coefficients of variation, <code>_SE</code> for standard errors</li>
+<strong>Variable suffixes</strong>: <code>_percent</code> for percentages, <code>_universe</code> or <code>_universe_</code> for universe variables, <code>_M</code> for margins of error</li>
 <li>
 <strong>Documentation</strong>: roxygen2 (v7.3.2) with markdown mode enabled</li>
 <li>
@@ -124,28 +124,26 @@
 <code class="sourceCode R"><span><span class="co"># Pull specific tables (using construct-level names)</span></span>
 <span><span class="fu"><a href="reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span>tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"race"</span>, <span class="st">"snap"</span><span class="op">)</span>, years <span class="op">=</span> <span class="fl">2022</span>, geography <span class="op">=</span> <span class="st">"county"</span>, states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Pull by indicator name (returns the full parent table)</span></span>
-<span><span class="fu"><a href="reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span>indicators <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_received_percent"</span><span class="op">)</span>, years <span class="op">=</span> <span class="fl">2022</span>, geography <span class="op">=</span> <span class="st">"county"</span>, states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Discover available tables, indicators, and variables</span></span>
+<span><span class="co"># Discover available tables and variables</span></span>
 <span><span class="fu"><a href="reference/list_tables.html">list_tables</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/list_variables.html">list_variables</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># tibble of all variables and their table names</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/list_variables.html">list_variables</a></span><span class="op">(</span><span class="op">)</span>       <span class="co"># tibble of all variables and their table names</span></span>
+<span><span class="fu"><a href="reference/get_acs_codebook.html">get_acs_codebook</a></span><span class="op">(</span><span class="op">)</span>     <span class="co"># browse ACS variables with clean names and table codes</span></span></code></pre></div>
 <p><strong>Construct-level table names</strong>: Some ACS tables contain multiple constructs. These are split into separate user-facing tables: - <code>sex_by_age</code> (internal) → <code>age</code> + <code>sex</code> (user-facing) - <code>nativity_language</code> (internal) → <code>nativity</code> + <code>language</code> (user-facing)</p>
 <p>Both construct names and internal names are accepted by <code>compile_acs_data(tables = ...)</code> and <code>resolve_tables()</code>.</p>
-<p>When <code>tables</code>/<code>indicators</code> are specified: 1. <code>resolve_tables()</code> determines which tables are needed (always includes <code>total_population</code>) 2. <code>collect_raw_variables()</code> builds the named ACS variable vector for those tables 3. Only those tables’ <code>compute_fn</code> functions are called 4. Codebook and CVs are generated only for returned variables 5. Tigris geometry is fetched only when <code>spatial = TRUE</code> or <code>"population_density"</code> is in the resolved tables</p>
+<p>When <code>tables</code> are specified: 1. <code>resolve_tables()</code> determines which tables are needed (always includes <code>total_population</code>) 2. <code>collect_raw_variables()</code> builds the named ACS variable vector for those tables 3. Only those tables’ <code>compute_fn</code> functions are called 4. Codebook and CVs are generated only for returned variables 5. Tigris geometry is fetched only when <code>spatial = TRUE</code> or <code>"population_density"</code> is in the resolved tables</p>
 </div>
 <div class="section level3">
 <h3 id="key-source-files">Key source files<a class="anchor" aria-label="anchor" href="#key-source-files"></a></h3>
 <ol style="list-style-type: decimal"><li>
-<strong><code>R/table_registry.R</code></strong> - Central registry: table definitions, <code><a href="reference/list_tables.html">list_tables()</a></code>, <code><a href="reference/list_indicators.html">list_indicators()</a></code>, <code>resolve_tables()</code>, <code>collect_raw_variables()</code>, <code>expand_codebook_entry()</code>, and all <code>register_table()</code> calls.</li>
+<strong><code>R/table_registry.R</code></strong> - Central registry: table definitions, <code><a href="reference/list_tables.html">list_tables()</a></code>, <code>resolve_tables()</code>, <code>collect_raw_variables()</code>, <code>expand_codebook_entry()</code>, and all <code>register_table()</code> calls.</li>
 <li>
-<strong><code>R/list_acs_variables.R</code></strong> - <code><a href="reference/list_acs_variables.html">list_acs_variables()</a></code> (supports optional <code>tables</code> param), <code><a href="reference/select_variables_by_name.html">select_variables_by_name()</a></code>, <code><a href="reference/filter_variables.html">filter_variables()</a></code>.</li>
+<strong><code>R/list_acs_variables.R</code></strong> - <code><a href="reference/list_acs_variables.html">list_acs_variables()</a></code> (supports optional <code>tables</code> param), <code><a href="reference/select_variables_by_name.html">select_variables_by_name()</a></code>, <code><a href="reference/filter_variables.html">filter_variables()</a></code>, <code><a href="reference/get_acs_codebook.html">get_acs_codebook()</a></code>.</li>
 <li>
-<strong><code>R/compile_acs_data.R</code></strong> - <code><a href="reference/compile_acs_data.html">compile_acs_data()</a></code> (with <code>tables</code>, <code>indicators</code>, deprecated <code>variables</code>), <code>internal_compute_acs_variables()</code> (legacy), <code><a href="reference/safe_divide.html">safe_divide()</a></code>.</li>
+<strong><code>R/compile_acs_data.R</code></strong> - <code><a href="reference/compile_acs_data.html">compile_acs_data()</a></code> (with <code>tables</code>, deprecated <code>variables</code>), <code>internal_compute_acs_variables()</code> (legacy), <code><a href="reference/safe_divide.html">safe_divide()</a></code>.</li>
 <li>
 <strong><code>R/generate_codebook.R</code></strong> - <code><a href="reference/generate_codebook.html">generate_codebook()</a></code> (registry-based) and <code>generate_codebook_legacy()</code> (AST-based, for deprecated <code>variables</code> path).</li>
 <li>
-<strong><code>R/calculate_cvs.R</code></strong> - Computes standard errors and coefficients of variation. Parses codebook definition text strings. No changes needed when adding tables.</li>
+<strong><code>R/calculate_cvs.R</code></strong> - Computes margins of error for derived variables (uses standard errors as intermediates internally). Parses codebook definition text strings. No changes needed when adding tables.</li>
 <li>
 <strong><code>R/make_pretty_names.R</code></strong> - Converts variable names to publication-ready labels.</li>
 <li>
@@ -154,11 +152,11 @@
 <div class="section level3">
 <h3 id="exported-functions">Exported functions<a class="anchor" aria-label="anchor" href="#exported-functions"></a></h3>
 <ul><li>
-<code>compile_acs_data(tables, indicators, ...)</code> - Pull and compute ACS data</li>
+<code>compile_acs_data(tables, ...)</code> - Pull and compute ACS data</li>
 <li>
 <code><a href="reference/list_tables.html">list_tables()</a></code> - Available table names for the <code>tables</code> parameter (construct-level names)</li>
 <li>
-<code><a href="reference/list_indicators.html">list_indicators()</a></code> - Available indicator names for the <code>indicators</code> parameter</li>
+<code>get_acs_codebook(year, table)</code> - Browse ACS variables with clean names and table codes</li>
 <li>
 <code>list_variables(year)</code> - Tibble mapping all variables (raw + computed) to their table name</li>
 <li>
@@ -190,11 +188,11 @@
 <strong>Add any new global variables</strong> to the <code><a href="https://rdrr.io/r/utils/globalVariables.html" class="external-link">utils::globalVariables()</a></code> call at the bottom of <code>R/table_registry.R</code>
 </li>
 <li>
-<strong>Verify</strong>: <code>devtools::load_all()</code> then <code><a href="reference/list_tables.html">list_tables()</a></code> shows your table; <code><a href="reference/list_indicators.html">list_indicators()</a></code> shows your indicators</li>
+<strong>Verify</strong>: <code>devtools::load_all()</code> then <code><a href="reference/list_tables.html">list_tables()</a></code> shows your table</li>
 <li>
 <strong>Verify codebook</strong>: the codebook auto-generates from <code>codebook_entries</code> – no changes to <code>R/generate_codebook.R</code> needed</li>
 <li>
-<strong>Verify CVs</strong>: <code>R/calculate_cvs.R</code> parses codebook definition strings – no changes needed if definitions follow standard patterns</li>
+<strong>Verify MOEs</strong>: <code>R/calculate_cvs.R</code> parses codebook definition strings – no changes needed if definitions follow standard patterns</li>
 <li>
 <strong>Update pretty names</strong> if needed (<code>R/make_pretty_names.R</code> – rarely needed)</li>
 </ol><div class="section level3">
@@ -239,7 +237,7 @@
 <ul><li>Percentages must be 0-1 bounded</li>
 <li>All measures must have meaningful, non-missing values</li>
 <li>At least 2 distinct values per measure</li>
-<li>CVs should be reasonable for tract-level data (flag if &gt;50 for many tracts)</li>
+<li>MOEs should be reasonable for tract-level data</li>
 <li>Compare to published Census Bureau benchmarks when available</li>
 </ul></div>
 </div>

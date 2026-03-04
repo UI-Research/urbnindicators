@@ -123,7 +123,7 @@ can take 30+ minutes.
 
 Use
 [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
-to see which tables are available:
+to see some of the most commonly-used tables:
 
 ``` r
 list_tables() |> head(10)
@@ -133,15 +133,51 @@ list_tables() |> head(10)
 #> [10] "income_quintiles"
 ```
 
+Or use
+[`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md)
+to see every table supported by the Census Bureau API:
+
+``` r
+get_acs_codebook() |>
+  ## just showing a sample of the 28,000+ variables available
+  slice_sample(n = 10)
+#> # A tibble: 10 × 3
+#>    table   variable_raw variable_clean                                          
+#>    <chr>   <chr>        <chr>                                                   
+#>  1 B08203  B08203_029   number_workers_in_household_by_vehicles_available_3_mor…
+#>  2 B25070  B25070_011   gross_rent_as_a_percentage_household_income_in_past_12_…
+#>  3 B10059  B10059_005   poverty_status_in_past_12_months_grandparents_living_wi…
+#>  4 B17017  B17017_042   poverty_status_in_past_12_months_by_household_type_by_a…
+#>  5 B02017  B02017_007   aian_alone_in_any_combination_by_selected_tribal_groupi…
+#>  6 B24124  B24124_464   detailed_occupation_full_time_year_round_civilian_emplo…
+#>  7 B24114  B24114_132   detailed_occupation_civilian_employed_population_16_yea…
+#>  8 B24122  B24122_465   detailed_occupation_by_median_earnings_in_past_12_month…
+#>  9 B26203E B26203E_004  group_quarters_type_5_types_nhpi_alone_group_quarters_p…
+#> 10 B19037A B19037A_032  age_householder_by_household_income_in_past_12_months_i…
+```
+
 Here we request just two tables–`disability` and
-`transportation_to_work`. Alternately, you can set `tables = NULL` (the
-default) and get a very wide dataset comprising every variable supported
-by the package.
+`transportation_to_work`.
 
 ``` r
 df_urbnindicators = compile_acs_data(
   years = 2024,
   tables = c("disability", "transportation_to_work"),
+  geography = "county",
+  states = "NJ",
+  spatial = TRUE)
+```
+
+Alternately, you can pass the name of a variable or table from
+[`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md)
+to
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
+The equivalent would be:
+
+``` r
+df_urbnindicators = compile_acs_data(
+  years = 2024,
+  tables = c("sex_by_age_by_disability_status_universe", "B08301"),
   geography = "county",
   states = "NJ",
   spatial = TRUE)
@@ -163,7 +199,7 @@ df_urbnindicators %>%
       fill = "Population with an ACS-defined disability (%)" %>% str_wrap(20))
 ```
 
-![](urbnindicators_files/figure-html/unnamed-chunk-6-1.png)
+![](urbnindicators_files/figure-html/unnamed-chunk-8-1.png)
 
 ### Document data
 
@@ -180,33 +216,16 @@ how the variable was calculated. Most (though not all) variables that
 are directly available from the ACS are count variables. Many of the
 variables that are calculated by
 [`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
-are percent variables, where we divide two count variables. For example,
-`disability_percent` is simply a numerator divided by a denominator:
+are percent variables, where we divide two count variables.
+
+Others, however, are quite complex. For example, `disability_percent` is
+the sum of all of the sex-by-age groupings for people with disabilities
+(numerator) divided by the table universe.
 
 ``` r
 df_urbnindicators %>%
   attr("codebook") %>%
   filter(str_detect(calculated_variable, "^disability_percent$")) %>%
-  select(calculated_variable, variable_type, definition) %>%
-  reactable::reactable()
+  pull(definition)
+#> [1] "Numerator = sex_by_age_by_disability_status_male_under_5_years_with_a_disability (B18101_004), sex_by_age_by_disability_status_male_5_17_years_with_a_disability (B18101_007), sex_by_age_by_disability_status_male_18_34_years_with_a_disability (B18101_010), sex_by_age_by_disability_status_male_35_64_years_with_a_disability (B18101_013), sex_by_age_by_disability_status_male_65_74_years_with_a_disability (B18101_016), sex_by_age_by_disability_status_male_75_years_over_with_a_disability (B18101_019), sex_by_age_by_disability_status_female_under_5_years_with_a_disability (B18101_023), sex_by_age_by_disability_status_female_5_17_years_with_a_disability (B18101_026), sex_by_age_by_disability_status_female_18_34_years_with_a_disability (B18101_029), sex_by_age_by_disability_status_female_35_64_years_with_a_disability (B18101_032), sex_by_age_by_disability_status_female_65_74_years_with_a_disability (B18101_035), sex_by_age_by_disability_status_female_75_years_over_with_a_disability (B18101_038). Denominator = sex_by_age_by_disability_status_universe (B18101_001)."
 ```
-
-The most common convention is that a percent variable is calculated by
-dividing a count variable (e.g., `means_transportation_work_walked`) by
-the universe variable for the corresponding table (e.g.,
-`means_transportation_work_universe`). But other derived variables are
-more complex, such as those for commute mode. Here, we’ve aggregated
-three counts representing different types of individual motor vehicle
-transportation to create the numerator, while the denominator is the
-table universe minus individuals who work from home.
-
-``` r
-df_urbnindicators %>%
-  attr("codebook") %>%
-  filter(str_detect(calculated_variable, "means.*motor_vehicle")) %>%
-  select(calculated_variable, variable_type, definition) %>%
-  reactable::reactable()
-```
-
-This allows us say something along the lines of: “Of individuals who
-commute to work, XX% use a motor vehicle as their primary commute mode.”

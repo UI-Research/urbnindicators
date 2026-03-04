@@ -4,7 +4,10 @@ Returns the names of all registered ACS tables that can be requested via
 the `tables` parameter of
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
 Multi-construct tables (e.g., `sex_by_age`) are reported as their
-individual constructs (e.g., `"age"` and `"sex"`).
+individual constructs (e.g., `"age"` and `"sex"`). Note: only
+pre-registered tables are listed here. Any valid ACS table code (e.g.,
+`"B25070"`) can also be passed to `compile_acs_data(tables = ...)` and
+will be auto-processed.
 
 ## Usage
 

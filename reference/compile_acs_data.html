@@ -55,12 +55,12 @@ the Census Bureau API.</p>
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">compile_acs_data</span><span class="op">(</span></span>
 <span>  tables <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  indicators <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2022</span><span class="op">)</span>,</span>
+<span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2024</span><span class="op">)</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  counties <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  spatial <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  denominator <span class="op">=</span> <span class="st">"parent"</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -70,15 +70,21 @@ the Census Bureau API.</p>
 
 
 <dl><dt id="arg-tables">tables<a class="anchor" aria-label="anchor" href="#arg-tables"></a></dt>
-<dd><p>A character vector of table names to include (e.g.,
-<code>c("race", "snap")</code>). Use <code><a href="list_tables.html">list_tables()</a></code> to see available tables.
-When NULL (default) and <code>indicators</code> is also NULL, all tables are included.</p></dd>
-
-
-<dt id="arg-indicators">indicators<a class="anchor" aria-label="anchor" href="#arg-indicators"></a></dt>
-<dd><p>A character vector of indicator names to include (e.g.,
-<code>c("snap_received_percent")</code>). Each indicator's parent table is
-automatically included.</p></dd>
+<dd><p>A character vector of table names to include. Two formats are
+accepted:</p><ul><li><p><strong>Registered table names</strong> (e.g., <code>"race"</code>, <code>"snap"</code>).
+These are pre-built tables with curated variable definitions. Use
+<code><a href="list_tables.html">list_tables()</a></code> to see all available registered tables.</p></li>
+<li><p><strong>Raw ACS table codes</strong> (e.g., <code>"B25070"</code>, <code>"C15002B"</code>).
+Any valid ACS Detailed or Collapsed table code can be passed directly.
+These are auto-processed at runtime: raw variables are fetched, the
+label hierarchy is parsed, and percentages are computed automatically.
+Use the <code>denominator</code> parameter to control how percentages are
+calculated for these tables.</p></li>
+</ul><p>Both formats can be mixed freely (e.g., <code>c("snap", "B25070")</code>).
+If an ACS code corresponds to an already-registered table, the registered
+version is used automatically.
+When NULL (default), all registered tables are included (unregistered ACS
+tables must be requested explicitly).</p></dd>
 
 
 <dt id="arg-years">years<a class="anchor" aria-label="anchor" href="#arg-years"></a></dt>
@@ -105,6 +111,15 @@ state(s) specified in the <code>states</code> parameter will be included.</p></d
 
 <dt id="arg-spatial">spatial<a class="anchor" aria-label="anchor" href="#arg-spatial"></a></dt>
 <dd><p>Boolean. Return a simple features (sf), spatially-enabled dataframe?</p></dd>
+
+
+<dt id="arg-denominator">denominator<a class="anchor" aria-label="anchor" href="#arg-denominator"></a></dt>
+<dd><p>Controls how auto-computed percentages choose their
+denominator. <code>"parent"</code> (default) uses the nearest parent subtotal from
+the ACS label hierarchy. <code>"total"</code> uses the table total (variable
+<code>_001</code>). A specific ACS variable code (e.g., <code>"B25070_001"</code>) uses
+that variable. Only affects unregistered (auto) tables; registered tables
+always use their predefined definitions.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -134,9 +149,17 @@ is attached and can be accessed via <code>compile_acs_data() %&gt;% attr("codebo
 <span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"race"</span>, <span class="st">"snap"</span><span class="op">)</span>, years <span class="op">=</span> <span class="fl">2022</span>,</span></span>
 <span class="r-in"><span>                      geography <span class="op">=</span> <span class="st">"county"</span>, states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co">## Pull by indicator name (returns the full parent table)</span></span></span>
-<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>indicators <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_received_percent"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                      years <span class="op">=</span> <span class="fl">2022</span>, geography <span class="op">=</span> <span class="st">"county"</span>, states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co">## Pull an unregistered ACS table by code</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>tables <span class="op">=</span> <span class="st">"B25070"</span>, years <span class="op">=</span> <span class="fl">2022</span>,</span></span>
+<span class="r-in"><span>                      geography <span class="op">=</span> <span class="st">"state"</span>, states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## Mix registered and unregistered tables</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap"</span>, <span class="st">"B25070"</span><span class="op">)</span>, years <span class="op">=</span> <span class="fl">2022</span>,</span></span>
+<span class="r-in"><span>                      geography <span class="op">=</span> <span class="st">"state"</span>, states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## Use table total as denominator instead of parent subtotals</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>tables <span class="op">=</span> <span class="st">"B25070"</span>, denominator <span class="op">=</span> <span class="st">"total"</span>,</span></span>
+<span class="r-in"><span>                      years <span class="op">=</span> <span class="fl">2022</span>, geography <span class="op">=</span> <span class="st">"state"</span>, states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

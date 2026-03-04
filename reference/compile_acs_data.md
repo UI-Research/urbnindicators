@@ -10,12 +10,12 @@ to acquire raw estimates from the Census Bureau API.
 ``` r
 compile_acs_data(
   tables = NULL,
-  indicators = NULL,
-  years = c(2022),
+  years = c(2024),
   geography = "county",
   states = NULL,
   counties = NULL,
   spatial = FALSE,
+  denominator = "parent",
   ...
 )
 ```
@@ -24,17 +24,26 @@ compile_acs_data(
 
 - tables:
 
-  A character vector of table names to include (e.g.,
-  `c("race", "snap")`). Use
-  [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
-  to see available tables. When NULL (default) and `indicators` is also
-  NULL, all tables are included.
+  A character vector of table names to include. Two formats are
+  accepted:
 
-- indicators:
+  - **Registered table names** (e.g., `"race"`, `"snap"`). These are
+    pre-built tables with curated variable definitions. Use
+    [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
+    to see all available registered tables.
 
-  A character vector of indicator names to include (e.g.,
-  `c("snap_received_percent")`). Each indicator's parent table is
-  automatically included.
+  - **Raw ACS table codes** (e.g., `"B25070"`, `"C15002B"`). Any valid
+    ACS Detailed or Collapsed table code can be passed directly. These
+    are auto-processed at runtime: raw variables are fetched, the label
+    hierarchy is parsed, and percentages are computed automatically. Use
+    the `denominator` parameter to control how percentages are
+    calculated for these tables.
+
+  Both formats can be mixed freely (e.g., `c("snap", "B25070")`). If an
+  ACS code corresponds to an already-registered table, the registered
+  version is used automatically. When NULL (default), all registered
+  tables are included (unregistered ACS tables must be requested
+  explicitly).
 
 - years:
 
@@ -63,6 +72,15 @@ compile_acs_data(
 - spatial:
 
   Boolean. Return a simple features (sf), spatially-enabled dataframe?
+
+- denominator:
+
+  Controls how auto-computed percentages choose their denominator.
+  `"parent"` (default) uses the nearest parent subtotal from the ACS
+  label hierarchy. `"total"` uses the table total (variable `_001`). A
+  specific ACS variable code (e.g., `"B25070_001"`) uses that variable.
+  Only affects unregistered (auto) tables; registered tables always use
+  their predefined definitions.
 
 - ...:
 
@@ -94,8 +112,16 @@ df = compile_acs_data(years = c(2022), geography = "county", states = "NJ")
 df = compile_acs_data(tables = c("race", "snap"), years = 2022,
                       geography = "county", states = "NJ")
 
-## Pull by indicator name (returns the full parent table)
-df = compile_acs_data(indicators = c("snap_received_percent"),
-                      years = 2022, geography = "county", states = "NJ")
+## Pull an unregistered ACS table by code
+df = compile_acs_data(tables = "B25070", years = 2022,
+                      geography = "state", states = "DC")
+
+## Mix registered and unregistered tables
+df = compile_acs_data(tables = c("snap", "B25070"), years = 2022,
+                      geography = "state", states = "DC")
+
+## Use table total as denominator instead of parent subtotals
+df = compile_acs_data(tables = "B25070", denominator = "total",
+                      years = 2022, geography = "state", states = "DC")
   } # }
 ```

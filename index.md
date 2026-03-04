@@ -10,8 +10,8 @@ With a single function call, you get:
 - Access to hundreds of standardized variables, such as percentages and
   the raw count variables used to produce them.
 
-- Margins of error and coefficients of variation for all variables–those
-  direct from the API as well as derived variables.
+- Margins of error for all variables–those direct from the API as well
+  as derived variables.
 
 - Meaningful, consistent variable names.
 

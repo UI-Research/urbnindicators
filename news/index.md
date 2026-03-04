@@ -28,6 +28,5 @@
 
 - Adding
   [`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)
-- Adding
-  [`calculate_cvs()`](https://ui-research.github.io/urbnindicators/reference/calculate_cvs.md)
+- Adding `calculate_cvs()`
 - Updating README

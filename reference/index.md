@@ -16,8 +16,6 @@
   estimate
 - [`se_proportion_ratio()`](https://ui-research.github.io/urbnindicators/reference/se_proportion_ratio.md)
   : Calculate a pooled standard error for a proportion or ratio
-- [`cv()`](https://ui-research.github.io/urbnindicators/reference/cv.md)
-  : Calculate a coefficient of variation
 
 ## Helper functions
 
@@ -35,3 +33,5 @@
   : Division without NAs
 - [`list_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/list_acs_variables.md)
   **\[deprecated\]** : Return ACS variables codes and names
+- [`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md)
+  : Browse the ACS codebook with clean variable names

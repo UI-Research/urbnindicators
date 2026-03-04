@@ -7,8 +7,7 @@ Community Survey (ACS) data with minimal user effort. The main entry
 point is
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md),
 which pulls hundreds of standardized variables (raw counts + calculated
-percentages), generates a codebook, and computes margins of error and
-coefficients of variation.
+percentages), generates a codebook, and computes margins of error.
 
 - Five-year ACS estimates only; tract-level geography and up (no block
   groups)
@@ -49,8 +48,7 @@ CI runs on GitHub Actions: `test-coverage.yaml` (push/PR to main) and
   `[concept]_[subconcept]_[characteristic]_[metric]` (e.g.,
   `race_nonhispanic_white_alone_percent`)
 - **Variable suffixes**: `_percent` for percentages, `_universe` or
-  `_universe_` for universe variables, `_M` for margins of error, `_CV`
-  for coefficients of variation, `_SE` for standard errors
+  `_universe_` for universe variables, `_M` for margins of error
 - **Documentation**: roxygen2 (v7.3.2) with markdown mode enabled
 - **Conditionals**:
   [`dplyr::if_else()`](https://dplyr.tidyverse.org/reference/if_else.html)
@@ -96,12 +94,10 @@ Users can request specific subsets of data:
 # Pull specific tables (using construct-level names)
 compile_acs_data(tables = c("race", "snap"), years = 2022, geography = "county", states = "NJ")
 
-# Pull by indicator name (returns the full parent table)
-compile_acs_data(indicators = c("snap_received_percent"), years = 2022, geography = "county", states = "NJ")
-
-# Discover available tables, indicators, and variables
+# Discover available tables and variables
 list_tables()
-list_variables()  # tibble of all variables and their table names
+list_variables()       # tibble of all variables and their table names
+get_acs_codebook()     # browse ACS variables with clean names and table codes
 ```
 
 **Construct-level table names**: Some ACS tables contain multiple
@@ -112,10 +108,10 @@ constructs. These are split into separate user-facing tables: -
 Both construct names and internal names are accepted by
 `compile_acs_data(tables = ...)` and `resolve_tables()`.
 
-When `tables`/`indicators` are specified: 1. `resolve_tables()`
-determines which tables are needed (always includes `total_population`)
-2. `collect_raw_variables()` builds the named ACS variable vector for
-those tables 3. Only those tables’ `compute_fn` functions are called 4.
+When `tables` are specified: 1. `resolve_tables()` determines which
+tables are needed (always includes `total_population`) 2.
+`collect_raw_variables()` builds the named ACS variable vector for those
+tables 3. Only those tables’ `compute_fn` functions are called 4.
 Codebook and CVs are generated only for returned variables 5. Tigris
 geometry is fetched only when `spatial = TRUE` or `"population_density"`
 is in the resolved tables
@@ -124,39 +120,39 @@ is in the resolved tables
 
 1.  **`R/table_registry.R`** - Central registry: table definitions,
     [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md),
-    [`list_indicators()`](https://ui-research.github.io/urbnindicators/reference/list_indicators.md),
     `resolve_tables()`, `collect_raw_variables()`,
     `expand_codebook_entry()`, and all `register_table()` calls.
 2.  **`R/list_acs_variables.R`** -
     [`list_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/list_acs_variables.md)
     (supports optional `tables` param),
     [`select_variables_by_name()`](https://ui-research.github.io/urbnindicators/reference/select_variables_by_name.md),
-    [`filter_variables()`](https://ui-research.github.io/urbnindicators/reference/filter_variables.md).
+    [`filter_variables()`](https://ui-research.github.io/urbnindicators/reference/filter_variables.md),
+    [`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md).
 3.  **`R/compile_acs_data.R`** -
     [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
-    (with `tables`, `indicators`, deprecated `variables`),
+    (with `tables`, deprecated `variables`),
     `internal_compute_acs_variables()` (legacy),
     [`safe_divide()`](https://ui-research.github.io/urbnindicators/reference/safe_divide.md).
 4.  **`R/generate_codebook.R`** -
     [`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)
     (registry-based) and `generate_codebook_legacy()` (AST-based, for
     deprecated `variables` path).
-5.  **`R/calculate_cvs.R`** - Computes standard errors and coefficients
-    of variation. Parses codebook definition text strings. No changes
-    needed when adding tables.
+5.  **`R/calculate_cvs.R`** - Computes margins of error for derived
+    variables (uses standard errors as intermediates internally). Parses
+    codebook definition text strings. No changes needed when adding
+    tables.
 6.  **`R/make_pretty_names.R`** - Converts variable names to
     publication-ready labels.
 7.  **`R/utils-pipe.R`** - Re-exports `%>%`.
 
 ### Exported functions
 
-- `compile_acs_data(tables, indicators, ...)` - Pull and compute ACS
-  data
+- `compile_acs_data(tables, ...)` - Pull and compute ACS data
 - [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md) -
   Available table names for the `tables` parameter (construct-level
   names)
-- [`list_indicators()`](https://ui-research.github.io/urbnindicators/reference/list_indicators.md) -
-  Available indicator names for the `indicators` parameter
+- `get_acs_codebook(year, table)` - Browse ACS variables with clean
+  names and table codes
 - `list_variables(year)` - Tibble mapping all variables (raw + computed)
   to their table name
 - `list_acs_variables(year, tables)` - Named vector of ACS variable
@@ -187,12 +183,10 @@ To add a new ACS table to the package:
     call at the bottom of `R/table_registry.R`
 3.  **Verify**: `devtools::load_all()` then
     [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
-    shows your table;
-    [`list_indicators()`](https://ui-research.github.io/urbnindicators/reference/list_indicators.md)
-    shows your indicators
+    shows your table
 4.  **Verify codebook**: the codebook auto-generates from
     `codebook_entries` – no changes to `R/generate_codebook.R` needed
-5.  **Verify CVs**: `R/calculate_cvs.R` parses codebook definition
+5.  **Verify MOEs**: `R/calculate_cvs.R` parses codebook definition
     strings – no changes needed if definitions follow standard patterns
 6.  **Update pretty names** if needed (`R/make_pretty_names.R` – rarely
     needed)
@@ -213,8 +207,7 @@ To add a new ACS table to the package:
 - Percentages must be 0-1 bounded
 - All measures must have meaningful, non-missing values
 - At least 2 distinct values per measure
-- CVs should be reasonable for tract-level data (flag if \>50 for many
-  tracts)
+- MOEs should be reasonable for tract-level data
 - Compare to published Census Bureau benchmarks when available
 
 ## Legacy path

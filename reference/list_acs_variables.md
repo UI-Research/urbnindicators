@@ -4,7 +4,7 @@
 
 Use
 [`list_variables()`](https://ui-research.github.io/urbnindicators/reference/list_variables.md)
-instead to see available variables, or pass `tables`/`indicators` to
+instead to see available variables, or pass `tables` to
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
 
 ## Usage

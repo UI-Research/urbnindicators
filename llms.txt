@@ -10,8 +10,8 @@ With a single function call, you get:
 - Access to hundreds of standardized variables, such as percentages and
   the raw count variables used to produce them.
 
-- Margins of error and coefficients of variation for all variables–those
-  direct from the API as well as derived variables.
+- Margins of error for all variables–those direct from the API as well
+  as derived variables.
 
 - Meaningful, consistent variable names.
 
@@ -453,8 +453,6 @@ Learn more here: <https://walker-data.com/tidycensus/index.html>.
   estimate
 - [`se_proportion_ratio()`](https://ui-research.github.io/urbnindicators/reference/se_proportion_ratio.md)
   : Calculate a pooled standard error for a proportion or ratio
-- [`cv()`](https://ui-research.github.io/urbnindicators/reference/cv.md)
-  : Calculate a coefficient of variation
 
 ## Helper functions
 
@@ -472,6 +470,8 @@ Learn more here: <https://walker-data.com/tidycensus/index.html>.
   : Division without NAs
 - [`list_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/list_acs_variables.md)
   **\[deprecated\]** : Return ACS variables codes and names
+- [`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md)
+  : Browse the ACS codebook with clean variable names
 
 # Articles
 
