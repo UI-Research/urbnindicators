@@ -258,9 +258,7 @@ calculate_custom_geographies = function(
     if ("total_population_universe_M" %in% colnames(result)) {
       result = result %>%
         dplyr::mutate(
-          population_density_land_sq_kilometer_SE = se_simple(total_population_universe_M) / area_land_sq_kilometer,
-          population_density_land_sq_kilometer_M = population_density_land_sq_kilometer_SE * 1.645,
-          population_density_land_sq_kilometer_CV = cv(population_density_land_sq_kilometer, population_density_land_sq_kilometer_SE))
+          population_density_land_sq_kilometer_M = (se_simple(total_population_universe_M) / area_land_sq_kilometer) * 1.645)
     }
   }
 
@@ -271,10 +269,10 @@ calculate_custom_geographies = function(
     dplyr::select(dplyr::all_of(c(group_id, "data_source_year")),
                   dplyr::matches("_M$"))
 
-  ## Strip MOE/SE/CV columns before re-running definitions
+  ## Strip MOE columns before re-running definitions
   result_for_defs = result %>%
     as.data.frame() %>%
-    dplyr::select(-dplyr::matches("_M$|_SE$|_CV$"))
+    dplyr::select(-dplyr::matches("_M$"))
 
   ## Re-run definitions for each resolved table to recalculate percentages
   result_for_defs = purrr::reduce(resolved_tables, function(.data, table_name) {
@@ -368,9 +366,7 @@ calculate_custom_geographies = function(
 
       df %>%
         dplyr::mutate(
-          !!paste0(var_name, "_SE") := percent_se,
-          !!paste0(var_name, "_M") := percent_se * 1.645,
-          !!paste0(var_name, "_CV") := cv(df[[var_name]], percent_se))
+          !!paste0(var_name, "_M") := percent_se * 1.645)
     }
 
     result = purrr::reduce(
@@ -379,34 +375,10 @@ calculate_custom_geographies = function(
       .init = result)
   }
 
-  ####----Calculate SEs and CVs for Sum Variables----####
-  existing_sum_moe_cols = paste0(sum_variables, "_M")
-  existing_sum_moe_cols = existing_sum_moe_cols[existing_sum_moe_cols %in% colnames(result)]
-
-  if (length(existing_sum_moe_cols) > 0) {
-    result = result %>%
-      dplyr::mutate(
-        dplyr::across(
-          dplyr::all_of(existing_sum_moe_cols),
-          ~ se_simple(.x),
-          .names = "{stringr::str_replace(.col, '_M$', '_SE')}"))
-
-    existing_sum_vars = stringr::str_remove(existing_sum_moe_cols, "_M$")
-    existing_sum_vars = existing_sum_vars[existing_sum_vars %in% colnames(result)]
-
-    if (length(existing_sum_vars) > 0) {
-      result = purrr::reduce(
-        existing_sum_vars,
-        function(df, var_name) {
-          se_col = paste0(var_name, "_SE")
-          cv_col = paste0(var_name, "_CV")
-          if (se_col %in% colnames(df) && var_name %in% colnames(df)) {
-            df %>%
-              dplyr::mutate(!!cv_col := cv(df[[var_name]], df[[se_col]]))
-          } else { df }
-        },
-        .init = result)
-    }
+  ####----Sum Variables Already Have MOEs----####
+  ## Sum variables already have _M columns from the aggregation step above;
+  ## no additional error derivation is needed for them.
+  {
   }
 
   ####----Attach Geometry if Spatial----####
@@ -445,5 +417,5 @@ utils::globalVariables(c(
   ":=", "variable_type", "aggregation_strategy", "calculated_variable",
   "total_population_universe", "area_land_sq_kilometer",
   "total_population_universe_M", "population_density_land_sq_kilometer",
-  "population_density_land_sq_kilometer_SE", "data_source_year", "geometry",
+  "data_source_year", "geometry",
   "numerator_vars", "numerator_subtract_vars", "denominator_vars", "denominator_subtract_vars"))

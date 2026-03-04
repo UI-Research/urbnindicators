@@ -281,6 +281,9 @@ execute_definitions = function(.data, definitions) {
 #'   requested via the \code{tables} parameter of \code{compile_acs_data()}.
 #'   Multi-construct tables (e.g., \code{sex_by_age}) are reported as their
 #'   individual constructs (e.g., \code{"age"} and \code{"sex"}).
+#'   Note: only pre-registered tables are listed here. Any valid ACS table code
+#'   (e.g., \code{"B25070"}) can also be passed to \code{compile_acs_data(tables = ...)}
+#'   and will be auto-processed.
 #' @returns A character vector of table names.
 #' @examples
 #' list_tables()
@@ -293,52 +296,10 @@ list_tables = function() {
   sort(unique(all_names))
 }
 
-#' @title List available indicators
-#' @description Returns a tibble of all derived indicator names and their
-#'   parent tables, for use with the \code{indicators} parameter of
-#'   \code{compile_acs_data()}. Table names reflect construct-level names
-#'   (e.g., \code{"age"} rather than \code{"sex_by_age"}).
-#' @returns A tibble with columns \code{indicator} and \code{table}.
-#' @keywords internal
-list_indicators = function() {
-  purrr::map(
-    names(.table_registry$tables),
-    function(table_name) {
-      table_entry = .table_registry$tables[[table_name]]
-      indicators = character(0)
-      if (!is.null(table_entry[["definitions"]])) {
-        ## use [["output"]] to avoid partial matching (e.g., matching output_naming_function)
-        ## skip entries without a literal "output" field (across_percent, across_sum
-        ## produce dynamic output names that depend on the data)
-        indicators = purrr::compact(
-          purrr::map(table_entry[["definitions"]], function(entry) {
-            out = entry[["output"]]
-            if (is.character(out)) out else NULL
-          })) %>%
-          unlist() %>%
-          unique()
-      }
-      if (length(indicators) > 0) {
-        ## assign construct-level table names
-        constructs = table_entry[["constructs"]]
-        table_names = purrr::map_chr(indicators, function(indicator) {
-          if (!is.null(constructs)) {
-            assign_construct(indicator, constructs, table_name)
-          } else {
-            table_name
-          }
-        })
-        tibble::tibble(indicator = indicators, table = table_names)
-      } else {
-        tibble::tibble(indicator = character(0), table = character(0))
-      }
-    }) %>% purrr::list_rbind()
-}
-
 ## Resolve user selections to full set of internal table names (internal)
-## Always includes total_population. Resolves indicator names to parent tables.
+## Always includes total_population.
 ## Accepts both construct names (e.g., "age") and internal names (e.g., "sex_by_age").
-resolve_tables = function(tables = NULL, indicators = NULL) {
+resolve_tables = function(tables = NULL) {
   resolved = "total_population"
   construct_map = build_construct_map()
   internal_names = names(.table_registry$tables)
@@ -360,24 +321,6 @@ resolve_tables = function(tables = NULL, indicators = NULL) {
                    ". Use list_tables() to see available tables."))
     }
     resolved = union(resolved, mapped)
-  }
-
-  if (!is.null(indicators)) {
-    indicator_table = list_indicators()
-    unknown_indicators = indicators[!indicators %in% indicator_table$indicator]
-    if (length(unknown_indicators) > 0) {
-      stop(paste0("Unknown indicator(s): ", paste0(unknown_indicators, collapse = ", "),
-                   ". Use list_indicators() to see available indicators."))
-    }
-    ## list_indicators() returns construct-level table names; map them to internal names
-    parent_constructs = indicator_table %>%
-      dplyr::filter(indicator %in% indicators) %>%
-      dplyr::pull(table) %>%
-      unique()
-    parent_tables = unique(purrr::map_chr(parent_constructs, function(construct_name) {
-      if (construct_name %in% names(construct_map)) construct_map[[construct_name]] else construct_name
-    }))
-    resolved = union(resolved, parent_tables)
   }
 
   ## resolve dependencies
@@ -431,7 +374,10 @@ collect_raw_variables = function(resolved_tables, year = 2022) {
 #' @title List all variables and their tables
 #' @description Returns a tibble mapping all variables (raw ACS variables and
 #'   computed indicators) to their construct-level table name. This provides a
-#'   comprehensive view of every variable that \code{compile_acs_data()} produces.
+#'   comprehensive view of every variable that \code{compile_acs_data()} produces
+#'   for registered tables. Variables from unregistered ACS tables passed as
+#'   raw codes (e.g., \code{"B25070"}) are not included here; they are
+#'   auto-generated at runtime.
 #' @param year The ACS year used to resolve variable names (default 2022).
 #' @returns A tibble with columns \code{variable} and \code{table}.
 #' @examples
@@ -511,11 +457,7 @@ list_variables = function(year = 2022) {
       computed_names = result$computed
     }
 
-    ## Step 3: apply household_income percent -> pct rename (matches compile_acs_data behavior)
-    raw_clean_names = stringr::str_replace(raw_clean_names, "^(household_income.*)percent$", "\\1pct")
-    computed_names = stringr::str_replace(computed_names, "^(household_income.*)percent$", "\\1pct")
-
-    ## Step 4: assign each variable to a construct
+    ## Step 3: assign each variable to a construct
     all_variable_names = unique(c(raw_clean_names, computed_names))
     purrr::map(all_variable_names, function(variable_name) {
       if (!is.null(constructs)) {
@@ -1167,27 +1109,27 @@ register_table(list(
   raw_variables = NULL,
   definitions = list(
     define_percent("cost_burdened_30percentormore_allincomes_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(percent)",
+                   numerator_regex = "household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(pct)",
                    denominator_regex = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
                    subtract_regex = "household_income.*not_computed"),
     define_percent("cost_burdened_50percentormore_allincomes_percent",
-                   numerator_regex = "household_income_by_gross_rent.*50_0.*percent",
+                   numerator_regex = "household_income_by_gross_rent.*50_0.*pct",
                    denominator_regex = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
                    subtract_regex = "household_income.*not_computed"),
     define_percent("cost_burdened_30percentormore_incomeslessthan35000_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(percent)",
+                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(pct)",
                    denominator_regex = "household_income_by_gross_rent.*(10000|19999|34999)$",
                    subtract_regex = "household_income.*(10000_|19999|34999).*not_computed"),
     define_percent("cost_burdened_50percentormore_incomeslessthan35000_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(percent)",
+                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(pct)",
                    denominator_regex = "household_income_by_gross_rent.*(10000|19999|34999)$",
                    subtract_regex = "household_income.*(10000_|19999|34999).*not_computed"),
     define_percent("cost_burdened_30percentormore_incomeslessthan50000_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(percent)",
+                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(pct)",
                    denominator_regex = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
                    subtract_regex = "household_income.*(10000_|19999|34999|49999).*not_computed"),
     define_percent("cost_burdened_50percentormore_incomeslessthan50000_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*percent",
+                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*pct",
                    denominator_regex = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
                    subtract_regex = "household_income.*(10000_|19999|34999|49999).*not_computed"))
 ))

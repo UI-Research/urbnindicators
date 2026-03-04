@@ -15,7 +15,10 @@ A tibble with columns \code{variable} and \code{table}.
 \description{
 Returns a tibble mapping all variables (raw ACS variables and
 computed indicators) to their construct-level table name. This provides a
-comprehensive view of every variable that \code{compile_acs_data()} produces.
+comprehensive view of every variable that \code{compile_acs_data()} produces
+for registered tables. Variables from unregistered ACS tables passed as
+raw codes (e.g., \code{"B25070"}) are not included here; they are
+auto-generated at runtime.
 }
 \examples{
 \dontrun{

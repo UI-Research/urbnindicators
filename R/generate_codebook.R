@@ -6,6 +6,8 @@
 #' @param .data The dataset returned from \code{urbnindicators::compile_acs_data()}.
 #' @param resolved_tables A character vector of resolved table names from the
 #'   table registry. When NULL (default), all registered tables are used.
+#' @param auto_table_entries A list of auto-generated table entries from
+#'   \code{build_auto_table_entry()}. Default is an empty list.
 #' @returns A tibble containing the names and definitions of  variables returned from
 #' \code{urbnindicators::compile_acs_data()}.
 #' @examples
@@ -16,13 +18,13 @@
 #'   states = "NJ",
 #'   counties = NULL,
 #'   spatial = FALSE) %>%
-#'   dplyr::select(-dplyr::matches("_M$|_SE$|_CV$"))
+#'   dplyr::select(-dplyr::matches("_M$"))
 #' codebook = generate_codebook(.data = df)
 #' }
 #' @importFrom magrittr %>%
 #' @keywords internal
 
-generate_codebook = function(.data, resolved_tables = NULL) {
+generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries = list()) {
 
   .data = .data %>%
     sf::st_drop_geometry()
@@ -83,6 +85,19 @@ generate_codebook = function(.data, resolved_tables = NULL) {
       stringsAsFactors = FALSE)
   }
 
+  ## Add auto-table raw variables to crosswalk
+  if (length(auto_table_entries) > 0) {
+    auto_crosswalk_rows = purrr::map(auto_table_entries, function(auto_entry) {
+      raw_variable_codes = auto_entry[["raw_variables"]]
+      clean_names_vec = names(raw_variable_codes) %>% stringr::str_remove("_$")
+      data.frame(
+        raw_name = as.character(raw_variable_codes),
+        clean_name = clean_names_vec,
+        stringsAsFactors = FALSE)
+    })
+    crosswalk_rows = c(crosswalk_rows, auto_crosswalk_rows)
+  }
+
   variable_name_crosswalk = dplyr::bind_rows(crosswalk_rows) %>%
     dplyr::distinct(clean_name, .keep_all = TRUE)
 
@@ -104,6 +119,26 @@ generate_codebook = function(.data, resolved_tables = NULL) {
         table_entry[["definitions"]],
         ~ expand_codebook_entry(entry = .x, .data = .data, crosswalk = variable_name_crosswalk)) %>% purrr::list_rbind()
     }) %>% purrr::list_rbind()
+
+  ## Expand auto-table definitions into codebook rows
+  if (length(auto_table_entries) > 0) {
+    auto_documentation = purrr::map(auto_table_entries, function(auto_entry) {
+      if (is.null(auto_entry[["definitions"]]) || length(auto_entry[["definitions"]]) == 0) {
+        return(tibble::tibble(calculated_variable = character(0),
+                              variable_type = character(0),
+                              definition = character(0),
+                              numerator_vars = list(),
+                              numerator_subtract_vars = list(),
+                              denominator_vars = list(),
+                              denominator_subtract_vars = list()))
+      }
+      purrr::map(
+        auto_entry[["definitions"]],
+        ~ expand_codebook_entry(entry = .x, .data = .data, crosswalk = variable_name_crosswalk)) %>% purrr::list_rbind()
+    }) %>% purrr::list_rbind()
+
+    partial_documentation = dplyr::bind_rows(partial_documentation, auto_documentation)
+  }
 
   ####----Raw Variables----####
   ## collect all raw variable clean names from the resolved tables
@@ -154,15 +189,7 @@ generate_codebook = function(.data, resolved_tables = NULL) {
         stringr::str_detect(calculated_variable, "quintile") ~ "Quintile ($)",
         stringr::str_detect(calculated_variable, "index") ~ "Index",
         is.na(variable_type) ~ "Count",
-        .default = variable_type)) %>%
-    dplyr::mutate(
-      calculated_variable = dplyr::if_else(
-        stringr::str_detect(calculated_variable, "percent$") & variable_type == "Count",
-        stringr::str_replace(calculated_variable, "percent$", "pct"),
-        calculated_variable),
-      definition = dplyr::case_when(
-        stringr::str_detect(definition, "household_income_by_gross_rent") ~ stringr::str_replace_all(definition, "percent ", "pct "),
-        TRUE ~ definition))
+        .default = variable_type))
 
   ####----Add SE Calculation Type and Aggregation Strategy----####
   result1 = result1 %>%

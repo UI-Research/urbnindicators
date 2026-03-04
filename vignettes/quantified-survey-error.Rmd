@@ -92,8 +92,8 @@ measures of error.
     while 10 of those times, our estimate would fall outside this range.
 
 -   **Standard Errors (SE)** are derived from MOEs by dividing the MOE
-    against a confidence level-related value. `urbnindicators` returns
-    90% SEs, which are calculated by dividing an MOE by 1.645.
+    against a confidence level-related value. 90% SEs are calculated by
+    dividing an MOE by 1.645.
 
 -   **Coefficients of Variation (CV)** relate error to the size of the
     estimate. They are calculated by dividing the SE by the estimate and
@@ -105,13 +105,14 @@ measures of error.
 
 # Evaluate Estimate Quality
 
-CVs allow us to assess whether estimates have problematically large
+MOEs allow us to assess whether estimates have problematically large
 errors. While there's not a right-or-wrong threshold for what
-constitutes a good or bad CV, many people employ thresholds between 30
-and 40 (that is, where the error is 30-40% of the size of the estimate).
+constitutes a problematic MOE, a common approach is to calculate the
+coefficient of variation (CV = SE / estimate * 100, where SE = MOE /
+1.645) and use thresholds between 30 and 40.
 
 As shown below, variables that rely on larger sample sizes tend to have
-smaller CVs. Typically, there are two strategies to reduce CVs: (1)
+smaller MOEs. Typically, there are two strategies to reduce error: (1)
 aggregate estimates, either across geographies or across variables, or
 (2) use larger geographies.
 
@@ -131,20 +132,33 @@ acs_df_tract = compile_acs_data(
 ```
 
 ```{r, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 12}
+## derive CVs from MOEs for quality evaluation
 plot_df = bind_rows(
       acs_df_county %>% mutate(geography = "County"),
       acs_df_tract %>% mutate(geography = "Tract")) %>%
     st_drop_geometry() %>%
     select(
       geography,
-      c(matches("^age.*percent.*CV") & matches("(_6|_7|_8)"))) %>%
-    rename_with(
-      .cols = everything(),
-      .fn = ~ .x %>%
-        str_replace_all(c("_" = " ", "percent" = "(%)", "age|CV" = "")) %>%
-        str_squish() %>% str_trim()) %>%
+      c(matches("^age.*percent$") & matches("(_6|_7|_8)")),
+      c(matches("^age.*percent_M$") & matches("(_6|_7|_8)"))) %>%
     pivot_longer(-geography) %>%
-    mutate(plot_title = str_c(geography, ": ", name))
+    mutate(
+      base_var = str_remove(name, "_M$"),
+      type = if_else(str_detect(name, "_M$"), "moe", "estimate")) %>%
+    pivot_wider(
+      id_cols = c(geography, base_var),
+      names_from = type,
+      values_from = value,
+      values_fn = list) %>%
+    tidyr::unnest(c(estimate, moe)) %>%
+    mutate(
+      cv = (moe / 1.645) / estimate * 100,
+      cv = if_else(is.infinite(cv), NA_real_, cv),
+      name = base_var %>%
+        str_replace_all(c("_" = " ", "percent" = "(%)")) %>%
+        str_remove_all("age") %>%
+        str_squish() %>% str_trim(),
+      plot_title = str_c(geography, ": ", name))
 
 factor_levels = plot_df %>%
   arrange(name) %>%
@@ -156,7 +170,7 @@ plot_df %>%
     plot_title = factor(plot_title, levels = factor_levels, ordered = TRUE)) %>%
   ggplot() +
     geom_histogram(
-      aes(x = value), fill = palette_urbn_main[1], bins = 50) +
+      aes(x = cv), fill = palette_urbn_main[1], bins = 50) +
     geom_vline(xintercept = 30, linetype = "dashed") +
     facet_wrap(~ plot_title, ncol = 2, scales = "free") +
     scale_x_continuous(limits = c(0, 150)) +
@@ -164,10 +178,10 @@ plot_df %>%
     theme_urbn_print() +
     theme(axis.text.y = element_blank()) +
     labs(
-      x = "CV",
+      x = "CV (derived from MOE)",
       y = "Distribution",
       title = "County CVs are Smaller than Tract CVs\nCVs for Wider Age Ranges are Smaller than CVs for Narrow Age Ranges",
-      subtitle = "Coefficients of variation (CV) at the county and tract levels for various age groupings")
+      subtitle = "Coefficients of variation at the county and tract levels for various age groupings")
 ```
 
 # Conduct Statistical Significance Testing
@@ -185,11 +199,6 @@ compare each tract-level value within a single county to that of the
 corresponding county.
 
 ```{r, fig.width = 7}
-## utility to help us derive an MOE from a CV
-cv_to_moe = function(cv, estimate) {
-  cv / 100 * 1.645 * estimate
-}
-
 plot_data = acs_df_tract %>%
   filter(str_detect(NAME, "Atlantic")) %>%
   select(GEOID, matches("age_over_64_percent")) %>%
@@ -210,10 +219,8 @@ plot_data = acs_df_tract %>%
     significance = significance(
       est1 = age_over_64_percent,
       est2 = age_over_64_percent_county,
-      moe1 = cv_to_moe(
-        cv = age_over_64_percent_CV, estimate = age_over_64_percent),
-      moe2 = cv_to_moe(
-        cv = age_over_64_percent_CV_county, estimate = age_over_64_percent_county),
+      moe1 = age_over_64_percent_M,
+      moe2 = age_over_64_percent_M_county,
       clevel = 0.9),
     statistical_difference = case_when(
       significance == FALSE ~ "Not significant",

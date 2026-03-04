@@ -14,6 +14,9 @@ Returns the names of all registered ACS tables that can be
 requested via the \code{tables} parameter of \code{compile_acs_data()}.
 Multi-construct tables (e.g., \code{sex_by_age}) are reported as their
 individual constructs (e.g., \code{"age"} and \code{"sex"}).
+Note: only pre-registered tables are listed here. Any valid ACS table code
+(e.g., \code{"B25070"}) can also be passed to \code{compile_acs_data(tables = ...)}
+and will be auto-processed.
 }
 \examples{
 list_tables()

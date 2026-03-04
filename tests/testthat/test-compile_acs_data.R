@@ -861,27 +861,7 @@ testthat::test_that(
   })
 
 testthat::test_that(
-  "compile_acs_data() accepts indicators parameter",
-  {
-    ## verify indicator resolution returns the correct parent tables
-    resolved = resolve_tables(indicators = c("snap_received_percent"))
-    testthat::expect_true("snap" %in% resolved)
-    testthat::expect_true("total_population" %in% resolved)
-  })
-
-testthat::test_that(
-  "compile_acs_data() accepts mixed tables and indicators",
-  {
-    resolved = resolve_tables(
-      tables = "race",
-      indicators = "snap_received_percent")
-    testthat::expect_true("race" %in% resolved)
-    testthat::expect_true("snap" %in% resolved)
-    testthat::expect_true("total_population" %in% resolved)
-  })
-
-testthat::test_that(
-  "Default (no tables/indicators) resolves to all tables",
+  "Default (no tables) resolves to all tables",
   {
     all_tables = list_tables()
     testthat::expect_gte(length(all_tables), 30)

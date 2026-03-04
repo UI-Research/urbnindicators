@@ -107,21 +107,6 @@ se_proportion_ratio = function(
   return(se)
 }
 
-#' @title Calculate a coefficient of variation
-#' @details Return a coefficient of variation at the 90% level
-#' @param estimate The estimate
-#' @param se The standard error
-#' @returns A coefficient of variation at the 90% level
-cv = function(estimate, se) {
-  cv = se / estimate * 100
-
-  ## when the estimate is zero, this produces an infinite value
-  ## replacing this with an NA value
-  cv = dplyr::if_else(is.infinite(cv), NA, cv)
-
-  return(cv)
-}
-
 #' @title Calculate standard error for a product of two estimates
 #' @details Calculate the standard error for an estimate derived by multiplying
 #'   two estimates together. For example, multiplying a proportion by a population
@@ -244,20 +229,21 @@ se_weighted_mean = function(
   return(se)
 }
 
-#' @title Calculate coefficients of variation
-#' @details Create CVs for all ACS estimates and derived indicators.
-#'   Uses pre-parsed codebook columns (numerator_vars, denominator_vars,
-#'   se_calculation_type) to determine how to calculate standard errors.
+#' @title Calculate margins of error for derived variables
+#' @details Calculates margins of error for all derived ACS estimates. Standard
+#'   errors are computed internally as an intermediate step but are not included
+#'   in the returned dataframe. Uses pre-parsed codebook columns
+#'   (numerator_vars, denominator_vars, se_calculation_type) to determine how
+#'   to calculate standard errors.
 #' @param .df The dataset returned from \code{compile_acs_data()}.
 #'  The argument to this parameter must have an attribute named `codebook` (as is
 #'  true of results from \code{compile_acs_data())}.
-#' @returns A modified dataframe that includes newly calculated indicators.
+#' @returns A modified dataframe that includes margins of error (suffixed
+#'   \code{_M}) for derived variables.
 #' @keywords internal
-calculate_cvs = function(.df) {
-  warning("Coefficients of variation and related calculated measures of error such
-          as margins of error (for derived variables) and standard errors are
-          experimental features and should be used with  caution.
-          Such measures are respectively suffixed with `_CV`, `_M`, and `_SE`.")
+calculate_moes = function(.df) {
+  warning("Margins of error for derived variables are experimental features
+          and should be used with caution. Such measures are suffixed with `_M`.")
 
   ## the codebook attached to the default compile_acs_data() return
   codebook = .df %>% attr("codebook")
@@ -324,7 +310,7 @@ calculate_cvs = function(.df) {
         .names = "{.col}_M"))
 
   ## Step 2: calculate SEs for all variables (using df_with_sum_moes which has derived MOEs)
-  df_cvs1 = df_with_sum_moes %>%
+  df_with_ses = df_with_sum_moes %>%
     dplyr::mutate(
       dplyr::across(
         .cols = dplyr::any_of(cv_variables),
@@ -401,28 +387,19 @@ calculate_cvs = function(.df) {
                 purrr::map(denominator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))))}
 
           return(SE)},
-        .names = "{.col}_SE")) %>%
-    dplyr::mutate(
-      ## create coefficients of variation from standard errors
-      dplyr::across(
-        .cols = dplyr::matches("_SE$"),
-        .fns = ~ cv(
-          estimate = get(dplyr::cur_column() %>% stringr::str_remove("_SE$")),
-          se = .x),
-        .names = "{.col %>% stringr::str_remove('_SE')}_CV"))
+        .names = "{.col}_SE"))
 
-  moe_variables = df_cvs1 %>%
+  moe_variables = df_with_ses %>%
     dplyr::select(dplyr::matches("_M$")) %>%
     colnames() %>%
     stringr::str_remove("_M$")
-  se_variables = df_cvs1 %>%
+  se_variables = df_with_ses %>%
     dplyr::select(dplyr::matches("_SE$")) %>%
     colnames() %>%
     stringr::str_remove("_SE$")
 
-  # Variables with SE but not MOE occur when we calculate SEs directly
-  # (e.g., for complex percentages) but didn't create corresponding MOEs
-  df_cvs = df_cvs1 %>%
+  ## Convert SEs to MOEs for variables that don't already have one
+  df_moes = df_with_ses %>%
     dplyr::mutate(
       dplyr::across(
         .cols = dplyr::all_of(se_variables[!se_variables %in% moe_variables] %>% stringr::str_c("_SE")),
@@ -431,9 +408,11 @@ calculate_cvs = function(.df) {
       ## reduce number of digits
       dplyr::across(
         .cols = dplyr::where(is.numeric),
-        .fns = ~ round(.x, digits = 4)))
+        .fns = ~ round(.x, digits = 4))) %>%
+    ## drop intermediate SE columns
+    dplyr::select(-dplyr::matches("_SE$"))
 
-  return(df_cvs)
+  return(df_moes)
 }
 
 utils::globalVariables(c(

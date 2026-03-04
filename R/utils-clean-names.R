@@ -41,7 +41,8 @@ clean_acs_names = function(variables_df) {
           "american_indian_alaska_native" = "aian",
           "black_african_american" = "black",
           "household_income_by_gross_rent_as_a_percentage_of_household_income_in_the_past_12_months" =
-            "household_income_by_gross_rent_as_a_percentage_of_household_income")),
+            "household_income_by_gross_rent_as_a_percentage_of_household_income",
+          "_percent$" = "_pct")),
       clean_names = dplyr::if_else(
         label %in% c("Estimate!!Total:", "Estimate!!Total"),
         paste0(clean_names, "_universe_"),

@@ -57,7 +57,7 @@ filter_variables = function(variable_vector, match_string, match_type = "positiv
 #' `r lifecycle::badge("deprecated")`
 #'
 #' Use [list_variables()] instead to see available variables, or pass
-#' `tables`/`indicators` to [compile_acs_data()].
+#' `tables` to [compile_acs_data()].
 #' @param year The year for which variable names should be selected.
 #' @param tables An optional character vector of table names from the table
 #'   registry (e.g., \code{c("race", "snap")}). When provided, only variables
@@ -74,9 +74,54 @@ list_acs_variables = function(year = "2022", tables = NULL) {
     when = "0.1.0",
     what = "list_acs_variables()",
     with = "list_variables()",
-    details = "Use `list_variables()` to see available variables, or pass `tables`/`indicators` to `compile_acs_data()`."
+    details = "Use `list_variables()` to see available variables, or pass `tables` to `compile_acs_data()`."
   )
   invisible(NULL)
+}
+
+#' @title Browse the ACS codebook with clean variable names
+#' @description Returns a tibble of ACS variables for the given year, with the
+#'   parent table code, raw variable code, and a cleaned snake_case name.
+#'   Useful for finding the table code to pass to
+#'   \code{compile_acs_data(tables = ...)}.
+#' @param year A four-digit year for the five-year ACS estimates (default 2022).
+#' @param table An optional ACS table code (e.g., \code{"B22003"}) to filter
+#'   results to a single table.
+#' @returns A tibble with columns \code{table} (parent ACS table code),
+#'   \code{variable_raw} (ACS variable code), and \code{variable_clean}
+#'   (snake_case name produced by the package).
+#' @examples
+#' \dontrun{
+#' ## Browse all variables
+#' get_acs_codebook()
+#'
+#' ## Filter to a specific table
+#' get_acs_codebook(table = "B22003")
+#'
+#' ## Search for variables by keyword
+#' get_acs_codebook() %>% dplyr::filter(stringr::str_detect(variable_clean, "snap"))
+#' }
+#' @export
+get_acs_codebook = function(year = 2022, table = NULL) {
+  suppressWarnings({suppressMessages({
+    census_variables = tidycensus::load_variables(year = year, dataset = "acs5")
+  })})
+
+  if (!is.null(table)) {
+    pattern = paste0("^", table, "_")
+    census_variables = census_variables %>%
+      dplyr::filter(stringr::str_detect(name, pattern))
+    if (nrow(census_variables) == 0) {
+      stop(paste0("No variables found for table '", table, "' in year ", year, "."))
+    }
+  }
+
+  census_variables %>%
+    clean_acs_names() %>%
+    dplyr::transmute(
+      table = stringr::str_extract(name, "^[BC][0-9]{5}[A-I]?(?:PR)?"),
+      variable_raw = name,
+      variable_clean = stringr::str_remove(clean_names, "_$"))
 }
 
 utils::globalVariables(c("name", "concept", "label", "clean_names"))
