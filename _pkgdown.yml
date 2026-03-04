@@ -13,7 +13,6 @@ reference:
   - se_simple
   - se_sum
   - se_proportion_ratio
-  - cv
 - title: Helper functions
   contents:
   - list_tables
@@ -23,4 +22,5 @@ reference:
   - make_pretty_names
   - safe_divide
   - list_acs_variables
+  - get_acs_codebook
 
