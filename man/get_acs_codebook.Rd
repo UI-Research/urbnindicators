@@ -4,7 +4,7 @@
 \alias{get_acs_codebook}
 \title{Browse the ACS codebook with clean variable names}
 \usage{
-get_acs_codebook(year = 2022, table = NULL)
+get_acs_codebook(year = 2024, table = NULL)
 }
 \arguments{
 \item{year}{A four-digit year for the five-year ACS estimates (default 2022).}

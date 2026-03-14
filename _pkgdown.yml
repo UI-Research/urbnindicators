@@ -8,6 +8,11 @@ reference:
   contents:
   - compile_acs_data
   - calculate_custom_geographies
+  - define_percent
+  - define_across_percent
+  - define_across_sum
+  - define_metadata
+  - define_one_minus
 - title: Measuring error
   contents:
   - se_simple
@@ -16,6 +21,7 @@ reference:
   - cv
 - title: Helper functions
   contents:
+  - get_acs_codebook
   - list_tables
   - list_variables 
   - select_variables_by_name

@@ -101,10 +101,6 @@ library(urbnindicators)
 list_tables() |> head(10)
 ```
 
-```{r, warning = FALSE, message = FALSE}
-list_variables() |> head(10)
-```
-
 ## Obtain Data
 
 A single call to `compile_acs_data()` returns analysis-ready data
@@ -114,13 +110,13 @@ margins of error:
 ```{r, warning = FALSE, message = FALSE}
 df = compile_acs_data(
   tables = "race",
-  years = 2024,
+  years = c(2019, 2024),
   geography = "county",
   states = "NJ")
 
-glimpse(df) |> head(10)
-
-?compile_acs_data
+df %>%
+  select(1:10) %>%
+  glimpse()
 ```
 
 ## Visualize Data
@@ -129,13 +125,6 @@ glimpse(df) |> head(10)
 produce publication-ready visualizations:
 
 ```{r, warning = FALSE, message = FALSE}
-df = compile_acs_data(
-  tables = "race",
-  ## selecting 5-year ACS data from years with no measurement overlap
-  years = c(2019, 2024),
-  geography = "county",
-  states = "NJ")
-
 plot_data = df %>%
   transmute(
     county_name = NAME %>% str_remove(" County, New Jersey"),
@@ -228,6 +217,90 @@ Confidence intervals are presented around each point but are extremely small"),
   theme_urbn_print()
 ```
 
+## Custom Geographies
+
+ACS data are available for standard geographies (tracts, counties,
+states, etc.), but many analyses require non-standard areas like
+neighborhoods, school zones, or planning districts.
+`calculate_custom_geographies()` aggregates tract-level data to
+any user-defined geography, properly re-deriving percentages and
+propagating margins of error:
+
+```{r, warning = FALSE, message = FALSE}
+dc_tracts = compile_acs_data(
+  tables = "snap",
+  years = 2024,
+  geography = "tract",
+  states = "DC",
+  spatial = TRUE)
+
+## assign each tract to a quadrant based on its centroid
+dc_tracts = dc_tracts %>%
+  mutate(
+    centroid = sf::st_centroid(geometry),
+    lon = sf::st_coordinates(centroid)[, 1],
+    lat = sf::st_coordinates(centroid)[, 2],
+    quadrant = case_when(
+      lon <  median(lon) & lat >= median(lat) ~ "NW",
+      lon >= median(lon) & lat >= median(lat) ~ "NE",
+      lon <  median(lon) & lat <  median(lat) ~ "SW",
+      lon >= median(lon) & lat <  median(lat) ~ "SE")) %>%
+  select(-centroid, -lon, -lat)
+
+## aggregate tracts to quadrants
+dc_quadrants = calculate_custom_geographies(
+  .data = dc_tracts,
+  group_id = "quadrant",
+  spatial = TRUE)
+
+dc_quadrants %>%
+  sf::st_drop_geometry() %>%
+  select(GEOID, snap_received_percent, snap_received_percent_M)
+```
+
+See `vignette("custom-geographies")` for more.
+
+## Custom Derived Variables
+
+Beyond the package's built-in tables, you can define your own
+derived variables using the `define_*()` helpers and pass them
+directly to `compile_acs_data()`. Your custom variables
+automatically get codebook entries and margins of error:
+
+```{r, warning = FALSE, message = FALSE}
+df = compile_acs_data(
+  tables = list(
+    "snap",
+    define_percent(
+      "snap_not_received_percent",
+      numerator_variables = c("snap_universe"),
+      numerator_subtract_variables = c("snap_received"),
+      denominator_variables = c("snap_universe")),
+    define_one_minus(
+      "snap_received_complement",
+      source_variable = "snap_received_percent")),
+  years = 2024,
+  geography = "county",
+  states = "DC")
+
+df %>%
+  select(matches("snap.*percent")) %>%
+  glimpse()
+```
+
+The available helpers are:
+
+| Helper | Use case |
+|---|---|
+| `define_percent()` | Ratio of a numerator to a denominator |
+| `define_across_percent()` | Percentages for every column matching a regex |
+| `define_across_sum()` | Sum paired columns (e.g., male + female counts) |
+| `define_one_minus()` | Complement of an existing percentage (1 - x) |
+| `define_metadata()` | Codebook-only entry for a non-computed variable |
+
+See `vignette("custom-derived-variables")` for detailed examples of
+each helper.
+
 # Learn More
 
 Check out the vignettes for additional details:
@@ -250,6 +323,10 @@ Check out the vignettes for additional details:
 -   You can re-create your indicators and their measures of error
     for [**Custom Geographies**](articles/custom-geographies.html).
     Neighborhoods? Unincorporated counties? Start here.
+
+-   A guide to defining [**Custom Derived
+    Variables**](articles/custom-derived-variables.html) using the
+    `define_*()` helpers.
 
 # Credits
 
