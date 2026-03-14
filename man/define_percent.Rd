@@ -21,7 +21,62 @@ define_percent(
   subtract_regex = NULL
 )
 }
-\description{
-Define a percentage variable (simple or complex)
+\arguments{
+\item{output}{A string. The name of the output column to create.}
+
+\item{numerator}{A string. Single numerator column name (simple case).}
+
+\item{denominator}{A string. Single denominator column name (simple case).}
+
+\item{numerator_variables}{A character vector of column names to sum for the
+numerator (complex case).}
+
+\item{numerator_regex}{A regex pattern to match numerator columns (complex case).}
+
+\item{numerator_exclude_regex}{A regex pattern to exclude from numerator matches.}
+
+\item{numerator_note}{An optional annotation (not used in computation).}
+
+\item{numerator_subtract_variables}{A character vector of column names to
+subtract from the numerator sum.}
+
+\item{numerator_subtract_regex}{A regex pattern to match columns to subtract
+from the numerator.}
+
+\item{denominator_variables}{A character vector of column names to sum for the
+denominator (complex case).}
+
+\item{denominator_regex}{A regex pattern to match denominator columns (complex case).}
+
+\item{denominator_exclude_regex}{A regex pattern to exclude from denominator matches.}
+
+\item{subtract_variables}{A character vector of column names to subtract from
+the denominator sum.}
+
+\item{subtract_regex}{A regex pattern to match columns to subtract from
+the denominator.}
 }
-\keyword{internal}
+\value{
+A list with a \code{type} field (\code{"simple_percent"} or
+\code{"complex"}) and the associated fields. Can be passed in the
+\code{tables} parameter of \code{\link{compile_acs_data}}.
+}
+\description{
+Creates a definition object for a derived percentage variable. When both
+\code{numerator} and \code{denominator} are single strings and no other
+fields are set, a \code{simple_percent} definition is returned. Otherwise a
+\code{complex} definition is returned, allowing multi-variable numerators
+and denominators.
+}
+\examples{
+# Simple percentage
+define_percent("snap_received_percent",
+              numerator = "snap_received",
+              denominator = "snap_universe")
+
+# Complex percentage with subtraction
+define_percent("snap_not_received_percent",
+              numerator_variables = c("snap_universe"),
+              numerator_subtract_variables = c("snap_received"),
+              denominator_variables = c("snap_universe"))
+}

@@ -5,6 +5,9 @@ vignette: >
   %\VignetteIndexEntry{codebook}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+editor_options:
+  markdown:
+    wrap: 72
 ---
 
 ```{r, include = FALSE}
@@ -19,18 +22,63 @@ knitr::opts_chunk$set(
 library(urbnindicators)
 library(dplyr)
 library(reactable)
+```
 
+Every dataframe returned by `compile_acs_data()` includes a codebook
+as an attribute. The codebook documents every variable in the
+dataset--what it represents, how it was calculated, and whether it is
+a raw ACS estimate or a derived measure.
+
+## Accessing the codebook
+
+The codebook is stored as an attribute of the dataframe and can be
+retrieved with `attr()`:
+
+```{r}
 df = compile_acs_data(year = 2024, geography = "us")
 codebook = attr(df, "codebook")
+```
 
+## Understanding the columns
+
+The codebook has three columns:
+
+-   **Variable**: The variable name as it appears in the dataframe
+    (e.g., `snap_received_percent`).
+
+-   **Type**: The kind of variable. Common types include:
+    -   `count` -- a raw ACS estimate directly from the API
+    -   `percent` -- a derived ratio, typically a count divided by a
+        universe variable
+    -   `metadata` -- a non-computed variable such as a median or
+        geographic identifier
+
+-   **Definition**: A formula describing how the variable was
+    calculated. For raw ACS variables, this is the original Census
+    Bureau variable code (e.g., `B22003_002`). For derived variables,
+    this is an expression like `snap_received / snap_universe` that
+    shows the numerator and denominator. More complex definitions may
+    reference multiple raw variables joined with `+` in the numerator
+    or denominator.
+
+These definition strings are also used internally to calculate
+margins of error for derived variables, so their accuracy is
+critical.
+
+## Browse the codebook
+
+Use the search box below to filter by variable name, type, or
+definition text.
+
+```{r, echo = FALSE}
 reactable(
-  codebook %>% 
+  codebook %>%
     transmute(
-      Variable = calculated_variable, 
-      Type = variable_type, 
-      Definition = definition), 
+      Variable = calculated_variable,
+      Type = variable_type,
+      Definition = definition),
   columns = list(
-    Variable = colDef(minWidth = 200), 
+    Variable = colDef(minWidth = 200),
     Type = colDef(minWidth = 50),
     Definition = colDef(minWidth = 100)),
   filterable = TRUE)

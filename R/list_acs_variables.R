@@ -102,7 +102,7 @@ list_acs_variables = function(year = "2022", tables = NULL) {
 #' get_acs_codebook() %>% dplyr::filter(stringr::str_detect(variable_clean, "snap"))
 #' }
 #' @export
-get_acs_codebook = function(year = 2022, table = NULL) {
+get_acs_codebook = function(year = 2024, table = NULL) {
   suppressWarnings({suppressMessages({
     census_variables = tidycensus::load_variables(year = year, dataset = "acs5")
   })})

@@ -16,8 +16,9 @@ compile_acs_data(
 )
 }
 \arguments{
-\item{tables}{A character vector of table names to include. Two formats are
-accepted:
+\item{tables}{A character vector, list, or NULL specifying which data to
+include. Three kinds of elements are accepted and can be mixed freely
+inside a \code{list()}:
 \itemize{
 \item \strong{Registered table names} (e.g., \code{"race"}, \code{"snap"}).
 These are pre-built tables with curated variable definitions. Use
@@ -28,8 +29,16 @@ These are auto-processed at runtime: raw variables are fetched, the
 label hierarchy is parsed, and percentages are computed automatically.
 Use the \code{denominator} parameter to control how percentages are
 calculated for these tables.
+\item \strong{DSL definition objects} created with \code{\link{define_percent}},
+\code{\link{define_across_percent}}, \code{\link{define_across_sum}},
+\code{\link{define_one_minus}}, or \code{\link{define_metadata}}.
+These let you compute custom derived variables from the columns
+produced by the tables you request. User definitions are executed
+after all registered and auto-table definitions, and their results
+appear in the codebook and have MOEs computed automatically.
 }
-Both formats can be mixed freely (e.g., \code{c("snap", "B25070")}).
+When mixing strings and definitions, wrap everything in \code{list()}
+(e.g., \code{list("snap", define_percent(...))}).
 If an ACS code corresponds to an already-registered table, the registered
 version is used automatically.
 When NULL (default), all registered tables are included (unregistered ACS
@@ -92,6 +101,16 @@ df = compile_acs_data(tables = c("snap", "B25070"), years = 2022,
 ## Use table total as denominator instead of parent subtotals
 df = compile_acs_data(tables = "B25070", denominator = "total",
                       years = 2022, geography = "state", states = "DC")
+
+## Add a custom derived variable alongside a registered table
+df = compile_acs_data(
+  tables = list(
+    "snap",
+    define_percent("snap_not_received_percent",
+                   numerator_variables = c("snap_universe", "snap_received"),
+                   numerator_subtract_variables = c("snap_received"),
+                   denominator_variables = c("snap_universe"))),
+  years = 2022, geography = "county", states = "DC")
   }
 }
 \seealso{

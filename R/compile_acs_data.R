@@ -16,8 +16,9 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' @description Construct measures frequently used in social sciences
 #'    research, leveraging \code{tidycensus::get_acs()} to acquire raw estimates from
 #'    the Census Bureau API.
-#' @param tables A character vector of table names to include. Two formats are
-#'    accepted:
+#' @param tables A character vector, list, or NULL specifying which data to
+#'    include. Three kinds of elements are accepted and can be mixed freely
+#'    inside a \code{list()}:
 #'    \itemize{
 #'      \item \strong{Registered table names} (e.g., \code{"race"}, \code{"snap"}).
 #'        These are pre-built tables with curated variable definitions. Use
@@ -28,8 +29,16 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'        label hierarchy is parsed, and percentages are computed automatically.
 #'        Use the \code{denominator} parameter to control how percentages are
 #'        calculated for these tables.
+#'      \item \strong{DSL definition objects} created with \code{\link{define_percent}},
+#'        \code{\link{define_across_percent}}, \code{\link{define_across_sum}},
+#'        \code{\link{define_one_minus}}, or \code{\link{define_metadata}}.
+#'        These let you compute custom derived variables from the columns
+#'        produced by the tables you request. User definitions are executed
+#'        after all registered and auto-table definitions, and their results
+#'        appear in the codebook and have MOEs computed automatically.
 #'    }
-#'    Both formats can be mixed freely (e.g., \code{c("snap", "B25070")}).
+#'    When mixing strings and definitions, wrap everything in \code{list()}
+#'    (e.g., \code{list("snap", define_percent(...))}).
 #'    If an ACS code corresponds to an already-registered table, the registered
 #'    version is used automatically.
 #'    When NULL (default), all registered tables are included (unregistered ACS
@@ -78,6 +87,16 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' ## Use table total as denominator instead of parent subtotals
 #' df = compile_acs_data(tables = "B25070", denominator = "total",
 #'                       years = 2022, geography = "state", states = "DC")
+#'
+#' ## Add a custom derived variable alongside a registered table
+#' df = compile_acs_data(
+#'   tables = list(
+#'     "snap",
+#'     define_percent("snap_not_received_percent",
+#'                    numerator_variables = c("snap_universe", "snap_received"),
+#'                    numerator_subtract_variables = c("snap_received"),
+#'                    denominator_variables = c("snap_universe"))),
+#'   years = 2022, geography = "county", states = "DC")
 #'   }
 #' @export
 #' @importFrom magrittr %>%
@@ -132,10 +151,24 @@ compile_acs_data = function(
     stop(paste0("`denominator` must be \"parent\", \"total\", or a valid ACS variable code (e.g., \"B25070_001\"). Got: \"", denominator, "\"."))
   }
 
-  ####----Partition tables into registry vs auto (raw ACS codes)----####
+  ####----Partition tables into registry vs auto vs user definitions----####
   auto_table_entries = list()
   registry_tables = tables
   raw_acs_codes = character(0)
+  user_definitions = list()
+  has_explicit_tables = !is.null(tables)
+
+  if (!is.null(tables)) {
+    ## separate DSL definitions from string elements
+    if (is.list(tables) && !is.character(tables)) {
+      user_definitions = purrr::keep(tables, is_dsl_definition)
+      string_elements = purrr::keep(tables, function(x) is.character(x) && length(x) == 1)
+      tables = if (length(string_elements) > 0) as.character(string_elements) else NULL
+    }
+
+    ## validate user definitions structurally (fail fast)
+    purrr::walk(user_definitions, validate_definition)
+  }
 
   if (!is.null(tables)) {
     construct_map = build_construct_map()
@@ -196,9 +229,13 @@ compile_acs_data = function(
 
   ####----Resolve tables and variables via the registry----####
   ## resolve which tables to include
-  if (is.null(tables)) {
-    ## default: all internal table names
+  if (is.null(tables) && !has_explicit_tables) {
+    ## default: all internal table names (user passed tables = NULL)
     resolved_tables = names(.table_registry$tables)
+  } else if (is.null(tables) && has_explicit_tables) {
+    ## user passed only definitions, no string tables — include total_population only
+    resolved_tables = resolve_tables(tables = NULL)
+    resolved_tables = "total_population"
   } else {
     ## pass only registry tables (not raw ACS codes) to resolve_tables
     registry_tables_input = if (length(registry_tables) > 0) registry_tables else NULL
@@ -241,6 +278,11 @@ compile_acs_data = function(
     auto_variables = purrr::map(auto_table_entries, ~ .x[["raw_variables"]]) %>%
       unname() %>% unlist()
     variables = c(variables, auto_variables)
+  }
+
+  ## resolve ACS codes in user definitions to clean column names
+  if (length(user_definitions) > 0) {
+    user_definitions = resolve_definition_variables(user_definitions, variables)
   }
 
   ## default values for the states argument
@@ -434,10 +476,18 @@ this function returns.")}
     }, .init = df_calculated_estimates)
   }
 
+  ## apply user-supplied definitions
+  if (length(user_definitions) > 0) {
+    validate_definition_variables(user_definitions, colnames(df_calculated_estimates))
+    check_multi_table_variables(user_definitions, resolved_tables, auto_table_entries)
+    df_calculated_estimates = execute_definitions(df_calculated_estimates, user_definitions)
+  }
+
   ####----Generate codebook----####
   codebook = generate_codebook(.data = df_calculated_estimates,
                                resolved_tables = resolved_tables,
-                               auto_table_entries = auto_table_entries)
+                               auto_table_entries = auto_table_entries,
+                               user_definitions = user_definitions)
 
   df_calculated_estimates = df_calculated_estimates %>%
     ## ensure the vintage of the data and the GEOID for each observation are the first columns
@@ -478,4 +528,5 @@ utils::globalVariables(c(
   "ALAND", "AWATER", "area_land_sq_kilometer", "area_water_sq_kilometer", "total_population_universe",
   "state", "GEOID", "data_source_year", ".",
   "state_code", "county_code", "county_fips", "state_name", "county",
-  "needs_tigris", "resolved_tables", "auto_table_entries"))
+  "needs_tigris", "resolved_tables", "auto_table_entries", "user_definitions",
+  "has_explicit_tables"))

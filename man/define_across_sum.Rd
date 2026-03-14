@@ -11,7 +11,24 @@ define_across_sum(
   exclude_regex = NULL
 )
 }
-\description{
-Define an across-sum variable
+\arguments{
+\item{input_regex}{A regex pattern to match input columns.}
+
+\item{addend_function}{A function that takes a matched column name and
+returns the name of the column to add.}
+
+\item{output_naming_function}{A function that takes a matched column name
+and returns the output column name.}
+
+\item{exclude_regex}{A regex pattern to exclude from matched columns.}
 }
-\keyword{internal}
+\value{
+A list with \code{type = "across_sum"} and the associated fields.
+Can be passed in the \code{tables} parameter of
+\code{\link{compile_acs_data}}.
+}
+\description{
+Creates a definition that sums each matched column with a corresponding
+addend column. The addend and output names are determined by user-supplied
+functions.
+}
