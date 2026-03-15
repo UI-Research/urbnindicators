@@ -225,7 +225,7 @@ gridExtra::grid.arrange(
   map_tracts_sig, map_quadrants_sig,
   ncol = 2,
   top = grid::textGrob(
-    "Aggregation can mitigate challenges with small-population, high-error observations",
+    "Aggregation can mitigate challenges with small-population, high-error observations" %>% str_wrap(60),
     gp = grid::gpar(fontsize = 12, fontface = "bold")))
 ```
 
@@ -251,7 +251,7 @@ boundaries), crosswalk the 2019 data to 2020-vintage tracts, and then
 map the change in SNAP receipt---all expressed in a consistent set of
 tract boundaries.
 
-```{r, eval = requireNamespace("crosswalk", quietly = TRUE) && nchar(Sys.getenv("IPUMS_API_KEY")) > 0, fig.height = 5}
+```{r, fig.height = 5}
 # renv::install("UI-Research/crosswalk")
 
 # Pull 2019 ACS data (2010-vintage tracts) and 2024 ACS data (2020-vintage tracts)
