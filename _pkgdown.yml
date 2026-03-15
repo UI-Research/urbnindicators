@@ -18,9 +18,9 @@ reference:
   - se_simple
   - se_sum
   - se_proportion_ratio
+  - cv
 - title: Helper functions
   contents:
-  - get_acs_codebook
   - list_tables
   - list_variables 
   - select_variables_by_name
@@ -29,4 +29,5 @@ reference:
   - safe_divide
   - list_acs_variables
   - get_acs_codebook
+  
 
