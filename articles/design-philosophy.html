@@ -70,13 +70,9 @@
     
     
 <p><strong>urbnindicators</strong> makes a number of opinionated design
-choices about what data to select from the Census Bureau API, how to
-process it, what relevant derived variables to calculate, and even which
-types of geographies to support.</p>
-<p>“Opinionated” doesn’t mean that these decisions are the best ones for
-every user or use-case, but these decisions are designed to either speed
-or improve the accuracy of a common use-case involving a large set of
-variables (optionally over multiple years).</p>
+choices. “Opinionated” doesn’t mean that these decisions are the best
+ones for every user or use-case, but these decisions are designed to
+either speed or improve the accuracy of common workflows.</p>
 <div class="section level2">
 <h2 id="design-choices">Design choices<a class="anchor" aria-label="anchor" href="#design-choices"></a>
 </h2>
@@ -90,13 +86,6 @@ up are not available for block groups.</p></li>
 estimates bring margin of error challenges, even for relatively
 larger-population geographies, such as tracts, zip codes, and some
 places and counties.</p></li>
-<li><p><strong>Support only a subset of ACS variables.</strong>
-Pre-calculated ACS estimates cover tens of thousands of different
-variables. But, in our work, only a small fraction of these is used
-frequently. We’ve tried to select those common variables to return by
-default, cognizant that at present, every additional variable returned
-results in a slower query. Open an issue in GitHub if you’d like to see
-additional variables added to the default set.</p></li>
 <li><p><strong>Rename all variables.</strong> The default variable names
 returned by the API are not human-friendly. Not only is it challenging
 to determine what a given variable represents when you’re looking at a
@@ -110,8 +99,8 @@ approach is that the default API variable names are used in other
 publications, and that you will find no documentation anywhere (apart
 from the codebook returned by this package!) of a variable named, for
 example, <code>race_personofcolor_percent</code>. Variables in the
-codebook have their original API names included in their
-definitions.</p></li>
+codebook have their original API names included in their definitions so
+that you can cross-reference these as needed.</p></li>
 <li><p><strong>Use a consistent variable naming convention.</strong>
 Variable names follow the pattern
 <code>[concept]_[subconcept]_[characteristic]_[metric]</code>. For
@@ -126,7 +115,9 @@ select related groups of variables.</p></li>
 percentages are expressed as proportions (e.g., 0.25 rather than 25).
 This avoids ambiguity and simplifies downstream calculations (e.g.,
 multiplying a proportion by a population count). Use
-<code><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">scales::percent()</a></code> for display formatting.</p></li>
+<code><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">scales::percent()</a></code> for display formatting. You can always
+just multiply these values (and the MOEs) by 100 if you prefer; this
+multiplication requires no other adjustments to the MOEs.</p></li>
 <li><p><strong>Always propagate margins of error.</strong> When
 <code>urbnindicators</code> derives a new variable from two or more raw
 ACS estimates, it also calculates a margin of error for that derived
@@ -135,13 +126,6 @@ variable using Census Bureau-recommended formulae. This means every
 <code>_percent_M</code> variable. These derived MOEs have known
 limitations (see <code><a href="../articles/quantified-survey-error.html">vignette("quantified-survey-error")</a></code>) but
 are far preferable to dropping error information entirely.</p></li>
-<li><p><strong>Design for extensibility.</strong> New ACS tables can be
-added to the package via a single <code>register_table()</code> call in
-<code>R/table_registry.R</code>. The registration declaratively
-specifies raw variables, derived calculations, and codebook metadata;
-the codebook and margin of error calculations are generated
-automatically. See <code><a href="../articles/custom-derived-variables.html">vignette("custom-derived-variables")</a></code> for
-a walkthrough.</p></li>
 </ul>
 </div>
   </main>

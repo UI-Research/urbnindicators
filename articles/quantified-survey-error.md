@@ -1,5 +1,17 @@
 # Drawing Inferences while Accounting for Survey Error
 
+``` r
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(stringr)
+library(urbnindicators)
+library(sf)
+library(urbnthemes)
+library(tidycensus)
+library(gridExtra)
+```
+
 Because data from the American Community **Survey** are–you guessed
 it–survey data, they are subject to sampling error. Sampling error
 means, in brief, that when we extrapolate from our sample–say, 200
@@ -44,7 +56,7 @@ measures of error.
   access to a car.” (And then we should include, either as a footnote or
   in the body of the document, that this and other MOEs are calculated
   at the 90% confidence level). What this means in practice is that if
-  we were to repeat 100 times–using exactly the same methods–our
+  we were to repeat 100 times–-using exactly the same methods–-our
   approach to calculating this estimate, 90 of those times we would
   produce a parallel estimate between 15% and 25%, while 10 of those
   times, our estimate would fall outside this range.

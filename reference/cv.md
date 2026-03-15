@@ -16,12 +16,13 @@ cv(estimate, se)
 
 - se:
 
-  The standard error
+  The standard error (SE)
 
 ## Value
 
-A coefficient of variation at the 90% level
+A coefficient of variation
 
 ## Details
 
-Return a coefficient of variation at the 90% level
+Return a coefficient of variation reflecting the ration of the SE to the
+estimate

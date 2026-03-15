@@ -1,5 +1,15 @@
 # urbnindicators
 
+``` r
+library(urbnindicators)
+library(tidycensus)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+library(urbnthemes) # install from https://github.com/UrbanInstitute/urbnthemes
+```
+
 This vignette is organized into three parts:
 
 1.  We illustrate a typical workflow for obtaining American Community
@@ -105,10 +115,7 @@ abstracts the workflow above behind the scenes. Instead of a call to
 a call to
 [`urbnindicators::compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
 returns a dataset of both raw ACS measures and derived estimates (such
-as the share of all individuals who are disabled). And that dataset can
-include a range of measures–-spanning things such as health insurance,
-employment, housing costs, and race and ethnicity–-not just one variable
-or table from the ACS.
+as the share of all individuals who are disabled).
 
 ### Acquire data
 
@@ -119,8 +126,7 @@ geographies.
 Note that selecting more tables or more geographic units–either by
 selecting a `geography` option comprising more units, by selecting more
 states, or selecting more years–can significantly increase the query
-time. A tract-level query of the entire US for all supported variables
-can take 30+ minutes.
+time.
 
 Use
 [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
@@ -279,13 +285,31 @@ codebook %>%
 #> [1] "Numerator = sex_by_age_by_disability_status_male_under_5_years_with_a_disability (B18101_004), sex_by_age_by_disability_status_male_5_17_years_with_a_disability (B18101_007), sex_by_age_by_disability_status_male_18_34_years_with_a_disability (B18101_010), sex_by_age_by_disability_status_male_35_64_years_with_a_disability (B18101_013), sex_by_age_by_disability_status_male_65_74_years_with_a_disability (B18101_016), sex_by_age_by_disability_status_male_75_years_over_with_a_disability (B18101_019), sex_by_age_by_disability_status_female_under_5_years_with_a_disability (B18101_023), sex_by_age_by_disability_status_female_5_17_years_with_a_disability (B18101_026), sex_by_age_by_disability_status_female_18_34_years_with_a_disability (B18101_029), sex_by_age_by_disability_status_female_35_64_years_with_a_disability (B18101_032), sex_by_age_by_disability_status_female_65_74_years_with_a_disability (B18101_035), sex_by_age_by_disability_status_female_75_years_over_with_a_disability (B18101_038). Denominator = sex_by_age_by_disability_status_universe (B18101_001)."
 ```
 
-### Aggregate to custom geographies
+### Create your own derived variables
 
-ACS data are available for standard geographies, but many analyses
-require non-standard areas like neighborhoods or planning districts.
+For tables from
+[`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md),
+raw ACS variables and derived variables are automatically returned. But
+for other tables, there are no pre-computed (by `urbnindicators`)
+derived variables. And even for tables reflected in
+[`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md),
+you may want alternate or additional derived variables. `urbnindicators`
+provides a suite of helper functions (`define_*()`) that allow you to
+specify how you want to create these derived variables; these helper
+functions abstract away the actual calculations and ensure that you get
+an updated codeboook and correctly-pooled margins of error for each of
+your newly-derived variables. See [Custom Derived
+Variables](https://ui-research.github.io/urbnindicators/articles/custom-derived-variables.md)
+for more.
+
+### Interpolate data to custom geographies
+
+ACS data are available for many statistical and political geographies,
+but many analyses rfocus on other geographies like neighborhoods or
+planning districts.
 [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
-aggregates tract-level data to any user-defined geography, properly
-re-deriving percentages and propagating margins of error. See
-[Aggregating to Custom
+translates data from ACS-supported geographies to any user-defined
+geography, properly re-deriving percentages and propagating margins of
+error. See [Translating ACS Data to Custom
 Geographies](https://ui-research.github.io/urbnindicators/articles/custom-geographies.md)
 for a worked example.

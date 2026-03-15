@@ -69,6 +69,15 @@
 
     
     
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://scales.r-lib.org" class="external-link">scales</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://stringr.tidyverse.org" class="external-link">stringr</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/UrbanInstitute/urbnthemes" class="external-link">urbnthemes</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://walker-data.com/tidycensus/" class="external-link">tidycensus</a></span><span class="op">)</span></span></code></pre></div>
 <p>For many ACS-supported geographies and variables, sample sizes can
 lead to problematically large margins of error (MOEs). For example,
 census tracts are useful geographic units because they reveal spatial
@@ -111,7 +120,7 @@ assigning tracts to quadrants (via centroids) and for dissolving tract
 boundaries into quadrant boundaries later. Note that this is the simple
 case of interpolation where every source geography maps to one and only
 one target geography. We address the more complex case later.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dc_tracts</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
 <span>  tables <span class="op">=</span> <span class="st">"snap"</span>,</span>
@@ -124,13 +133,13 @@ one target geography. We address the more complex case later.</p>
 </h2>
 <p>For illustration, we’ll create four quadrants of DC by assigning
 tracts to a quadrant based on their centroid coordinates.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Calculate tract centroids and assign to quadrants</span></span>
 <span><span class="va">dc_tracts</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    centroid <span class="op">=</span> <span class="fu">st_centroid</span><span class="op">(</span><span class="va">geometry</span><span class="op">)</span>,</span>
-<span>    longitude <span class="op">=</span> <span class="fu">st_coordinates</span><span class="op">(</span><span class="va">centroid</span><span class="op">)</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>,</span>
-<span>    latitude <span class="op">=</span> <span class="fu">st_coordinates</span><span class="op">(</span><span class="va">centroid</span><span class="op">)</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
+<span>    centroid <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_unary.html" class="external-link">st_centroid</a></span><span class="op">(</span><span class="va">geometry</span><span class="op">)</span>,</span>
+<span>    longitude <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_coordinates.html" class="external-link">st_coordinates</a></span><span class="op">(</span><span class="va">centroid</span><span class="op">)</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>,</span>
+<span>    latitude <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_coordinates.html" class="external-link">st_coordinates</a></span><span class="op">(</span><span class="va">centroid</span><span class="op">)</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
 <span>    quadrant <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
 <span>      <span class="va">longitude</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">longitude</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">latitude</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">latitude</span><span class="op">)</span> <span class="op">~</span> <span class="st">"Northwest"</span>,</span>
 <span>      <span class="va">longitude</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">longitude</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">latitude</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">latitude</span><span class="op">)</span> <span class="op">~</span> <span class="st">"Northeast"</span>,</span>
@@ -140,23 +149,23 @@ tracts to a quadrant based on their centroid coordinates.</p>
 <p>Next, dissolve the tract geometries into quadrant boundaries. We do
 this <em>before</em> calling <code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> because the
 function drops geometry from its output.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Dissolve tract boundaries into quadrant polygons</span></span>
 <span><span class="va">quadrant_geometry</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">quadrant</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>geometry <span class="op">=</span> <span class="fu">st_union</span><span class="op">(</span><span class="va">geometry</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">"drop"</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>geometry <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_combine.html" class="external-link">st_union</a></span><span class="op">(</span><span class="va">geometry</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">"drop"</span><span class="op">)</span></span></code></pre></div>
 <p>Now aggregate the data with <code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code>. With
 <code>weight = NULL</code> (the default), it sums count variables,
 recalculates percentages from the summed components, and propagates
 margins of error.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Aggregate to quadrants</span></span>
 <span><span class="va">dc_quadrants</span> <span class="op">=</span> <span class="fu"><a href="../reference/interpolate_acs.html">interpolate_acs</a></span><span class="op">(</span></span>
 <span>  .data <span class="op">=</span> <span class="va">dc_tracts</span>,</span>
 <span>  target_geoid <span class="op">=</span> <span class="st">"quadrant"</span><span class="op">)</span></span></code></pre></div>
 <p>Finally, rejoin the dissolved geometry to the aggregated data for
 mapping.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Rejoin quadrant geometry for mapping</span></span>
 <span><span class="va">dc_quadrants_sf</span> <span class="op">=</span> <span class="va">quadrant_geometry</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">dc_quadrants</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"quadrant"</span> <span class="op">=</span> <span class="st">"GEOID"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -167,24 +176,24 @@ mapping.</p>
 <p>The maps below show the share of households receiving SNAP benefits.
 Notice how aggregating to quadrants produces more precise estimates with
 smaller margins of error.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">map_tracts</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_received_percent</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">scale_fill_gradientn</span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_received_percent</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_gradient.html" class="external-link">scale_fill_gradientn</a></span><span class="op">(</span></span>
 <span>    colours <span class="op">=</span> <span class="va">palette_urbn_cyan</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">7</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>    labels <span class="op">=</span> <span class="va">percent</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"SNAP Receipt (%)"</span>, subtitle <span class="op">=</span> <span class="st">"Tract-level"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/urbnthemes/man/theme_urbn_map.html" class="external-link">theme_urbn_map</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"SNAP Receipt (%)"</span>, subtitle <span class="op">=</span> <span class="st">"Tract-level"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">map_quadrants</span> <span class="op">=</span> <span class="va">dc_quadrants_sf</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_received_percent</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">scale_fill_gradientn</span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_received_percent</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_gradient.html" class="external-link">scale_fill_gradientn</a></span><span class="op">(</span></span>
 <span>    colours <span class="op">=</span> <span class="va">palette_urbn_cyan</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">7</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>    labels <span class="op">=</span> <span class="va">percent</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"SNAP Receipt (%)"</span>, subtitle <span class="op">=</span> <span class="st">"Quadrant-level"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/urbnthemes/man/theme_urbn_map.html" class="external-link">theme_urbn_map</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"SNAP Receipt (%)"</span>, subtitle <span class="op">=</span> <span class="st">"Quadrant-level"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">gridExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/gridExtra/man/arrangeGrob.html" class="external-link">grid.arrange</a></span><span class="op">(</span><span class="va">map_tracts</span>, <span class="va">map_quadrants</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="custom-geographies_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="1050"></p>
@@ -192,9 +201,9 @@ smaller margins of error.</p>
 size of the MOE relative to the size of the estimate) at the tract level
 exceeds 30—a common upper bound for “reliable” estimates—while
 quadrant-level CVs are substantially lower.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cv_tracts</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">st_drop_geometry</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    cv <span class="op">=</span> <span class="op">(</span><span class="va">snap_received_percent_M</span> <span class="op">/</span> <span class="fl">1.645</span><span class="op">)</span> <span class="op">/</span> <span class="va">snap_received_percent</span> <span class="op">*</span> <span class="fl">100</span>,</span>
 <span>    cv <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.infinite</a></span><span class="op">(</span><span class="va">cv</span><span class="op">)</span>, <span class="cn">NA_real_</span>, <span class="va">cv</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
@@ -216,7 +225,7 @@ our tract observations, we can detect statistically significant
 differences at greater geographic scales. This enables analysis for more
 policy-relevant areas and helps mitigate shortcomings associated with
 high measures of error for smaller-population observations.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Calculate DC-wide SNAP rate for comparison</span></span>
 <span><span class="va">dc_snap_rate</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">dc_tracts</span><span class="op">$</span><span class="va">snap_received</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">/</span></span>
 <span>               <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">dc_tracts</span><span class="op">$</span><span class="va">snap_universe</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -257,20 +266,20 @@ high measures of error for smaller-population observations.</p>
 <span></span>
 <span><span class="co"># Maps</span></span>
 <span><span class="va">map_tracts_sig</span> <span class="op">=</span> <span class="va">tracts_sig</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">difference</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">scale_fill_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="va">sig_colors</span>, na.value <span class="op">=</span> <span class="st">"grey80"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">difference</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">sig_colors</span>, na.value <span class="op">=</span> <span class="st">"grey80"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">urbnthemes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/urbnthemes/man/theme_urbn_map.html" class="external-link">theme_urbn_map</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">""</span>, subtitle <span class="op">=</span> <span class="st">"Tract-level"</span>, title <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">""</span>, subtitle <span class="op">=</span> <span class="st">"Tract-level"</span>, title <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">map_quadrants_sig</span> <span class="op">=</span> <span class="va">quadrants_sig</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">difference</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">scale_fill_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="va">sig_colors</span>, na.value <span class="op">=</span> <span class="st">"grey80"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">difference</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">sig_colors</span>, na.value <span class="op">=</span> <span class="st">"grey80"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">urbnthemes</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/urbnthemes/man/theme_urbn_map.html" class="external-link">theme_urbn_map</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">""</span>, subtitle <span class="op">=</span> <span class="st">"Quadrant-level"</span>, title <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">""</span>, subtitle <span class="op">=</span> <span class="st">"Quadrant-level"</span>, title <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">gridExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/gridExtra/man/arrangeGrob.html" class="external-link">grid.arrange</a></span><span class="op">(</span></span>
 <span>  <span class="va">map_tracts_sig</span>, <span class="va">map_quadrants_sig</span>,</span>
@@ -302,7 +311,7 @@ Geocorr, and other sources. We’ll pull tract-level SNAP data for both
 2020-vintage boundaries), crosswalk the 2019 data to 2020-vintage
 tracts, and then map the change in SNAP receipt—all expressed in a
 consistent set of tract boundaries.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># renv::install("UI-Research/crosswalk")</span></span>
 <span></span>
 <span><span class="co"># Pull 2019 ACS data (2010-vintage tracts) and 2024 ACS data (2020-vintage tracts)</span></span>
@@ -331,7 +340,7 @@ consistent set of tract boundaries.</p>
 <span></span>
 <span><span class="co"># Interpolate 2019 data to 2020-vintage tract boundaries</span></span>
 <span><span class="va">dc_2019_in_2020_tracts</span> <span class="op">=</span> <span class="fu"><a href="../reference/interpolate_acs.html">interpolate_acs</a></span><span class="op">(</span></span>
-<span>  .data <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">data_source_year</span> <span class="op">==</span> <span class="fl">2019</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">st_drop_geometry</span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  .data <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">data_source_year</span> <span class="op">==</span> <span class="fl">2019</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  target_geoid <span class="op">=</span> <span class="st">"target_tract"</span>,</span>
 <span>  weight <span class="op">=</span> <span class="st">"weight"</span>,</span>
 <span>  crosswalk <span class="op">=</span> <span class="va">tract_xwalk</span><span class="op">)</span></span>
@@ -357,17 +366,17 @@ consistent set of tract boundaries.</p>
 <span>      <span class="va">snap_ppt_change</span> <span class="op">&lt;</span> <span class="fl">0</span> <span class="op">~</span> <span class="st">"Significant decrease"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Map 1: percentage-point change in SNAP receipt</span></span>
-<span><span class="va">map_change</span> <span class="op">=</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">snap_change</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_ppt_change</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">scale_fill_gradient2</span><span class="op">(</span></span>
+<span><span class="va">map_change</span> <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">snap_change</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_ppt_change</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_gradient.html" class="external-link">scale_fill_gradient2</a></span><span class="op">(</span></span>
 <span>    low <span class="op">=</span> <span class="st">"#FDBF11"</span>,</span>
 <span>    mid <span class="op">=</span> <span class="st">"#D2D2D2"</span>,</span>
 <span>    high <span class="op">=</span> <span class="st">"#1696D2"</span>,</span>
 <span>    midpoint <span class="op">=</span> <span class="fl">0</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">guides</span><span class="op">(</span>fill <span class="op">=</span> <span class="fu">guide_colorbar</span><span class="op">(</span>direction <span class="op">=</span> <span class="st">"horizontal"</span>, title.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"Change (ppt)"</span>, subtitle <span class="op">=</span> <span class="st">"Percentage-point change"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/urbnthemes/man/theme_urbn_map.html" class="external-link">theme_urbn_map</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/guides.html" class="external-link">guides</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/guide_colourbar.html" class="external-link">guide_colorbar</a></span><span class="op">(</span>direction <span class="op">=</span> <span class="st">"horizontal"</span>, title.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"Change (ppt)"</span>, subtitle <span class="op">=</span> <span class="st">"Percentage-point change"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Map 2: statistical significance of the change</span></span>
 <span><span class="va">change_colors</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
@@ -375,13 +384,13 @@ consistent set of tract boundaries.</p>
 <span>  <span class="st">"Significant decrease"</span> <span class="op">=</span> <span class="st">"#FDBF11"</span>,</span>
 <span>  <span class="st">"Not significant"</span> <span class="op">=</span> <span class="st">"#D2D2D2"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">map_sig</span> <span class="op">=</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">snap_change</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">change_category</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">scale_fill_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="va">change_colors</span>, na.value <span class="op">=</span> <span class="st">"grey80"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">guides</span><span class="op">(</span>fill <span class="op">=</span> <span class="fu">guide_legend</span><span class="op">(</span>direction <span class="op">=</span> <span class="st">"horizontal"</span>, title.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">""</span>, subtitle <span class="op">=</span> <span class="st">"Statistical significance (relative to zero change)"</span><span class="op">)</span></span>
+<span><span class="va">map_sig</span> <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">snap_change</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="va">change_category</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_fill_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="va">change_colors</span>, na.value <span class="op">=</span> <span class="st">"grey80"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/urbnthemes/man/theme_urbn_map.html" class="external-link">theme_urbn_map</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/guides.html" class="external-link">guides</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/guide_legend.html" class="external-link">guide_legend</a></span><span class="op">(</span>direction <span class="op">=</span> <span class="st">"horizontal"</span>, title.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="st">""</span>, subtitle <span class="op">=</span> <span class="st">"Statistical significance (relative to zero change)"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">gridExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/gridExtra/man/arrangeGrob.html" class="external-link">grid.arrange</a></span><span class="op">(</span></span>
 <span>  <span class="va">map_change</span>, <span class="va">map_sig</span>,</span>

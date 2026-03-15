@@ -1,14 +1,9 @@
 # Design Philosophy
 
-**urbnindicators** makes a number of opinionated design choices about
-what data to select from the Census Bureau API, how to process it, what
-relevant derived variables to calculate, and even which types of
-geographies to support.
-
+**urbnindicators** makes a number of opinionated design choices.
 “Opinionated” doesn’t mean that these decisions are the best ones for
 every user or use-case, but these decisions are designed to either speed
-or improve the accuracy of a common use-case involving a large set of
-variables (optionally over multiple years).
+or improve the accuracy of common workflows.
 
 ## Design choices
 
@@ -21,14 +16,6 @@ variables (optionally over multiple years).
 - **Support five-year estimates only.** One-year estimates bring margin
   of error challenges, even for relatively larger-population
   geographies, such as tracts, zip codes, and some places and counties.
-
-- **Support only a subset of ACS variables.** Pre-calculated ACS
-  estimates cover tens of thousands of different variables. But, in our
-  work, only a small fraction of these is used frequently. We’ve tried
-  to select those common variables to return by default, cognizant that
-  at present, every additional variable returned results in a slower
-  query. Open an issue in GitHub if you’d like to see additional
-  variables added to the default set.
 
 - **Rename all variables.** The default variable names returned by the
   API are not human-friendly. Not only is it challenging to determine
@@ -43,7 +30,8 @@ variables (optionally over multiple years).
   publications, and that you will find no documentation anywhere (apart
   from the codebook returned by this package!) of a variable named, for
   example, `race_personofcolor_percent`. Variables in the codebook have
-  their original API names included in their definitions.
+  their original API names included in their definitions so that you can
+  cross-reference these as needed.
 
 - **Use a consistent variable naming convention.** Variable names follow
   the pattern `[concept]_[subconcept]_[characteristic]_[metric]`. For
@@ -61,7 +49,9 @@ variables (optionally over multiple years).
   ambiguity and simplifies downstream calculations (e.g., multiplying a
   proportion by a population count). Use
   [`scales::percent()`](https://scales.r-lib.org/reference/percent_format.html)
-  for display formatting.
+  for display formatting. You can always just multiply these values (and
+  the MOEs) by 100 if you prefer; this multiplication requires no other
+  adjustments to the MOEs.
 
 - **Always propagate margins of error.** When `urbnindicators` derives a
   new variable from two or more raw ACS estimates, it also calculates a
@@ -71,11 +61,3 @@ variables (optionally over multiple years).
   MOEs have known limitations (see
   [`vignette("quantified-survey-error")`](https://ui-research.github.io/urbnindicators/articles/quantified-survey-error.md))
   but are far preferable to dropping error information entirely.
-
-- **Design for extensibility.** New ACS tables can be added to the
-  package via a single `register_table()` call in `R/table_registry.R`.
-  The registration declaratively specifies raw variables, derived
-  calculations, and codebook metadata; the codebook and margin of error
-  calculations are generated automatically. See
-  [`vignette("custom-derived-variables")`](https://ui-research.github.io/urbnindicators/articles/custom-derived-variables.md)
-  for a walkthrough.

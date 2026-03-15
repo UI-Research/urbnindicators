@@ -1,5 +1,16 @@
 # Translating ACS Data to Custom Geographies
 
+``` r
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(stringr)
+library(urbnindicators)
+library(sf)
+library(urbnthemes)
+library(tidycensus)
+```
+
 For many ACS-supported geographies and variables, sample sizes can lead
 to problematically large margins of error (MOEs). For example, census
 tracts are useful geographic units because they reveal spatial nuance,

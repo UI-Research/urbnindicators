@@ -61,21 +61,21 @@
 </h1></div>
 <!-- badges: start -->
 
-<!-- badges: end -->
 </div>
 <div class="section level1">
 <h1 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h1>
 <p><strong>urbnindicators</strong> aims to provide users with analysis-ready data from the American Community Survey (ACS).</p>
-<p>With a single function call, you get:</p>
+<p>What you can access:</p>
 <ul>
-<li><p>Access to hundreds of standardized variables, such as percentages and the raw count variables used to produce them.</p></li>
-<li><p>Margins of error for all variables–those direct from the API as well as derived variables.</p></li>
-<li><p>Meaningful, consistent variable names.</p></li>
+<li><p>Hundreds of pre-computed variables, including percentages and the raw count variables used to produce them. Or flexibly query any table your heart desires.</p></li>
+<li><p>Or flexibly specify your own derived variables with a series of helper functions.</p></li>
+<li><p>Margins of error for all variables–those direct from the API as well as derived variables–with correctly calculated pooled margins of error, per Census Bureau guidance.</p></li>
+<li><p>Meaningful, consistent variable names–no more “B01003_001”; try “total_population_universe” instead. (But if you’re fond of the API’s variable names, those are stored in the codebook as well for cross-referencing.)</p></li>
 <li><p>A codebook that describes how each variable is calculated.</p></li>
-<li><p>The built-in capacity to pull data for multiple years and multiple states.</p></li>
+<li><p>Data for multiple years and multiple states out of the box.</p></li>
 <li><p>Supplemental measures, such as population density, that aren’t available from the ACS.</p></li>
-<li><p>Built-in quality checks to help ensure that calculated variables and measures of error are accurate. Plus some good, old-fashioned manual QC. That said–use at your own risk. We cannot and do not guarantee there aren’t bugs.</p></li>
+<li><p>Tools to aggregate or interpolate your data to different geographies–along with correctly adjusted margins of error.</p></li>
 </ul>
 </div>
 <div class="section level1">
@@ -230,7 +230,7 @@
 <div class="section level2">
 <h2 id="custom-geographies">Custom Geographies<a class="anchor" aria-label="anchor" href="#custom-geographies"></a>
 </h2>
-<p>ACS data are available for standard geographies (tracts, counties, states, etc.), but many analyses require non-standard areas like neighborhoods, school zones, or planning districts. <code><a href="reference/interpolate_acs.html">interpolate_acs()</a></code> aggregates tract-level data to any user-defined geography, properly re-deriving percentages and propagating margins of error:</p>
+<p>ACS data are available for standard geographies (tracts, counties, states, etc.), but many analyses require non-standard areas like neighborhoods, school zones, or planning districts. <code><a href="reference/interpolate_acs.html">interpolate_acs()</a></code> aggregates source data to any user-defined geography, properly re-deriving percentages and propagating margins of error:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dc_tracts</span> <span class="op">=</span> <span class="fu"><a href="reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  tables <span class="op">=</span> <span class="st">"snap"</span>,</span>
@@ -279,10 +279,7 @@
 <span>      <span class="st">"snap_not_received_percent"</span>,</span>
 <span>      numerator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span><span class="op">)</span>,</span>
 <span>      numerator_subtract_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_received"</span><span class="op">)</span>,</span>
-<span>      denominator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="reference/define_one_minus.html">define_one_minus</a></span><span class="op">(</span></span>
-<span>      <span class="st">"snap_received_complement"</span>,</span>
-<span>      source_variable <span class="op">=</span> <span class="st">"snap_received_percent"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      denominator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span>
@@ -296,40 +293,7 @@
 <span><span class="co">#&gt; $ snap_not_received_percent   &lt;dbl&gt; 0.857</span></span>
 <span><span class="co">#&gt; $ snap_received_percent_M     &lt;dbl&gt; 0.0064</span></span>
 <span><span class="co">#&gt; $ snap_not_received_percent_M &lt;dbl&gt; 0.0071</span></span></code></pre></div>
-<p>The available helpers are:</p>
-<table class="table">
-<colgroup>
-<col width="35%">
-<col width="64%">
-</colgroup>
-<thead><tr class="header">
-<th>Helper</th>
-<th>Use case</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td><code><a href="reference/define_percent.html">define_percent()</a></code></td>
-<td>Ratio of a numerator to a denominator</td>
-</tr>
-<tr class="even">
-<td><code><a href="reference/define_across_percent.html">define_across_percent()</a></code></td>
-<td>Percentages for every column matching a regex</td>
-</tr>
-<tr class="odd">
-<td><code><a href="reference/define_across_sum.html">define_across_sum()</a></code></td>
-<td>Sum paired columns (e.g., male + female counts)</td>
-</tr>
-<tr class="even">
-<td><code><a href="reference/define_one_minus.html">define_one_minus()</a></code></td>
-<td>Complement of an existing percentage (1 - x)</td>
-</tr>
-<tr class="odd">
-<td><code><a href="reference/define_metadata.html">define_metadata()</a></code></td>
-<td>Codebook-only entry for a non-computed variable</td>
-</tr>
-</tbody>
-</table>
-<p>See <code><a href="articles/custom-derived-variables.html">vignette("custom-derived-variables")</a></code> for detailed examples of each helper.</p>
+<p>See <code><a href="articles/custom-derived-variables.html">vignette("custom-derived-variables")</a></code> for detailed examples of each of the <code>define_*()</code> helpers.</p>
 </div>
 </div>
 <div class="section level1">
@@ -348,8 +312,7 @@
 <div class="section level1">
 <h1 id="credits">Credits<a class="anchor" aria-label="anchor" href="#credits"></a>
 </h1>
-<p>This package is built on top of and enormously indebted to <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code>, which provides the core functionality for accessing the Census Bureau API. For users who want additional variables, <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code> exposes the entire range of pre-tabulated variables available from the ACS and provides access to ACS microdata and other Census Bureau datasets.</p>
-<p>Learn more here: <a href="https://walker-data.com/tidycensus/index.html" class="external-link uri">https://walker-data.com/tidycensus/index.html</a>.</p>
+<p>This package is built on top of and enormously indebted to <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code>, which provides the core functionality for accessing the Census Bureau API. Learn more here: <a href="https://walker-data.com/tidycensus/index.html" class="external-link uri">https://walker-data.com/tidycensus/index.html</a>.</p>
 </div>
 
   </main><aside class="col-md-3"><div class="license">
@@ -380,6 +343,7 @@
 <ul class="list-unstyled">
 <li><a href="https://lifecycle.r-lib.org/articles/stages.html#experimental" class="external-link"><img src="https://img.shields.io/badge/lifecycle-experimental-orange.svg" alt="Lifecycle: experimental"></a></li>
 <li><a href="https://www.gnu.org/licenses/gpl-3.0" class="external-link"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a></li>
+<li><a href="https://app.codecov.io/gh/UI-Research/urbnindicators" class="external-link"><img src="https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg" alt="Codecov test coverage"></a></li>
 <li><a href="https://app.codecov.io/gh/UI-Research/urbnindicators" class="external-link"><img src="https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg" alt="Codecov test coverage"></a></li>
 </ul>
 </div>
