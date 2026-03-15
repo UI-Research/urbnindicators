@@ -91,8 +91,9 @@ combine the margins of error that are returned by
 [`tidycensus::get_acs()`](https://walker-data.com/tidycensus/reference/get_acs.html)
 to calculate pooled errors for the new percent-disabled variable, opting
 simply to drop this critical information from their analysis. (See
-(quantified-survey-error)\[quantified-survey-error.html\] to learn more
-about how
+[Quantifying Survey
+Error](https://ui-research.github.io/urbnindicators/articles/quantified-survey-error.md)
+to learn more about how
 [`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
 helps simplify this task.)
 
@@ -139,21 +140,21 @@ to see every table supported by the Census Bureau API:
 
 ``` r
 get_acs_codebook() |>
-  ## just showing a sample of the 28,000+ variables available
-  slice_sample(n = 10)
+  filter(str_detect(variable_clean, "snap")) |>
+  head(10)
 #> # A tibble: 10 × 3
-#>    table   variable_raw variable_clean                                          
-#>    <chr>   <chr>        <chr>                                                   
-#>  1 B08203  B08203_029   number_workers_in_household_by_vehicles_available_3_mor…
-#>  2 B25070  B25070_011   gross_rent_as_a_percentage_household_income_in_past_12_…
-#>  3 B10059  B10059_005   poverty_status_in_past_12_months_grandparents_living_wi…
-#>  4 B17017  B17017_042   poverty_status_in_past_12_months_by_household_type_by_a…
-#>  5 B02017  B02017_007   aian_alone_in_any_combination_by_selected_tribal_groupi…
-#>  6 B24124  B24124_464   detailed_occupation_full_time_year_round_civilian_emplo…
-#>  7 B24114  B24114_132   detailed_occupation_civilian_employed_population_16_yea…
-#>  8 B24122  B24122_465   detailed_occupation_by_median_earnings_in_past_12_month…
-#>  9 B26203E B26203E_004  group_quarters_type_5_types_nhpi_alone_group_quarters_p…
-#> 10 B19037A B19037A_032  age_householder_by_household_income_in_past_12_months_i…
+#>    table  variable_raw variable_clean                                           
+#>    <chr>  <chr>        <chr>                                                    
+#>  1 B09010 B09010_001   receipt_supplemental_security_income_ssi_cash_public_ass…
+#>  2 B09010 B09010_002   receipt_supplemental_security_income_ssi_cash_public_ass…
+#>  3 B09010 B09010_003   receipt_supplemental_security_income_ssi_cash_public_ass…
+#>  4 B09010 B09010_004   receipt_supplemental_security_income_ssi_cash_public_ass…
+#>  5 B09010 B09010_005   receipt_supplemental_security_income_ssi_cash_public_ass…
+#>  6 B09010 B09010_006   receipt_supplemental_security_income_ssi_cash_public_ass…
+#>  7 B09010 B09010_007   receipt_supplemental_security_income_ssi_cash_public_ass…
+#>  8 B09010 B09010_008   receipt_supplemental_security_income_ssi_cash_public_ass…
+#>  9 B09010 B09010_009   receipt_supplemental_security_income_ssi_cash_public_ass…
+#> 10 B09010 B09010_010   receipt_supplemental_security_income_ssi_cash_public_ass…
 ```
 
 Here we request just two tables–`disability` and
@@ -168,11 +169,30 @@ df_urbnindicators = compile_acs_data(
   spatial = TRUE)
 ```
 
+You can also pass vectors of years and/or states to pull data across
+multiple time periods or geographies in a single call:
+
+``` r
+df_multi = compile_acs_data(
+  years = c(2019, 2024),
+  tables = "disability",
+  geography = "county",
+  states = c("NJ", "NY"))
+
+df_multi %>%
+  count(data_source_year)
+#> # A tibble: 2 × 2
+#>   data_source_year     n
+#>              <dbl> <int>
+#> 1             2019    83
+#> 2             2024    83
+```
+
 Alternately, you can pass the name of a variable or table from
 [`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md)
 to
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
-The equivalent would be:
+The equivalent of the first call above would be:
 
 ``` r
 df_urbnindicators = compile_acs_data(
@@ -195,11 +215,11 @@ df_urbnindicators %>%
     scale_fill_continuous(labels = scales::percent, transform = "reverse") +
     labs(
       title = "Disability Rates Appear Higher in Southern NJ",
-      subtitle = "Disability rates by county, NJ, 2018-2022 ACS",
+      subtitle = "Disability rates by county, NJ, 2020-2024 ACS",
       fill = "Population with an ACS-defined disability (%)" %>% str_wrap(20))
 ```
 
-![](urbnindicators_files/figure-html/unnamed-chunk-8-1.png)
+![](urbnindicators_files/figure-html/unnamed-chunk-9-1.png)
 
 ### Document data
 
@@ -207,25 +227,65 @@ There’s a lot happening behind the scenes, so it’s important to
 understand what each variable represents and how it was calculated.
 [`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
 includes a codebook as an attribute of the dataframe returned from
-[`urbnindicators::compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
 View and navigate through the [full codebook
-here](https://ui-research.github.io/urbnindicators/articles/articles/codebook.md).
+here](https://ui-research.github.io/urbnindicators/articles/codebook.md).
 
-The codebook specifies the variable type and provides a definition of
-how the variable was calculated. Most (though not all) variables that
-are directly available from the ACS are count variables. Many of the
-variables that are calculated by
-[`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
-are percent variables, where we divide two count variables.
-
-Others, however, are quite complex. For example, `disability_percent` is
-the sum of all of the sex-by-age groupings for people with disabilities
-(numerator) divided by the table universe.
+Access the codebook with [`attr()`](https://rdrr.io/r/base/attr.html):
 
 ``` r
-df_urbnindicators %>%
-  attr("codebook") %>%
-  filter(str_detect(calculated_variable, "^disability_percent$")) %>%
+codebook = attr(df_urbnindicators, "codebook")
+
+codebook %>%
+  head(5)
+#> # A tibble: 5 × 9
+#>   calculated_variable                    variable_type definition numerator_vars
+#>   <chr>                                  <chr>         <chr>      <list>        
+#> 1 total_population_universe              Count         This is a… <chr [0]>     
+#> 2 means_transportation_work_universe     Count         This is a… <chr [0]>     
+#> 3 means_transportation_work_car_truck_v… Count         This is a… <chr [0]>     
+#> 4 means_transportation_work_car_truck_v… Count         This is a… <chr [0]>     
+#> 5 means_transportation_work_car_truck_v… Count         This is a… <chr [0]>     
+#> # ℹ 5 more variables: numerator_subtract_vars <list>, denominator_vars <list>,
+#> #   denominator_subtract_vars <list>, se_calculation_type <chr>,
+#> #   aggregation_strategy <chr>
+```
+
+The codebook has three columns:
+
+- **calculated_variable** – the variable name as it appears in the
+  dataframe.
+- **variable_type** – whether the variable is a `count` (raw ACS
+  estimate), a `percent` (derived ratio), or `metadata` (e.g., a median
+  or geographic identifier).
+- **definition** – a formula showing how the variable was calculated.
+  For raw ACS variables, this is the original Census Bureau variable
+  code (e.g., `B22003_002`). For derived variables, this is an
+  expression like `snap_received / snap_universe`.
+
+These definition strings are also used internally to calculate margins
+of error for derived variables (see [Quantifying Survey
+Error](https://ui-research.github.io/urbnindicators/articles/quantified-survey-error.md)),
+so their accuracy is critical.
+
+Some definitions are quite complex. For example, `disability_percent` is
+the sum of all of the sex-by-age groupings for people with disabilities
+(numerator) divided by the table universe:
+
+``` r
+codebook %>%
+  filter(calculated_variable == "disability_percent") %>%
   pull(definition)
 #> [1] "Numerator = sex_by_age_by_disability_status_male_under_5_years_with_a_disability (B18101_004), sex_by_age_by_disability_status_male_5_17_years_with_a_disability (B18101_007), sex_by_age_by_disability_status_male_18_34_years_with_a_disability (B18101_010), sex_by_age_by_disability_status_male_35_64_years_with_a_disability (B18101_013), sex_by_age_by_disability_status_male_65_74_years_with_a_disability (B18101_016), sex_by_age_by_disability_status_male_75_years_over_with_a_disability (B18101_019), sex_by_age_by_disability_status_female_under_5_years_with_a_disability (B18101_023), sex_by_age_by_disability_status_female_5_17_years_with_a_disability (B18101_026), sex_by_age_by_disability_status_female_18_34_years_with_a_disability (B18101_029), sex_by_age_by_disability_status_female_35_64_years_with_a_disability (B18101_032), sex_by_age_by_disability_status_female_65_74_years_with_a_disability (B18101_035), sex_by_age_by_disability_status_female_75_years_over_with_a_disability (B18101_038). Denominator = sex_by_age_by_disability_status_universe (B18101_001)."
 ```
+
+### Aggregate to custom geographies
+
+ACS data are available for standard geographies, but many analyses
+require non-standard areas like neighborhoods or planning districts.
+[`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
+aggregates tract-level data to any user-defined geography, properly
+re-deriving percentages and propagating margins of error. See
+[Aggregating to Custom
+Geographies](https://ui-research.github.io/urbnindicators/articles/custom-geographies.md)
+for a worked example.

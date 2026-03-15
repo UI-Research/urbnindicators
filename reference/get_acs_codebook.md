@@ -7,7 +7,7 @@ finding the table code to pass to `compile_acs_data(tables = ...)`.
 ## Usage
 
 ``` r
-get_acs_codebook(year = 2022, table = NULL)
+get_acs_codebook(year = 2024, table = NULL)
 ```
 
 ## Arguments

@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Aggregating to Custom Geographies • urbnindicators</title>
+<title>Translating ACS Data to Custom Geographies • urbnindicators</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Aggregating to Custom Geographies">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Translating ACS Data to Custom Geographies">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -35,9 +35,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
-    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
-    <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
   </ul>
 </li>
@@ -60,7 +60,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Aggregating to Custom Geographies</h1>
+      <h1>Translating ACS Data to Custom Geographies</h1>
             
       
 
@@ -69,23 +69,48 @@
 
     
     
-<p>Census tracts are useful geographic units, but their small
-populations often produce estimates with large margins of error. When
-analyzing data, these imprecise estimates make it difficult to detect
-meaningful differences between areas—even when real differences
-exist.</p>
-<p><code><a href="../reference/calculate_custom_geographies.html">calculate_custom_geographies()</a></code> addresses this by
-aggregating tract-level (or really any level of data) data to
-user-defined geographies (e.g., neighborhoods, planning districts, or
-school zones). This aggregation increases sample sizes, reduces
-coefficients of variation, and enables more reliable statistical
-inference.</p>
+<p>For many ACS-supported geographies and variables, sample sizes can
+lead to problematically large margins of error (MOEs). For example,
+census tracts are useful geographic units because they reveal spatial
+nuance, but in many cases, their MOEs are larger than the actual
+estimates they accompany. (Note that similar issues arise with
+small-population places and counties, among many other geographies.)
+While it’s easy to simply ignore these MOEs, estimates with large MOEs
+can offer a very misleading sense of nuance and precision, leading to
+incorrect inferences and decisionmaking. And for more rigorous analysis
+that looks for statistically significant differences, large MOEs at, for
+example, the tract level, make it difficult to detect meaningful
+differences between areas—even when real differences exist.</p>
+<p>Another challenge is that much decisionmaking occurs at geographies
+that are not supported directly by the ACS. Think, for example, of
+school districts, political wards, a city’s neighborhoods, or the
+unincorporated area governed by a county. To translate (or
+“interpolate”) data to these geographies can require significant work,
+and the process of accurately interpolating not just estimates but also
+their MOEs is both error-prone and time-intensive to the point where
+very few analysts do so. But MOEs are as fundamental to interpreting ACS
+data as are ACS estimates themselves.</p>
+<p><code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> addresses some of these challenges by
+supporting users in interpolating both ACS estimates and MOEs to
+user-defined geographies. It requires a crosswalk that specifies the
+share of source geography values that should be allocated to each target
+geography, though for the special case where source geographies are
+perfectly nested within target geographies (e.g., tracts within
+counties), the function assigns weights of one to every observation (the
+case when <code>weight = NULL</code>). Note that
+<code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> always returns a non-spatial dataframe,
+so geometry must be managed separately.</p>
 <div class="section level2">
 <h2 id="example-dc-quadrants">Example: DC Quadrants<a class="anchor" aria-label="anchor" href="#example-dc-quadrants"></a>
 </h2>
-<p>We’ll demonstrate using tract-level data for Washington, DC,
-comparing the share of population receiving SNAP benefits across areas
-“quadrants”.</p>
+<p>We’ll demonstrate <code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> first using
+tract-level data for Washington, DC, comparing the share of population
+receiving SNAP benefits across “quadrants”. We pull tract data with
+<code>spatial = TRUE</code> because we need the geometry both for
+assigning tracts to quadrants (via centroids) and for dissolving tract
+boundaries into quadrant boundaries later. Note that this is the simple
+case of interpolation where every source geography maps to one and only
+one target geography. We address the more complex case later.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dc_tracts</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
@@ -97,98 +122,129 @@ comparing the share of population receiving SNAP benefits across areas
 <div class="section level2">
 <h2 id="creating-custom-geographies">Creating Custom Geographies<a class="anchor" aria-label="anchor" href="#creating-custom-geographies"></a>
 </h2>
-<p>For illustration, we’ll create four quadrants of DC by grouping
-tracts based on their centroid coordinates. In practice, you would join
-tracts to meaningful boundaries like neighborhoods or planning areas, or
-you could group arbitrary numbers of adjacent tracts to form
-pseudo-neighborhoods with larger populations than are captured in any
-single tract.</p>
+<p>For illustration, we’ll create four quadrants of DC by assigning
+tracts to a quadrant based on their centroid coordinates.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Calculate tract centroids and assign to quadrants</span></span>
 <span><span class="va">dc_tracts</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">mutate</span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    centroid <span class="op">=</span> <span class="fu">st_centroid</span><span class="op">(</span><span class="va">geometry</span><span class="op">)</span>,</span>
 <span>    longitude <span class="op">=</span> <span class="fu">st_coordinates</span><span class="op">(</span><span class="va">centroid</span><span class="op">)</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>,</span>
 <span>    latitude <span class="op">=</span> <span class="fu">st_coordinates</span><span class="op">(</span><span class="va">centroid</span><span class="op">)</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
-<span>    quadrant <span class="op">=</span> <span class="fu">case_when</span><span class="op">(</span></span>
+<span>    quadrant <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
 <span>      <span class="va">longitude</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">longitude</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">latitude</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">latitude</span><span class="op">)</span> <span class="op">~</span> <span class="st">"Northwest"</span>,</span>
 <span>      <span class="va">longitude</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">longitude</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">latitude</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">latitude</span><span class="op">)</span> <span class="op">~</span> <span class="st">"Northeast"</span>,</span>
 <span>      <span class="va">longitude</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">longitude</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">latitude</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">latitude</span><span class="op">)</span> <span class="op">~</span> <span class="st">"Southwest"</span>,</span>
 <span>      <span class="va">longitude</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">longitude</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">latitude</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">latitude</span><span class="op">)</span> <span class="op">~</span> <span class="st">"Southeast"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">select</span><span class="op">(</span><span class="op">-</span><span class="va">centroid</span>, <span class="op">-</span><span class="va">longitude</span>, <span class="op">-</span><span class="va">latitude</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Aggregate to quadrants</span></span>
-<span><span class="va">dc_quadrants</span> <span class="op">=</span> <span class="fu"><a href="../reference/calculate_custom_geographies.html">calculate_custom_geographies</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">centroid</span>, <span class="op">-</span><span class="va">longitude</span>, <span class="op">-</span><span class="va">latitude</span><span class="op">)</span></span></code></pre></div>
+<p>Next, dissolve the tract geometries into quadrant boundaries. We do
+this <em>before</em> calling <code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> because the
+function drops geometry from its output.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Dissolve tract boundaries into quadrant polygons</span></span>
+<span><span class="va">quadrant_geometry</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">quadrant</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>geometry <span class="op">=</span> <span class="fu">st_union</span><span class="op">(</span><span class="va">geometry</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">"drop"</span><span class="op">)</span></span></code></pre></div>
+<p>Now aggregate the data with <code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code>. With
+<code>weight = NULL</code> (the default), it sums count variables,
+recalculates percentages from the summed components, and propagates
+margins of error.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Aggregate to quadrants</span></span>
+<span><span class="va">dc_quadrants</span> <span class="op">=</span> <span class="fu"><a href="../reference/interpolate_acs.html">interpolate_acs</a></span><span class="op">(</span></span>
 <span>  .data <span class="op">=</span> <span class="va">dc_tracts</span>,</span>
-<span>  group_id <span class="op">=</span> <span class="st">"quadrant"</span>,</span>
-<span>  spatial <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span>  target_geoid <span class="op">=</span> <span class="st">"quadrant"</span><span class="op">)</span></span></code></pre></div>
+<p>Finally, rejoin the dissolved geometry to the aggregated data for
+mapping.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Rejoin quadrant geometry for mapping</span></span>
+<span><span class="va">dc_quadrants_sf</span> <span class="op">=</span> <span class="va">quadrant_geometry</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">dc_quadrants</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"quadrant"</span> <span class="op">=</span> <span class="st">"GEOID"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="comparing-precision">Comparing Precision<a class="anchor" aria-label="anchor" href="#comparing-precision"></a>
 </h2>
 <p>The maps below show the share of households receiving SNAP benefits.
 Notice how aggregating to quadrants produces more precise estimates with
-smaller margins of error. Indeed, the median coefficient of variation
-(derived from the MOE) for tract level is greater than 30, a common
-upper bound for “reliable” estimates.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span>  <span class="fu">bind_rows</span><span class="op">(</span></span>
-<span>    <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">mutate</span><span class="op">(</span>geography <span class="op">=</span> <span class="st">"Tract"</span><span class="op">)</span>,</span>
-<span>    <span class="va">dc_quadrants</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">mutate</span><span class="op">(</span>geography <span class="op">=</span> <span class="st">"Quadrant"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">mutate</span><span class="op">(</span></span>
-<span>    .by <span class="op">=</span> <span class="va">geography</span>,</span>
-<span>    cv <span class="op">=</span> <span class="op">(</span><span class="va">snap_received_percent_M</span> <span class="op">/</span> <span class="fl">1.645</span><span class="op">)</span> <span class="op">/</span> <span class="va">snap_received_percent</span> <span class="op">*</span> <span class="fl">100</span>,</span>
-<span>    cv <span class="op">=</span> <span class="fu">if_else</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.infinite</a></span><span class="op">(</span><span class="va">cv</span><span class="op">)</span>, <span class="cn">NA_real_</span>, <span class="va">cv</span><span class="op">)</span>,</span>
-<span>    median_cv <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">cv</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>    label <span class="op">=</span> <span class="fu">str_c</span><span class="op">(</span><span class="va">geography</span>, <span class="st">" - median CV: "</span>, <span class="va">median_cv</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+smaller margins of error.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">map_tracts</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_received_percent</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">scale_fill_continuous</span><span class="op">(</span>palette <span class="op">=</span> <span class="va">palette_urbn_cyan</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">7</span><span class="op">)</span><span class="op">]</span>, labels <span class="op">=</span> <span class="fu">scales</span><span class="fu">::</span><span class="va"><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">percent</a></span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"SNAP Receipt (%)"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu">facet_wrap</span><span class="op">(</span><span class="op">~</span> <span class="va">label</span><span class="op">)</span></span></code></pre></div>
-<p><img src="custom-geographies_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="1050"></p>
-<p>The quadrant-level estimates have substantially lower margins of
-error, indicating more reliable estimates.</p>
+<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_received_percent</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">scale_fill_gradientn</span><span class="op">(</span></span>
+<span>    colours <span class="op">=</span> <span class="va">palette_urbn_cyan</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">7</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>    labels <span class="op">=</span> <span class="va">percent</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"SNAP Receipt (%)"</span>, subtitle <span class="op">=</span> <span class="st">"Tract-level"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">map_quadrants</span> <span class="op">=</span> <span class="va">dc_quadrants_sf</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_received_percent</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">scale_fill_gradientn</span><span class="op">(</span></span>
+<span>    colours <span class="op">=</span> <span class="va">palette_urbn_cyan</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">7</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>    labels <span class="op">=</span> <span class="va">percent</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"SNAP Receipt (%)"</span>, subtitle <span class="op">=</span> <span class="st">"Quadrant-level"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">gridExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/gridExtra/man/arrangeGrob.html" class="external-link">grid.arrange</a></span><span class="op">(</span><span class="va">map_tracts</span>, <span class="va">map_quadrants</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<p><img src="custom-geographies_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="1050"></p>
+<p>Indeed, the median Coefficient of Variation (CV; which reflects the
+size of the MOE relative to the size of the estimate) at the tract level
+exceeds 30—a common upper bound for “reliable” estimates—while
+quadrant-level CVs are substantially lower.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cv_tracts</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">st_drop_geometry</span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    cv <span class="op">=</span> <span class="op">(</span><span class="va">snap_received_percent_M</span> <span class="op">/</span> <span class="fl">1.645</span><span class="op">)</span> <span class="op">/</span> <span class="va">snap_received_percent</span> <span class="op">*</span> <span class="fl">100</span>,</span>
+<span>    cv <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.infinite</a></span><span class="op">(</span><span class="va">cv</span><span class="op">)</span>, <span class="cn">NA_real_</span>, <span class="va">cv</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>median_cv <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">cv</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">cv_quadrants</span> <span class="op">=</span> <span class="va">dc_quadrants</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    cv <span class="op">=</span> <span class="op">(</span><span class="va">snap_received_percent_M</span> <span class="op">/</span> <span class="fl">1.645</span><span class="op">)</span> <span class="op">/</span> <span class="va">snap_received_percent</span> <span class="op">*</span> <span class="fl">100</span>,</span>
+<span>    cv <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/is.finite.html" class="external-link">is.infinite</a></span><span class="op">(</span><span class="va">cv</span><span class="op">)</span>, <span class="cn">NA_real_</span>, <span class="va">cv</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>median_cv <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">cv</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Tract-level median CV: 37. Quadrant-level median CV: 7.</p>
 </div>
 <div class="section level2">
 <h2 id="detecting-statistically-significant-differences">Detecting Statistically Significant Differences<a class="anchor" aria-label="anchor" href="#detecting-statistically-significant-differences"></a>
 </h2>
-<p>By aggregating our tract observations, we can also calculate
-statistically significant differences at greater geographic scales. This
-enables analysis for more policy-relevant areas and helps mitigate
-shortcomings associated with high measures of error for
-smaller-population observations, which can lead to findings of no
-statistically significant differences.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<p>At the tract level, many tracts are not statistically significantly
+different as compared to the mean across all DC tracts. By aggregating
+our tract observations, we can detect statistically significant
+differences at greater geographic scales. This enables analysis for more
+policy-relevant areas and helps mitigate shortcomings associated with
+high measures of error for smaller-population observations.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Calculate DC-wide SNAP rate for comparison</span></span>
 <span><span class="va">dc_snap_rate</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">dc_tracts</span><span class="op">$</span><span class="va">snap_received</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">/</span></span>
 <span>               <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">dc_tracts</span><span class="op">$</span><span class="va">snap_universe</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Test significance at tract level</span></span>
 <span><span class="va">tracts_sig</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">mutate</span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    significant <span class="op">=</span> <span class="fu">tidycensus</span><span class="fu">::</span><span class="fu"><a href="https://walker-data.com/tidycensus/reference/significance.html" class="external-link">significance</a></span><span class="op">(</span></span>
 <span>      est1 <span class="op">=</span> <span class="va">snap_received_percent</span>,</span>
 <span>      est2 <span class="op">=</span> <span class="va">dc_snap_rate</span>,</span>
 <span>      moe1 <span class="op">=</span> <span class="va">snap_received_percent_M</span>,</span>
 <span>      moe2 <span class="op">=</span> <span class="fl">0.005</span>,</span>
 <span>      clevel <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span>,</span>
-<span>    difference <span class="op">=</span> <span class="fu">case_when</span><span class="op">(</span></span>
+<span>    difference <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
 <span>      <span class="op">!</span><span class="va">significant</span> <span class="op">~</span> <span class="st">"Not significant"</span>,</span>
 <span>      <span class="va">snap_received_percent</span> <span class="op">&gt;</span> <span class="va">dc_snap_rate</span> <span class="op">~</span> <span class="st">"Higher than DC average"</span>,</span>
 <span>      <span class="va">snap_received_percent</span> <span class="op">&lt;</span> <span class="va">dc_snap_rate</span> <span class="op">~</span> <span class="st">"Lower than DC average"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Test significance at quadrant level</span></span>
-<span><span class="va">quadrants_sig</span> <span class="op">=</span> <span class="va">dc_quadrants</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">mutate</span><span class="op">(</span></span>
+<span><span class="va">quadrants_sig</span> <span class="op">=</span> <span class="va">dc_quadrants_sf</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    significant <span class="op">=</span> <span class="fu">tidycensus</span><span class="fu">::</span><span class="fu"><a href="https://walker-data.com/tidycensus/reference/significance.html" class="external-link">significance</a></span><span class="op">(</span></span>
 <span>      est1 <span class="op">=</span> <span class="va">snap_received_percent</span>,</span>
 <span>      est2 <span class="op">=</span> <span class="va">dc_snap_rate</span>,</span>
 <span>      moe1 <span class="op">=</span> <span class="va">snap_received_percent_M</span>,</span>
 <span>      moe2 <span class="op">=</span> <span class="fl">0.005</span>,</span>
 <span>      clevel <span class="op">=</span> <span class="fl">0.9</span><span class="op">)</span>,</span>
-<span>    difference <span class="op">=</span> <span class="fu">case_when</span><span class="op">(</span></span>
+<span>    difference <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
 <span>      <span class="op">!</span><span class="va">significant</span> <span class="op">~</span> <span class="st">"Not significant"</span>,</span>
 <span>      <span class="va">snap_received_percent</span> <span class="op">&gt;</span> <span class="va">dc_snap_rate</span> <span class="op">~</span> <span class="st">"Higher than DC average"</span>,</span>
 <span>      <span class="va">snap_received_percent</span> <span class="op">&lt;</span> <span class="va">dc_snap_rate</span> <span class="op">~</span> <span class="st">"Lower than DC average"</span><span class="op">)</span><span class="op">)</span></span>
@@ -222,23 +278,143 @@ statistically significant differences.</p>
 <span>  top <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/grid.text.html" class="external-link">textGrob</a></span><span class="op">(</span></span>
 <span>    <span class="st">"Aggregation can mitigate challenges with small-population, high-error observations"</span>,</span>
 <span>    gp <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/gpar.html" class="external-link">gpar</a></span><span class="op">(</span>fontsize <span class="op">=</span> <span class="fl">12</span>, fontface <span class="op">=</span> <span class="st">"bold"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="custom-geographies_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="1050"></p>
+<p><img src="custom-geographies_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="1050"></p>
+</div>
+<div class="section level2">
+<h2 id="weighted-interpolation-to-imperfectly-nested-geographies">Weighted Interpolation to Imperfectly-Nested Geographies<a class="anchor" aria-label="anchor" href="#weighted-interpolation-to-imperfectly-nested-geographies"></a>
+</h2>
+<p>The examples above reflect direct aggregation: each tract belongs
+entirely to one quadrant because tracts are perfectly nested in the
+quadrants we define. But target geographies don’t always align neatly
+with source geography boundaries. When source geographies partially
+overlap targets, you can use a crosswalk with weights to allocate data
+from source geographies to target geographies proportionally. For
+example. a common use-case is aligning 2010-vintage tracts and
+2020-vintage tracts. Because the Census Bureau redefines tract
+boundaries as part of the decennial census process, a given tract in
+2010 frequently does not map 1:1 to a single tract in 2020 (even when
+there is a 2020 tract with the same GEOID!) This scenario, among many
+others, requires some form of proportional allocation.</p>
+<p>We’ll demonstrate using the <a href="https://github.com/UI-Research/crosswalk" class="external-link"><code>crosswalk</code></a>
+package, which provides programmatic access to crosswalks from NHGIS,
+Geocorr, and other sources. We’ll pull tract-level SNAP data for both
+2019 (which uses 2010-vintage tract boundaries) and 2024 (which uses
+2020-vintage boundaries), crosswalk the 2019 data to 2020-vintage
+tracts, and then map the change in SNAP receipt—all expressed in a
+consistent set of tract boundaries.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># renv::install("UI-Research/crosswalk")</span></span>
+<span></span>
+<span><span class="co"># Pull 2019 ACS data (2010-vintage tracts) and 2024 ACS data (2020-vintage tracts)</span></span>
+<span><span class="va">dc_tracts</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
+<span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2019</span>, <span class="fl">2024</span><span class="op">)</span>,</span>
+<span>  tables <span class="op">=</span> <span class="st">"snap"</span>,</span>
+<span>  geography <span class="op">=</span> <span class="st">"tract"</span>,</span>
+<span>  states <span class="op">=</span> <span class="st">"DC"</span>,</span>
+<span>  spatial <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Get 2010→2020 tract crosswalk (population-weighted)</span></span>
+<span><span class="va">tract_crosswalk</span> <span class="op">=</span> <span class="fu">crosswalk</span><span class="fu">::</span><span class="fu"><a href="https://ui-research.github.io/crosswalk/reference/get_crosswalk.html" class="external-link">get_crosswalk</a></span><span class="op">(</span></span>
+<span>  source_geography <span class="op">=</span> <span class="st">"tract"</span>,</span>
+<span>  target_geography <span class="op">=</span> <span class="st">"tract"</span>,</span>
+<span>  source_year <span class="op">=</span> <span class="fl">2010</span>,</span>
+<span>  target_year <span class="op">=</span> <span class="fl">2020</span>,</span>
+<span>  weight <span class="op">=</span> <span class="st">"population"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Extract the crosswalk tibble and rename columns for interpolate_acs()</span></span>
+<span><span class="va">tract_xwalk</span> <span class="op">=</span> <span class="va">tract_crosswalk</span><span class="op">$</span><span class="va">crosswalks</span><span class="op">$</span><span class="va">step_1</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">weighting_factor</span> <span class="op">==</span> <span class="st">"weight_population"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
+<span>    GEOID <span class="op">=</span> <span class="va">source_geoid</span>,</span>
+<span>    target_tract <span class="op">=</span> <span class="va">target_geoid</span>,</span>
+<span>    weight <span class="op">=</span> <span class="va">allocation_factor_source_to_target</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Interpolate 2019 data to 2020-vintage tract boundaries</span></span>
+<span><span class="va">dc_2019_in_2020_tracts</span> <span class="op">=</span> <span class="fu"><a href="../reference/interpolate_acs.html">interpolate_acs</a></span><span class="op">(</span></span>
+<span>  .data <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">data_source_year</span> <span class="op">==</span> <span class="fl">2019</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">st_drop_geometry</span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  target_geoid <span class="op">=</span> <span class="st">"target_tract"</span>,</span>
+<span>  weight <span class="op">=</span> <span class="st">"weight"</span>,</span>
+<span>  crosswalk <span class="op">=</span> <span class="va">tract_xwalk</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Join crosswalked 2019 estimates to 2024 sf data and calculate change.</span></span>
+<span><span class="co"># The 2019 (2015-2019) and 2024 (2020-2024) 5-year ACS don't overlap,</span></span>
+<span><span class="co"># so estimates are independent and MOE_diff = sqrt(MOE_1^2 + MOE_2^2).</span></span>
+<span><span class="va">snap_change</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">data_source_year</span> <span class="op">==</span> <span class="fl">2024</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span></span>
+<span>    <span class="va">dc_2019_in_2020_tracts</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">GEOID</span>,</span>
+<span>             snap_received_percent_2019 <span class="op">=</span> <span class="va">snap_received_percent</span>,</span>
+<span>             snap_received_percent_2019_M <span class="op">=</span> <span class="va">snap_received_percent_M</span><span class="op">)</span>,</span>
+<span>    by <span class="op">=</span> <span class="st">"GEOID"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    snap_ppt_change <span class="op">=</span> <span class="op">(</span><span class="va">snap_received_percent</span> <span class="op">-</span> <span class="va">snap_received_percent_2019</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span>,</span>
+<span>    snap_ppt_change_M <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">snap_received_percent_M</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span> <span class="va">snap_received_percent_2019_M</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">*</span> <span class="fl">100</span>,</span>
+<span>    significant <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">snap_ppt_change</span><span class="op">)</span> <span class="op">&gt;</span> <span class="va">snap_ppt_change_M</span> <span class="op">*</span> <span class="fl">1.645</span> <span class="op">/</span> <span class="fl">1.645</span>,</span>
+<span>    change_category <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case-and-replace-when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
+<span>      <span class="op">!</span><span class="va">significant</span> <span class="op">~</span> <span class="st">"Not significant"</span>,</span>
+<span>      <span class="va">snap_ppt_change</span> <span class="op">&gt;</span> <span class="fl">0</span> <span class="op">~</span> <span class="st">"Significant increase"</span>,</span>
+<span>      <span class="va">snap_ppt_change</span> <span class="op">&lt;</span> <span class="fl">0</span> <span class="op">~</span> <span class="st">"Significant decrease"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Map 1: percentage-point change in SNAP receipt</span></span>
+<span><span class="va">map_change</span> <span class="op">=</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">snap_change</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">snap_ppt_change</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">scale_fill_gradient2</span><span class="op">(</span></span>
+<span>    low <span class="op">=</span> <span class="st">"#FDBF11"</span>,</span>
+<span>    mid <span class="op">=</span> <span class="st">"#D2D2D2"</span>,</span>
+<span>    high <span class="op">=</span> <span class="st">"#1696D2"</span>,</span>
+<span>    midpoint <span class="op">=</span> <span class="fl">0</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">guides</span><span class="op">(</span>fill <span class="op">=</span> <span class="fu">guide_colorbar</span><span class="op">(</span>direction <span class="op">=</span> <span class="st">"horizontal"</span>, title.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">"Change (ppt)"</span>, subtitle <span class="op">=</span> <span class="st">"Percentage-point change"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Map 2: statistical significance of the change</span></span>
+<span><span class="va">change_colors</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Significant increase"</span> <span class="op">=</span> <span class="st">"#1696D2"</span>,</span>
+<span>  <span class="st">"Significant decrease"</span> <span class="op">=</span> <span class="st">"#FDBF11"</span>,</span>
+<span>  <span class="st">"Not significant"</span> <span class="op">=</span> <span class="st">"#D2D2D2"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">map_sig</span> <span class="op">=</span> <span class="fu">ggplot</span><span class="op">(</span><span class="va">snap_change</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">change_category</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"white"</span>, linewidth <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">scale_fill_manual</span><span class="op">(</span>values <span class="op">=</span> <span class="va">change_colors</span>, na.value <span class="op">=</span> <span class="st">"grey80"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme_urbn_map</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">theme</span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">guides</span><span class="op">(</span>fill <span class="op">=</span> <span class="fu">guide_legend</span><span class="op">(</span>direction <span class="op">=</span> <span class="st">"horizontal"</span>, title.position <span class="op">=</span> <span class="st">"top"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu">labs</span><span class="op">(</span>fill <span class="op">=</span> <span class="st">""</span>, subtitle <span class="op">=</span> <span class="st">"Statistical significance (relative to zero change)"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">gridExtra</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/gridExtra/man/arrangeGrob.html" class="external-link">grid.arrange</a></span><span class="op">(</span></span>
+<span>  <span class="va">map_change</span>, <span class="va">map_sig</span>,</span>
+<span>  ncol <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  top <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/grid.text.html" class="external-link">textGrob</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Change in SNAP receipt, 2019 to 2024"</span>,</span>
+<span>    gp <span class="op">=</span> <span class="fu">grid</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/grid/gpar.html" class="external-link">gpar</a></span><span class="op">(</span>fontsize <span class="op">=</span> <span class="fl">12</span>, fontface <span class="op">=</span> <span class="st">"bold"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>With <code>weight = NULL</code> (the default used in the quadrant
+example), <code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> assumes perfect nesting—each
+source geography’s values are entirely attributed to the target
+geography. Providing a <code>weight</code> column enables proportional
+allocation for partial-overlap crosswalks. Count variables and their
+MOEs are multiplied by the crosswalk weight before summing; percentages
+are then recalculated from the allocated components.</p>
 </div>
 <div class="section level2">
 <h2 id="key-takeaways">Key Takeaways<a class="anchor" aria-label="anchor" href="#key-takeaways"></a>
 </h2>
+<p><code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> helps make your analysis more
+precise:</p>
 <ol style="list-style-type: decimal">
-<li><p><strong>Aggregation improves precision</strong>: Combining tracts
-into larger geographies reduces CVs and margins of error.</p></li>
-<li><p><strong>Better inference</strong>: More precise estimates enable
-detection of statistically significant differences that would otherwise
-be obscured by sampling error.</p></li>
-<li><p><strong>More relevant units of analysis</strong>: The ACS reports
+<li><p><strong>Aggregation improves precision</strong>: Combining
+geographies into larger geographies reduces margins of error. Got some
+very-small-population tracts or counties? Aggregate these with adjacent
+geographies to get estimates with smaller (relative) MOEs.</p></li>
+<li><p><strong>Better inference</strong>: More precise estimates–those
+with smaller relative MOES–enable detection of statistically significant
+differences that would otherwise be obscured by sampling error.</p></li>
+<li><p><strong>Flexible target geographies</strong>: The ACS reports
 estimates at many geographies, but there are many others that are not
-supported. Think neighborhoods, wards, continuums of care, school
-districts, and more. To robustly calculate errors and draw reliable
-inferences for these other geographies is critical but
-challenging.</p></li>
+supported. Provide a crosswalk and you can interpolate both estimates
+and MOES to any geography you want–wards, school districts,
+etc.</p></li>
 </ol>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

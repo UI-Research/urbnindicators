@@ -24,8 +24,9 @@ compile_acs_data(
 
 - tables:
 
-  A character vector of table names to include. Two formats are
-  accepted:
+  A character vector, list, or NULL specifying which data to include.
+  Three kinds of elements are accepted and can be mixed freely inside a
+  [`list()`](https://rdrr.io/r/base/list.html):
 
   - **Registered table names** (e.g., `"race"`, `"snap"`). These are
     pre-built tables with curated variable definitions. Use
@@ -39,11 +40,24 @@ compile_acs_data(
     the `denominator` parameter to control how percentages are
     calculated for these tables.
 
-  Both formats can be mixed freely (e.g., `c("snap", "B25070")`). If an
-  ACS code corresponds to an already-registered table, the registered
-  version is used automatically. When NULL (default), all registered
-  tables are included (unregistered ACS tables must be requested
-  explicitly).
+  - **DSL definition objects** created with
+    [`define_percent`](https://ui-research.github.io/urbnindicators/reference/define_percent.md),
+    [`define_across_percent`](https://ui-research.github.io/urbnindicators/reference/define_across_percent.md),
+    [`define_across_sum`](https://ui-research.github.io/urbnindicators/reference/define_across_sum.md),
+    [`define_one_minus`](https://ui-research.github.io/urbnindicators/reference/define_one_minus.md),
+    or
+    [`define_metadata`](https://ui-research.github.io/urbnindicators/reference/define_metadata.md).
+    These let you compute custom derived variables from the columns
+    produced by the tables you request. User definitions are executed
+    after all registered and auto-table definitions, and their results
+    appear in the codebook and have MOEs computed automatically.
+
+  When mixing strings and definitions, wrap everything in
+  [`list()`](https://rdrr.io/r/base/list.html) (e.g.,
+  `list("snap", define_percent(...))`). If an ACS code corresponds to an
+  already-registered table, the registered version is used
+  automatically. When NULL (default), all registered tables are included
+  (unregistered ACS tables must be requested explicitly).
 
 - years:
 
@@ -123,5 +137,15 @@ df = compile_acs_data(tables = c("snap", "B25070"), years = 2022,
 ## Use table total as denominator instead of parent subtotals
 df = compile_acs_data(tables = "B25070", denominator = "total",
                       years = 2022, geography = "state", states = "DC")
+
+## Add a custom derived variable alongside a registered table
+df = compile_acs_data(
+  tables = list(
+    "snap",
+    define_percent("snap_not_received_percent",
+                   numerator_variables = c("snap_universe", "snap_received"),
+                   numerator_subtract_variables = c("snap_received"),
+                   denominator_variables = c("snap_universe"))),
+  years = 2022, geography = "county", states = "DC")
   } # }
 ```

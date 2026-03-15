@@ -24,9 +24,9 @@ the Census Bureau API."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
-    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
-    <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -70,8 +70,9 @@ the Census Bureau API.</p>
 
 
 <dl><dt id="arg-tables">tables<a class="anchor" aria-label="anchor" href="#arg-tables"></a></dt>
-<dd><p>A character vector of table names to include. Two formats are
-accepted:</p><ul><li><p><strong>Registered table names</strong> (e.g., <code>"race"</code>, <code>"snap"</code>).
+<dd><p>A character vector, list, or NULL specifying which data to
+include. Three kinds of elements are accepted and can be mixed freely
+inside a <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>:</p><ul><li><p><strong>Registered table names</strong> (e.g., <code>"race"</code>, <code>"snap"</code>).
 These are pre-built tables with curated variable definitions. Use
 <code><a href="list_tables.html">list_tables()</a></code> to see all available registered tables.</p></li>
 <li><p><strong>Raw ACS table codes</strong> (e.g., <code>"B25070"</code>, <code>"C15002B"</code>).
@@ -80,7 +81,15 @@ These are auto-processed at runtime: raw variables are fetched, the
 label hierarchy is parsed, and percentages are computed automatically.
 Use the <code>denominator</code> parameter to control how percentages are
 calculated for these tables.</p></li>
-</ul><p>Both formats can be mixed freely (e.g., <code>c("snap", "B25070")</code>).
+<li><p><strong>DSL definition objects</strong> created with <code><a href="define_percent.html">define_percent</a></code>,
+<code><a href="define_across_percent.html">define_across_percent</a></code>, <code><a href="define_across_sum.html">define_across_sum</a></code>,
+<code><a href="define_one_minus.html">define_one_minus</a></code>, or <code><a href="define_metadata.html">define_metadata</a></code>.
+These let you compute custom derived variables from the columns
+produced by the tables you request. User definitions are executed
+after all registered and auto-table definitions, and their results
+appear in the codebook and have MOEs computed automatically.</p></li>
+</ul><p>When mixing strings and definitions, wrap everything in <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>
+(e.g., <code>list("snap", define_percent(...))</code>).
 If an ACS code corresponds to an already-registered table, the registered
 version is used automatically.
 When NULL (default), all registered tables are included (unregistered ACS
@@ -160,6 +169,16 @@ is attached and can be accessed via <code>compile_acs_data() %&gt;% attr("codebo
 <span class="r-in"><span><span class="co">## Use table total as denominator instead of parent subtotals</span></span></span>
 <span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span>tables <span class="op">=</span> <span class="st">"B25070"</span>, denominator <span class="op">=</span> <span class="st">"total"</span>,</span></span>
 <span class="r-in"><span>                      years <span class="op">=</span> <span class="fl">2022</span>, geography <span class="op">=</span> <span class="st">"state"</span>, states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## Add a custom derived variable alongside a registered table</span></span></span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">=</span> <span class="fu">compile_acs_data</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>    <span class="st">"snap"</span>,</span></span>
+<span class="r-in"><span>    <span class="fu"><a href="define_percent.html">define_percent</a></span><span class="op">(</span><span class="st">"snap_not_received_percent"</span>,</span></span>
+<span class="r-in"><span>                   numerator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span>, <span class="st">"snap_received"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   numerator_subtract_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_received"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                   denominator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  years <span class="op">=</span> <span class="fl">2022</span>, geography <span class="op">=</span> <span class="st">"county"</span>, states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

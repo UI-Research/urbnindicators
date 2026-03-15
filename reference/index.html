@@ -20,9 +20,9 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
-    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
-    <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -58,10 +58,45 @@
 
         <dt>
 
-          <code><a href="calculate_custom_geographies.html">calculate_custom_geographies()</a></code>
+          <code><a href="interpolate_acs.html">interpolate_acs()</a></code>
 
         </dt>
-        <dd>Aggregate ACS data to custom geographies</dd>
+        <dd>Aggregate or interpolate ACS data to custom geographies</dd>
+
+        <dt>
+
+          <code><a href="define_percent.html">define_percent()</a></code>
+
+        </dt>
+        <dd>Define a percentage variable (simple or complex)</dd>
+
+        <dt>
+
+          <code><a href="define_across_percent.html">define_across_percent()</a></code>
+
+        </dt>
+        <dd>Define an across-percent variable</dd>
+
+        <dt>
+
+          <code><a href="define_across_sum.html">define_across_sum()</a></code>
+
+        </dt>
+        <dd>Define an across-sum variable</dd>
+
+        <dt>
+
+          <code><a href="define_metadata.html">define_metadata()</a></code>
+
+        </dt>
+        <dd>Define a metadata variable</dd>
+
+        <dt>
+
+          <code><a href="define_one_minus.html">define_one_minus()</a></code>
+
+        </dt>
+        <dd>Define a one-minus (complement) variable</dd>
       </dl></div><div class="section level2">
       <h2 id="measuring-error">Measuring error<a class="anchor" aria-label="anchor" href="#measuring-error"></a></h2>
 
@@ -92,6 +127,13 @@
 
         </dt>
         <dd>Calculate a pooled standard error for a proportion or ratio</dd>
+
+        <dt>
+
+          <code><a href="cv.html">cv()</a></code>
+
+        </dt>
+        <dd>Calculate a coefficient of variation</dd>
       </dl></div><div class="section level2">
       <h2 id="helper-functions">Helper functions<a class="anchor" aria-label="anchor" href="#helper-functions"></a></h2>
 

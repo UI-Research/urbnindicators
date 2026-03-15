@@ -35,9 +35,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
-    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
-    <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
   </ul>
 </li>
@@ -149,10 +149,9 @@ undetected errors.</p>
 to combine the margins of error that are returned by
 <code><a href="https://walker-data.com/tidycensus/reference/get_acs.html" class="external-link">tidycensus::get_acs()</a></code> to calculate pooled errors for the
 new percent-disabled variable, opting simply to drop this critical
-information from their analysis. (See
-(quantified-survey-error)[quantified-survey-error.html] to learn more
-about how <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> helps simplify this
-task.)</p>
+information from their analysis. (See <a href="quantified-survey-error.html">Quantifying Survey Error</a> to
+learn more about how <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> helps simplify
+this task.)</p>
 </div>
 </div>
 <div class="section level2">
@@ -190,21 +189,21 @@ tables:</p>
 by the Census Bureau API:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/get_acs_codebook.html">get_acs_codebook</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="co">## just showing a sample of the 28,000+ variables available</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/slice.html" class="external-link">slice_sample</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">variable_clean</span>, <span class="st">"snap"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 10 × 3</span></span></span>
-<span><span class="co">#&gt;    table   variable_raw variable_clean                                          </span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                                   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> B08203  B08203_029   number_workers_in_household_by_vehicles_available_3_mor…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> B25070  B25070_011   gross_rent_as_a_percentage_household_income_in_past_12_…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> B10059  B10059_005   poverty_status_in_past_12_months_grandparents_living_wi…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> B17017  B17017_042   poverty_status_in_past_12_months_by_household_type_by_a…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> B02017  B02017_007   aian_alone_in_any_combination_by_selected_tribal_groupi…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> B24124  B24124_464   detailed_occupation_full_time_year_round_civilian_emplo…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> B24114  B24114_132   detailed_occupation_civilian_employed_population_16_yea…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> B24122  B24122_465   detailed_occupation_by_median_earnings_in_past_12_month…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> B26203E B26203E_004  group_quarters_type_5_types_nhpi_alone_group_quarters_p…</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> B19037A B19037A_032  age_householder_by_household_income_in_past_12_months_i…</span></span></code></pre></div>
+<span><span class="co">#&gt;    table  variable_raw variable_clean                                           </span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                                    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> B09010 B09010_001   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> B09010 B09010_002   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> B09010 B09010_003   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> B09010 B09010_004   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> B09010 B09010_005   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> B09010 B09010_006   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> B09010 B09010_007   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> B09010 B09010_008   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> B09010 B09010_009   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> B09010 B09010_010   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span></code></pre></div>
 <p>Here we request just two tables–<code>disability</code> and
 <code>transportation_to_work</code>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
@@ -214,10 +213,26 @@ by the Census Bureau API:</p>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span>
 <span>  spatial <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>You can also pass vectors of years and/or states to pull data across
+multiple time periods or geographies in a single call:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">df_multi</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
+<span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2019</span>, <span class="fl">2024</span><span class="op">)</span>,</span>
+<span>  tables <span class="op">=</span> <span class="st">"disability"</span>,</span>
+<span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
+<span>  states <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"NJ"</span>, <span class="st">"NY"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">df_multi</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">data_source_year</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
+<span><span class="co">#&gt;   data_source_year     n</span></span>
+<span><span class="co">#&gt;              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>             <span style="text-decoration: underline;">2</span>019    83</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             <span style="text-decoration: underline;">2</span>024    83</span></span></code></pre></div>
 <p>Alternately, you can pass the name of a variable or table from
 <code><a href="../reference/get_acs_codebook.html">get_acs_codebook()</a></code> to <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>. The
-equivalent would be:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+equivalent of the first call above would be:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
 <span>  tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sex_by_age_by_disability_status_universe"</span>, <span class="st">"B08301"</span><span class="op">)</span>,</span>
@@ -229,7 +244,7 @@ equivalent would be:</p>
 <h3 id="analyze-or-visualize-data">Analyze or visualize data<a class="anchor" aria-label="anchor" href="#analyze-or-visualize-data"></a>
 </h3>
 <p>And now we’re ready to analyze or plot our data. Simplistically:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">ggplot</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">geom_sf</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span>fill <span class="op">=</span> <span class="va">disability_percent</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -237,9 +252,9 @@ equivalent would be:</p>
 <span>    <span class="fu">scale_fill_continuous</span><span class="op">(</span>labels <span class="op">=</span> <span class="fu">scales</span><span class="fu">::</span><span class="va"><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">percent</a></span>, transform <span class="op">=</span> <span class="st">"reverse"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>    <span class="fu">labs</span><span class="op">(</span></span>
 <span>      title <span class="op">=</span> <span class="st">"Disability Rates Appear Higher in Southern NJ"</span>,</span>
-<span>      subtitle <span class="op">=</span> <span class="st">"Disability rates by county, NJ, 2018-2022 ACS"</span>,</span>
+<span>      subtitle <span class="op">=</span> <span class="st">"Disability rates by county, NJ, 2020-2024 ACS"</span>,</span>
 <span>      fill <span class="op">=</span> <span class="st">"Population with an ACS-defined disability (%)"</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_wrap.html" class="external-link">str_wrap</a></span><span class="op">(</span><span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><img src="urbnindicators_files/figure-html/unnamed-chunk-8-1.png" class="r-plt" alt="" width="100%"></p>
+<p><img src="urbnindicators_files/figure-html/unnamed-chunk-9-1.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level3">
 <h3 id="document-data">Document data<a class="anchor" aria-label="anchor" href="#document-data"></a>
@@ -247,24 +262,64 @@ equivalent would be:</p>
 <p>There’s a lot happening behind the scenes, so it’s important to
 understand what each variable represents and how it was calculated.
 <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> includes a codebook as an attribute
-of the dataframe returned from
-<code><a href="../reference/compile_acs_data.html">urbnindicators::compile_acs_data()</a></code>. View and navigate
-through the <a href="articles/codebook.html">full codebook here</a>.</p>
-<p>The codebook specifies the variable type and provides a definition of
-how the variable was calculated. Most (though not all) variables that
-are directly available from the ACS are count variables. Many of the
-variables that are calculated by <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code>
-are percent variables, where we divide two count variables.</p>
-<p>Others, however, are quite complex. For example,
+of the dataframe returned from <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>. View and
+navigate through the <a href="codebook.html">full codebook here</a>.</p>
+<p>Access the codebook with <code><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr()</a></code>:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">codebook</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">df_urbnindicators</span>, <span class="st">"codebook"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">codebook</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 9</span></span></span>
+<span><span class="co">#&gt;   calculated_variable                    variable_type definition numerator_vars</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>        </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> total_population_universe              Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> means_transportation_work_universe     Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> means_transportation_work_car_truck_v… Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> means_transportation_work_car_truck_v… Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> means_transportation_work_car_truck_v… Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: numerator_subtract_vars &lt;list&gt;, denominator_vars &lt;list&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   denominator_subtract_vars &lt;list&gt;, se_calculation_type &lt;chr&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   aggregation_strategy &lt;chr&gt;</span></span></span></code></pre></div>
+<p>The codebook has three columns:</p>
+<ul>
+<li>
+<strong>calculated_variable</strong> – the variable name as it
+appears in the dataframe.</li>
+<li>
+<strong>variable_type</strong> – whether the variable is a
+<code>count</code> (raw ACS estimate), a <code>percent</code> (derived
+ratio), or <code>metadata</code> (e.g., a median or geographic
+identifier).</li>
+<li>
+<strong>definition</strong> – a formula showing how the variable was
+calculated. For raw ACS variables, this is the original Census Bureau
+variable code (e.g., <code>B22003_002</code>). For derived variables,
+this is an expression like
+<code>snap_received / snap_universe</code>.</li>
+</ul>
+<p>These definition strings are also used internally to calculate
+margins of error for derived variables (see <a href="quantified-survey-error.html">Quantifying Survey Error</a>), so
+their accuracy is critical.</p>
+<p>Some definitions are quite complex. For example,
 <code>disability_percent</code> is the sum of all of the sex-by-age
 groupings for people with disabilities (numerator) divided by the table
-universe.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="st">"codebook"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html" class="external-link">str_detect</a></span><span class="op">(</span><span class="va">calculated_variable</span>, <span class="st">"^disability_percent$"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+universe:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">codebook</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">calculated_variable</span> <span class="op">==</span> <span class="st">"disability_percent"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">definition</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "Numerator = sex_by_age_by_disability_status_male_under_5_years_with_a_disability (B18101_004), sex_by_age_by_disability_status_male_5_17_years_with_a_disability (B18101_007), sex_by_age_by_disability_status_male_18_34_years_with_a_disability (B18101_010), sex_by_age_by_disability_status_male_35_64_years_with_a_disability (B18101_013), sex_by_age_by_disability_status_male_65_74_years_with_a_disability (B18101_016), sex_by_age_by_disability_status_male_75_years_over_with_a_disability (B18101_019), sex_by_age_by_disability_status_female_under_5_years_with_a_disability (B18101_023), sex_by_age_by_disability_status_female_5_17_years_with_a_disability (B18101_026), sex_by_age_by_disability_status_female_18_34_years_with_a_disability (B18101_029), sex_by_age_by_disability_status_female_35_64_years_with_a_disability (B18101_032), sex_by_age_by_disability_status_female_65_74_years_with_a_disability (B18101_035), sex_by_age_by_disability_status_female_75_years_over_with_a_disability (B18101_038). Denominator = sex_by_age_by_disability_status_universe (B18101_001)."</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="aggregate-to-custom-geographies">Aggregate to custom geographies<a class="anchor" aria-label="anchor" href="#aggregate-to-custom-geographies"></a>
+</h3>
+<p>ACS data are available for standard geographies, but many analyses
+require non-standard areas like neighborhoods or planning districts.
+<code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> aggregates tract-level data to any
+user-defined geography, properly re-deriving percentages and propagating
+margins of error. See <a href="custom-geographies.html">Aggregating to
+Custom Geographies</a> for a worked example.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

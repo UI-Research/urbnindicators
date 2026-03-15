@@ -7,7 +7,12 @@ are calculated.
 ## Usage
 
 ``` r
-generate_codebook(.data, resolved_tables = NULL, auto_table_entries = list())
+generate_codebook(
+  .data,
+  resolved_tables = NULL,
+  auto_table_entries = list(),
+  user_definitions = list()
+)
 ```
 
 ## Arguments
@@ -26,6 +31,12 @@ generate_codebook(.data, resolved_tables = NULL, auto_table_entries = list())
 
   A list of auto-generated table entries from
   `build_auto_table_entry()`. Default is an empty list.
+
+- user_definitions:
+
+  A list of user-supplied DSL definition objects (e.g., from
+  [`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md)).
+  Default is an empty list.
 
 ## Value
 

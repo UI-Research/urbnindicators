@@ -35,9 +35,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
-    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
-    <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
   </ul>
 </li>
@@ -143,7 +143,11 @@ coefficient of variation (CV = SE / estimate * 100, where SE = MOE /
 <p>As shown below, variables that rely on larger sample sizes tend to
 have smaller MOEs. Typically, there are two strategies to reduce error:
 (1) aggregate estimates, either across geographies or across variables,
-or (2) use larger geographies.</p>
+or (2) use larger geographies. For the first strategy,
+<code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code> can aggregate tract-level data to
+user-defined geographies (e.g., neighborhoods or planning districts)
+while properly propagating margins of error. See
+<code><a href="../articles/custom-geographies.html">vignette("custom-geographies")</a></code> for a worked example.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">acs_df_county</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2024</span><span class="op">)</span>,</span>

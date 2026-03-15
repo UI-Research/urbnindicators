@@ -44,3 +44,38 @@ variables (optionally over multiple years).
   from the codebook returned by this package!) of a variable named, for
   example, `race_personofcolor_percent`. Variables in the codebook have
   their original API names included in their definitions.
+
+- **Use a consistent variable naming convention.** Variable names follow
+  the pattern `[concept]_[subconcept]_[characteristic]_[metric]`. For
+  example, `race_nonhispanic_white_alone_percent`. The `_percent` suffix
+  always denotes a derived percentage, `_universe` denotes the
+  denominator used to calculate percentages for that table, and `_M`
+  denotes a margin of error. This consistency makes it easy to use
+  [`dplyr::matches()`](https://tidyselect.r-lib.org/reference/starts_with.html)
+  or
+  [`dplyr::starts_with()`](https://tidyselect.r-lib.org/reference/starts_with.html)
+  to select related groups of variables.
+
+- **Express percentages on a 0–1 scale.** All derived percentages are
+  expressed as proportions (e.g., 0.25 rather than 25). This avoids
+  ambiguity and simplifies downstream calculations (e.g., multiplying a
+  proportion by a population count). Use
+  [`scales::percent()`](https://scales.r-lib.org/reference/percent_format.html)
+  for display formatting.
+
+- **Always propagate margins of error.** When `urbnindicators` derives a
+  new variable from two or more raw ACS estimates, it also calculates a
+  margin of error for that derived variable using Census
+  Bureau-recommended formulae. This means every `_percent` variable in
+  the output has a corresponding `_percent_M` variable. These derived
+  MOEs have known limitations (see
+  [`vignette("quantified-survey-error")`](https://ui-research.github.io/urbnindicators/articles/quantified-survey-error.md))
+  but are far preferable to dropping error information entirely.
+
+- **Design for extensibility.** New ACS tables can be added to the
+  package via a single `register_table()` call in `R/table_registry.R`.
+  The registration declaratively specifies raw variables, derived
+  calculations, and codebook metadata; the codebook and margin of error
+  calculations are generated automatically. See
+  [`vignette("custom-derived-variables")`](https://ui-research.github.io/urbnindicators/articles/custom-derived-variables.md)
+  for a walkthrough.

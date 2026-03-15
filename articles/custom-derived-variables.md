@@ -1,0 +1,279 @@
+# Custom Derived Variables
+
+``` r
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(urbnindicators)
+library(tidycensus)
+```
+
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
+supports a large set of pre-built derived variables (percentages,
+complements, etc.) from the package’s registered tables. But you can
+also define your own derived variables using the `define_*()` helpers
+and pass them directly to
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
+via the `tables` parameter. Your custom variables automatically get
+codebook entries and margins of error, just like the built-in ones.
+
+This vignette walks through the process of identifying variables,
+choosing denominators, and writing definitions, using household type
+data (ACS table B11001) as a running example.
+
+## The `define_*()` Helpers
+
+| Helper                                                                                                       | Use case                                          | Key arguments                                                                                                             |
+|--------------------------------------------------------------------------------------------------------------|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| [`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md)               | Single output: numerator / denominator            | `output`, `numerator`, `denominator` (simple) or `numerator_variables`, `denominator_variables`, regex variants (complex) |
+| [`define_across_percent()`](https://ui-research.github.io/urbnindicators/reference/define_across_percent.md) | Percentages across a regex-matched set of columns | `input_regex`, `output_suffix`, `denominator` or `denominator_function`, optional `exclude_regex`                         |
+| [`define_across_sum()`](https://ui-research.github.io/urbnindicators/reference/define_across_sum.md)         | Summing paired columns (e.g., male + female)      | `input_regex`, `addend_function`, `output_naming_function`                                                                |
+| [`define_one_minus()`](https://ui-research.github.io/urbnindicators/reference/define_one_minus.md)           | Complement of an existing percentage (1 - x)      | `output`, `source_variable`                                                                                               |
+| [`define_metadata()`](https://ui-research.github.io/urbnindicators/reference/define_metadata.md)             | Non-computed variables (e.g., medians)            | `output`, `definition_text`                                                                                               |
+
+Definitions are passed to
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
+alongside table names in a [`list()`](https://rdrr.io/r/base/list.html).
+They operate on the columns produced by the tables you request, so make
+sure to include the table(s) whose variables your definitions reference.
+
+## Step 1: Identify the Raw Variables
+
+We’re going to create a variable describing the share of white men
+between the ages of 18 and 44. The needed raw variables are from ACS
+table B01001A, as described in the codebook
+
+``` r
+codebook = get_acs_codebook()
+
+codebook %>%
+  filter(table == "B01001A") %>%
+  pull(variable_clean) %>%
+  head()
+#> [1] "sex_by_age_white_alone_universe"          
+#> [2] "sex_by_age_white_alone_male"              
+#> [3] "sex_by_age_white_alone_male_under_5_years"
+#> [4] "sex_by_age_white_alone_male_5_9_years"    
+#> [5] "sex_by_age_white_alone_male_10_14_years"  
+#> [6] "sex_by_age_white_alone_male_15_17_years"
+```
+
+## Step 2: Choose Denominators
+
+Selecting an appropriate denominator for percentage variables is
+critical, and at times, complex. The basic approach is to simply divide
+every variable by the table universe, which should contain `universe` in
+the variable name. But in other cases, alternate variables may make for
+more insightful denominators. For simplicity, we just use the table
+universe here.
+
+## Step 3: Write and Use Definitions
+
+We express the new variable(s) using `define_*()` helpers and pass the
+definitions directly to
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
+
+Our target variable–the share of white men aged 18-44–requires summing
+several age-group columns (18-19, 20, 21, 22-24, 25-29, 30-34, 35-39,
+40-44) and dividing by the table universe.
+[`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md)
+with `numerator_regex` handles this: it matches all columns fitting a
+pattern and sums them into the numerator.
+
+The auto-processed column names from B01001A follow the pattern
+`sex_by_age_white_alone_male_{age_range}_years`, so we can target the
+18-44 age groups with a regex that matches the leading digits of each
+range:
+
+``` r
+df = compile_acs_data(
+  tables = list(
+    "B01001A",
+    define_percent(
+      "white_male_18_44_percent",
+      numerator_regex = "sex_by_age_white_alone_male_(1[89]|2[0-9]|3[0-9]|4[0-4])",
+      numerator_exclude_regex = "percent",
+      denominator_variables = c("sex_by_age_white_alone_universe"))),
+  years = 2024,
+  geography = "county",
+  states = "NJ")
+
+df %>%
+  select(GEOID, white_male_18_44_percent) %>%
+  head()
+#> # A tibble: 6 × 2
+#>   GEOID white_male_18_44_percent
+#>   <chr>                    <dbl>
+#> 1 34001                    0.149
+#> 2 34003                    0.150
+#> 3 34005                    0.162
+#> 4 34007                    0.164
+#> 5 34009                    0.124
+#> 6 34011                    0.160
+```
+
+The definition is executed after the raw ACS data are fetched and
+renamed, and the results appear in the codebook with automatically
+calculated margins of error:
+
+``` r
+attr(df, "codebook") %>%
+  filter(calculated_variable == "white_male_18_44_percent") %>%
+  pull(definition)
+#> [1] "Numerator = sex_by_age_white_alone_male_18_19_years (B01001A_007), sex_by_age_white_alone_male_20_24_years (B01001A_008), sex_by_age_white_alone_male_25_29_years (B01001A_009), sex_by_age_white_alone_male_30_34_years (B01001A_010), sex_by_age_white_alone_male_35_44_years (B01001A_011). Denominator = sex_by_age_white_alone_universe (B01001A_001)."
+```
+
+## More Examples
+
+### Simple percentage
+
+One numerator, one denominator:
+
+``` r
+df_snap = compile_acs_data(
+  tables = list(
+    "snap",
+    define_percent(
+      "snap_received_percent_manual",
+      numerator = "snap_received",
+      denominator = "snap_universe")),
+  years = 2024,
+  geography = "county",
+  states = "NJ")
+
+## verify it matches the built-in version
+df_snap %>%
+  transmute(
+    builtin = snap_received_percent,
+    manual = snap_received_percent_manual,
+    match = abs(builtin - manual) < 1e-10) %>%
+  filter(!match)
+#> # A tibble: 0 × 3
+#> # ℹ 3 variables: builtin <dbl>, manual <dbl>, match <lgl>
+```
+
+### Across-percent with a complement
+
+Percentages for all race categories, plus a person-of-color complement.
+This is how the built-in `race` table works internally.
+
+``` r
+compile_acs_data(
+  tables = list(
+    "race",
+    define_across_percent(
+      input_regex = "^race_nonhispanic|^race_hispanic",
+      output_suffix = "_percent",
+      denominator = "race_universe"),
+    ## race_personofcolor_percent is the share of all individuals who are not
+    ## non-Hispanic, White alone, i.e., the complement
+    define_one_minus(
+      "race_personofcolor_percent",
+      source_variable = "race_nonhispanic_white_alone_percent")),
+  years = 2024,
+  geography = "county",
+  states = "DC")
+```
+
+### Across-sum followed by across-percent
+
+Sum male + female counts into combined age variables, then calculate
+percentages. This is how the built-in `sex_by_age` table works
+internally.
+
+This one is a bit tricky–the source table includes variables for each
+age group, split by sex. To get age groups, we have to add the two
+sex-specific estimates for the given age group. This requires us to
+specify an `input_regex`, which selects, in this case, all
+female-specific age variables. The `addend_function` then
+programmatically identifies the same-named, male-specific variables. The
+`output_naming_function` simplifies the resulting combined variable,
+removing the sex category and other extraneous words.
+
+``` r
+compile_acs_data(
+  tables = list(
+    "sex_by_age",
+    define_across_sum(
+      input_regex = "sex_by_age_female_.*years($|_over$)",
+      addend_function = function(column) {
+        column %>% stringr::str_replace("female", "male")},
+      output_naming_function = function(column) {
+        column %>% stringr::str_replace("sex_by_age_female_", "age_")
+      }),
+    define_across_percent(
+      input_regex = "^age.*years($|_over$)",
+      output_suffix = "_percent",
+      denominator = "sex_by_age_universe")),
+  years = 2024,
+  geography = "county",
+  states = "DC")
+```
+
+### Complex percentage with subtraction
+
+For cases where the numerator or denominator requires summing or
+subtracting multiple variables, use the `numerator_variables`,
+`denominator_variables`, and optional `*_subtract_*` arguments:
+
+``` r
+df_complex = compile_acs_data(
+  tables = list(
+    "snap",
+    define_percent(
+      "snap_not_received_pct_complex",
+      numerator_variables = c("snap_universe"),
+      numerator_subtract_variables = c("snap_received"),
+      denominator_variables = c("snap_universe"))),
+  years = 2024,
+  geography = "county",
+  states = "DC")
+
+df_complex %>%
+  mutate(sums_to_one = snap_received_percent + snap_not_received_pct_complex) %>%
+  glimpse()
+#> Rows: 1
+#> Columns: 14
+#> $ data_source_year                <dbl> 2024
+#> $ GEOID                           <chr> "11001"
+#> $ NAME                            <chr> "District of Columbia, District of Col…
+#> $ total_population_universe       <dbl> 681294
+#> $ snap_universe                   <dbl> 324491
+#> $ snap_received                   <dbl> 46408
+#> $ snap_received_percent           <dbl> 0.143
+#> $ snap_not_received_pct_complex   <dbl> 0.857
+#> $ total_population_universe_M     <dbl> 0
+#> $ snap_universe_M                 <dbl> 1816
+#> $ snap_received_M                 <dbl> 2088
+#> $ snap_received_percent_M         <dbl> 0.0064
+#> $ snap_not_received_pct_complex_M <dbl> 0.0071
+#> $ sums_to_one                     <dbl> 1
+```
+
+## Verify Results
+
+A few strategies for quality-checking custom derived variables:
+
+1.  **Compare to a published benchmark.** Percentages reported by the
+    Census Bureau in the Subject Tables (tables prefixed with `S`) can
+    serve as reference values for derived variables computed from the
+    detailed tables (prefixed with `B` or `C`).
+
+2.  **Manually compute a benchmark.** Identify the relevant numerator
+    and denominator variables and manually calculate the derived
+    variable, then compare. This is especially useful for complex
+    definitions where the numerator is itself a sum.
+
+3.  **Plot histograms.** Use
+    [`pivot_longer()`](https://tidyr.tidyverse.org/reference/pivot_longer.html)
+    and `facet_wrap()` to check for unexpected spikes or outlier values
+    across a series of related variables.
+
+4.  **Check for missingness.** Derived variables should generally have
+    low or no missingness; substantial missingness may indicate a
+    calculation error.
+
+5.  **Inspect the codebook.** Verify that `attr(df, "codebook")`
+    accurately documents your custom variable’s definition. The
+    definition string drives the margin of error calculation, so errors
+    there will propagate to MOEs.

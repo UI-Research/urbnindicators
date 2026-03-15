@@ -37,9 +37,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/codebook.html">The urbnindicators Codebook</a></li>
-    <li><a class="dropdown-item" href="articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
+    <li><a class="dropdown-item" href="articles/custom-derived-variables.html">Custom Derived Variables</a></li>
+    <li><a class="dropdown-item" href="articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="articles/design-philosophy.html">Design Philosophy</a></li>
-    <li><a class="dropdown-item" href="articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
   </ul>
 </li>
@@ -102,249 +102,44 @@
 <span><span class="co">#&gt;  [4] "disability"             "educational_attainment" "employment"            </span></span>
 <span><span class="co">#&gt;  [7] "gini"                   "health_insurance"       "household_size"        </span></span>
 <span><span class="co">#&gt; [10] "income_quintiles"</span></span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/list_variables.html">list_variables</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
-<span><span class="co">#&gt; # A tibble: 10 × 2</span></span>
-<span><span class="co">#&gt;    variable                                table            </span></span>
-<span><span class="co">#&gt;    &lt;chr&gt;                                   &lt;chr&gt;            </span></span>
-<span><span class="co">#&gt;  1 total_population_universe               total_population </span></span>
-<span><span class="co">#&gt;  2 public_assistance_universe              public_assistance</span></span>
-<span><span class="co">#&gt;  3 public_assistance_received              public_assistance</span></span>
-<span><span class="co">#&gt;  4 public_assistance_received_percent      public_assistance</span></span>
-<span><span class="co">#&gt;  5 snap_universe                           snap             </span></span>
-<span><span class="co">#&gt;  6 snap_received                           snap             </span></span>
-<span><span class="co">#&gt;  7 snap_received_percent                   snap             </span></span>
-<span><span class="co">#&gt;  8 household_income_quintile_upper_limit_1 income_quintiles </span></span>
-<span><span class="co">#&gt;  9 household_income_quintile_upper_limit_2 income_quintiles </span></span>
-<span><span class="co">#&gt; 10 household_income_quintile_upper_limit_3 income_quintiles</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="obtain-data">Obtain Data<a class="anchor" aria-label="anchor" href="#obtain-data"></a>
 </h2>
 <p>A single call to <code><a href="reference/compile_acs_data.html">compile_acs_data()</a></code> returns analysis-ready data with pre-computed percentages, meaningful variable names, and margins of error:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="fu"><a href="reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  tables <span class="op">=</span> <span class="st">"race"</span>,</span>
-<span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
+<span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2019</span>, <span class="fl">2024</span><span class="op">)</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">glimpse</span><span class="op">(</span><span class="va">df</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Rows: 21</span></span>
-<span><span class="co">#&gt; Columns: 175</span></span>
-<span><span class="co">#&gt; $ data_source_year                                         &lt;dbl&gt; 2024, 2024, 2…</span></span>
-<span><span class="co">#&gt; $ GEOID                                                    &lt;chr&gt; "34001", "340…</span></span>
-<span><span class="co">#&gt; $ NAME                                                     &lt;chr&gt; "Atlantic Cou…</span></span>
-<span><span class="co">#&gt; $ total_population_universe                                &lt;dbl&gt; 276270, 96231…</span></span>
-<span><span class="co">#&gt; $ race_universe                                            &lt;dbl&gt; 276270, 96231…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_allraces                                &lt;dbl&gt; 219985, 74346…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_white_alone                             &lt;dbl&gt; 149114, 49395…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_black_alone                             &lt;dbl&gt; 34841, 51787,…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_aian_alone                              &lt;dbl&gt; 738, 595, 107…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_asian_alone                             &lt;dbl&gt; 21415, 161731…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_nhpi_alone                              &lt;dbl&gt; 29, 186, 64, …</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_otherrace_alone                         &lt;dbl&gt; 1434, 7569, 3…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore                               &lt;dbl&gt; 12414, 27633,…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_includingotherrace            &lt;dbl&gt; 1696, 8038, 6…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_excludingotherrace            &lt;dbl&gt; 10718, 19595,…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_allraces                                   &lt;dbl&gt; 56285, 218856…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_white_alone                                &lt;dbl&gt; 5923, 36191, …</span></span>
-<span><span class="co">#&gt; $ race_hispanic_black_alone                                &lt;dbl&gt; 2269, 4341, 2…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_aian_alone                                 &lt;dbl&gt; 1223, 2142, 8…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_asian_alone                                &lt;dbl&gt; 266, 730, 210…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_nhpi_alone                                 &lt;dbl&gt; 0, 67, 25, 11…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_otherrace_alone                            &lt;dbl&gt; 24930, 72826,…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore                                  &lt;dbl&gt; 21674, 102559…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_includingotherrace               &lt;dbl&gt; 20211, 92733,…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_excludingotherrace               &lt;dbl&gt; 1463, 9826, 3…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_allraces_percent                        &lt;dbl&gt; 0.7963, 0.772…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_white_alone_percent                     &lt;dbl&gt; 0.5397, 0.513…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_black_alone_percent                     &lt;dbl&gt; 0.1261, 0.053…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_aian_alone_percent                      &lt;dbl&gt; 0.0027, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_asian_alone_percent                     &lt;dbl&gt; 0.0775, 0.168…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_nhpi_alone_percent                      &lt;dbl&gt; 0.0001, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_otherrace_alone_percent                 &lt;dbl&gt; 0.0052, 0.007…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_percent                       &lt;dbl&gt; 0.0449, 0.028…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_includingotherrace_percent    &lt;dbl&gt; 0.0061, 0.008…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_excludingotherrace_percent    &lt;dbl&gt; 0.0388, 0.020…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_allraces_percent                           &lt;dbl&gt; 0.2037, 0.227…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_white_alone_percent                        &lt;dbl&gt; 0.0214, 0.037…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_black_alone_percent                        &lt;dbl&gt; 0.0082, 0.004…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_aian_alone_percent                         &lt;dbl&gt; 0.0044, 0.002…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_asian_alone_percent                        &lt;dbl&gt; 0.0010, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_nhpi_alone_percent                         &lt;dbl&gt; 0e+00, 1e-04,…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_otherrace_alone_percent                    &lt;dbl&gt; 0.0902, 0.075…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_percent                          &lt;dbl&gt; 0.0785, 0.106…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_includingotherrace_percent       &lt;dbl&gt; 0.0732, 0.096…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_excludingotherrace_percent       &lt;dbl&gt; 0.0053, 0.010…</span></span>
-<span><span class="co">#&gt; $ race_personofcolor_percent                               &lt;dbl&gt; 0.4603, 0.486…</span></span>
-<span><span class="co">#&gt; $ total_population_universe_M                              &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_universe_M                                          &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_allraces_M                              &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_white_alone_M                           &lt;dbl&gt; 638, 1467, 14…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_black_alone_M                           &lt;dbl&gt; 1070, 1068, 1…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_aian_alone_M                            &lt;dbl&gt; 369, 186, 55,…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_asian_alone_M                           &lt;dbl&gt; 614, 1300, 59…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_nhpi_alone_M                            &lt;dbl&gt; 47, 75, 87, 6…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_otherrace_alone_M                       &lt;dbl&gt; 538, 1401, 10…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_M                             &lt;dbl&gt; 1255, 1611, 1…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_includingotherrace_M          &lt;dbl&gt; 469, 1219, 11…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_excludingotherrace_M          &lt;dbl&gt; 1127, 1349, 1…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_allraces_M                                 &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_white_alone_M                              &lt;dbl&gt; 945, 2577, 10…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_black_alone_M                              &lt;dbl&gt; 624, 818, 440…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_aian_alone_M                               &lt;dbl&gt; 662, 732, 459…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_asian_alone_M                              &lt;dbl&gt; 171, 222, 138…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_nhpi_alone_M                               &lt;dbl&gt; 33, 73, 41, 1…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_otherrace_alone_M                          &lt;dbl&gt; 1853, 3745, 1…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_M                                &lt;dbl&gt; 2045, 3799, 1…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_includingotherrace_M             &lt;dbl&gt; 2006, 3662, 1…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_excludingotherrace_M             &lt;dbl&gt; 456, 1526, 72…</span></span>
-<span><span class="co">#&gt; $ total_population_universe_SE                             &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_universe_SE                                         &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_allraces_SE                             &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_white_alone_SE                          &lt;dbl&gt; 387.8419, 891…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_black_alone_SE                          &lt;dbl&gt; 650.4559, 649…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_aian_alone_SE                           &lt;dbl&gt; 224.3161, 113…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_asian_alone_SE                          &lt;dbl&gt; 373.2523, 790…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_nhpi_alone_SE                           &lt;dbl&gt; 28.5714, 45.5…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_otherrace_alone_SE                      &lt;dbl&gt; 327.0517, 851…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_SE                            &lt;dbl&gt; 762.9179, 979…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_includingotherrace_SE         &lt;dbl&gt; 285.1064, 741…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_excludingotherrace_SE         &lt;dbl&gt; 685.1064, 820…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_allraces_SE                                &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_white_alone_SE                             &lt;dbl&gt; 574.4681, 156…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_black_alone_SE                             &lt;dbl&gt; 379.3313, 497…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_aian_alone_SE                              &lt;dbl&gt; 402.4316, 444…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_asian_alone_SE                             &lt;dbl&gt; 103.9514, 134…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_nhpi_alone_SE                              &lt;dbl&gt; 20.0608, 44.3…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_otherrace_alone_SE                         &lt;dbl&gt; 1126.4438, 22…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_SE                               &lt;dbl&gt; 1243.1611, 23…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_includingotherrace_SE            &lt;dbl&gt; 1219.4529, 22…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_excludingotherrace_SE            &lt;dbl&gt; 277.2036, 927…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_allraces_percent_SE                     &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_white_alone_percent_SE                  &lt;dbl&gt; 0.0014, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_black_alone_percent_SE                  &lt;dbl&gt; 0.0024, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_aian_alone_percent_SE                   &lt;dbl&gt; 8e-04, 1e-04,…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_asian_alone_percent_SE                  &lt;dbl&gt; 0.0014, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_nhpi_alone_percent_SE                   &lt;dbl&gt; 1e-04, 0e+00,…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_otherrace_alone_percent_SE              &lt;dbl&gt; 0.0012, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_percent_SE                    &lt;dbl&gt; 0.0028, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_includingotherrace_percent_SE &lt;dbl&gt; 0.0010, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_excludingotherrace_percent_SE &lt;dbl&gt; 0.0025, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_allraces_percent_SE                        &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_white_alone_percent_SE                     &lt;dbl&gt; 0.0021, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_black_alone_percent_SE                     &lt;dbl&gt; 0.0014, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_aian_alone_percent_SE                      &lt;dbl&gt; 0.0015, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_asian_alone_percent_SE                     &lt;dbl&gt; 4e-04, 1e-04,…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_nhpi_alone_percent_SE                      &lt;dbl&gt; 1e-04, 0e+00,…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_otherrace_alone_percent_SE                 &lt;dbl&gt; 0.0041, 0.002…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_percent_SE                       &lt;dbl&gt; 0.0045, 0.002…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_includingotherrace_percent_SE    &lt;dbl&gt; 0.0044, 0.002…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_excludingotherrace_percent_SE    &lt;dbl&gt; 0.0010, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_personofcolor_percent_SE                            &lt;dbl&gt; 0.0014, 0.000…</span></span>
-<span><span class="co">#&gt; $ total_population_universe_CV                             &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_universe_CV                                         &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_allraces_CV                             &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_white_alone_CV                          &lt;dbl&gt; 0.2601, 0.180…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_black_alone_CV                          &lt;dbl&gt; 1.8669, 1.253…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_aian_alone_CV                           &lt;dbl&gt; 30.3951, 19.0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_asian_alone_CV                          &lt;dbl&gt; 1.7429, 0.488…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_nhpi_alone_CV                           &lt;dbl&gt; 98.5222, 24.5…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_otherrace_alone_CV                      &lt;dbl&gt; 22.8070, 11.2…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_CV                            &lt;dbl&gt; 6.1456, 3.544…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_includingotherrace_CV         &lt;dbl&gt; 16.8105, 9.21…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_excludingotherrace_CV         &lt;dbl&gt; 6.3921, 4.185…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_allraces_CV                                &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_white_alone_CV                             &lt;dbl&gt; 9.6989, 4.328…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_black_alone_CV                             &lt;dbl&gt; 16.7180, 11.4…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_aian_alone_CV                              &lt;dbl&gt; 32.9053, 20.7…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_asian_alone_CV                             &lt;dbl&gt; 39.0795, 18.4…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_nhpi_alone_CV                              &lt;dbl&gt; NA, 66.2342, …</span></span>
-<span><span class="co">#&gt; $ race_hispanic_otherrace_alone_CV                         &lt;dbl&gt; 4.5184, 3.126…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_CV                               &lt;dbl&gt; 5.7357, 2.251…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_includingotherrace_CV            &lt;dbl&gt; 6.0336, 2.400…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_excludingotherrace_CV            &lt;dbl&gt; 18.9476, 9.44…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_allraces_percent_CV                     &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_white_alone_percent_CV                  &lt;dbl&gt; 0.2601, 0.180…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_black_alone_percent_CV                  &lt;dbl&gt; 1.8669, 1.253…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_aian_alone_percent_CV                   &lt;dbl&gt; 30.3951, 19.0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_asian_alone_percent_CV                  &lt;dbl&gt; 1.7429, 0.488…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_nhpi_alone_percent_CV                   &lt;dbl&gt; 98.5222, 24.5…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_otherrace_alone_percent_CV              &lt;dbl&gt; 22.8070, 11.2…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_percent_CV                    &lt;dbl&gt; 6.1456, 3.544…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_includingotherrace_percent_CV &lt;dbl&gt; 16.8105, 9.21…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_excludingotherrace_percent_CV &lt;dbl&gt; 6.3921, 4.185…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_allraces_percent_CV                        &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_white_alone_percent_CV                     &lt;dbl&gt; 9.6989, 4.328…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_black_alone_percent_CV                     &lt;dbl&gt; 16.7180, 11.4…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_aian_alone_percent_CV                      &lt;dbl&gt; 32.9053, 20.7…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_asian_alone_percent_CV                     &lt;dbl&gt; 39.0795, 18.4…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_nhpi_alone_percent_CV                      &lt;dbl&gt; NA, 66.2342, …</span></span>
-<span><span class="co">#&gt; $ race_hispanic_otherrace_alone_percent_CV                 &lt;dbl&gt; 4.5184, 3.126…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_percent_CV                       &lt;dbl&gt; 5.7357, 2.251…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_includingotherrace_percent_CV    &lt;dbl&gt; 6.0336, 2.400…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_excludingotherrace_percent_CV    &lt;dbl&gt; 18.9476, 9.44…</span></span>
-<span><span class="co">#&gt; $ race_personofcolor_percent_CV                            &lt;dbl&gt; 0.3050, 0.190…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_allraces_percent_M                      &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_white_alone_percent_M                   &lt;dbl&gt; 0.0023, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_black_alone_percent_M                   &lt;dbl&gt; 0.0039, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_aian_alone_percent_M                    &lt;dbl&gt; 0.0013, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_asian_alone_percent_M                   &lt;dbl&gt; 0.0022, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_nhpi_alone_percent_M                    &lt;dbl&gt; 0.0002, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_otherrace_alone_percent_M               &lt;dbl&gt; 0.0019, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_percent_M                     &lt;dbl&gt; 0.0045, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_includingotherrace_percent_M  &lt;dbl&gt; 0.0017, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_nonhispanic_twoormore_excludingotherrace_percent_M  &lt;dbl&gt; 0.0041, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_allraces_percent_M                         &lt;dbl&gt; 0, 0, 0, 0, 0…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_white_alone_percent_M                      &lt;dbl&gt; 0.0034, 0.002…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_black_alone_percent_M                      &lt;dbl&gt; 0.0023, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_aian_alone_percent_M                       &lt;dbl&gt; 0.0024, 0.000…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_asian_alone_percent_M                      &lt;dbl&gt; 6e-04, 2e-04,…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_nhpi_alone_percent_M                       &lt;dbl&gt; 1e-04, 1e-04,…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_otherrace_alone_percent_M                  &lt;dbl&gt; 0.0067, 0.003…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_percent_M                        &lt;dbl&gt; 0.0074, 0.003…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_includingotherrace_percent_M     &lt;dbl&gt; 0.0073, 0.003…</span></span>
-<span><span class="co">#&gt; $ race_hispanic_twoormore_excludingotherrace_percent_M     &lt;dbl&gt; 0.0017, 0.001…</span></span>
-<span><span class="co">#&gt; $ race_personofcolor_percent_M                             &lt;dbl&gt; 0.0023, 0.001…</span></span>
-<span><span class="co">#&gt; # A tibble: 10 × 175</span></span>
-<span><span class="co">#&gt;    data_source_year GEOID NAME              total_population_uni…¹ race_universe</span></span>
-<span><span class="co">#&gt;               &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;                              &lt;dbl&gt;         &lt;dbl&gt;</span></span>
-<span><span class="co">#&gt;  1             2024 34001 Atlantic County,…                 276270        276270</span></span>
-<span><span class="co">#&gt;  2             2024 34003 Bergen County, N…                 962316        962316</span></span>
-<span><span class="co">#&gt;  3             2024 34005 Burlington Count…                 467805        467805</span></span>
-<span><span class="co">#&gt;  4             2024 34007 Camden County, N…                 527257        527257</span></span>
-<span><span class="co">#&gt;  5             2024 34009 Cape May County,…                  94941         94941</span></span>
-<span><span class="co">#&gt;  6             2024 34011 Cumberland Count…                 153305        153305</span></span>
-<span><span class="co">#&gt;  7             2024 34013 Essex County, Ne…                 863002        863002</span></span>
-<span><span class="co">#&gt;  8             2024 34015 Gloucester Count…                 306954        306954</span></span>
-<span><span class="co">#&gt;  9             2024 34017 Hudson County, N…                 718323        718323</span></span>
-<span><span class="co">#&gt; 10             2024 34019 Hunterdon County…                 130160        130160</span></span>
-<span><span class="co">#&gt; # ℹ abbreviated name: ¹​total_population_universe</span></span>
-<span><span class="co">#&gt; # ℹ 170 more variables: race_nonhispanic_allraces &lt;dbl&gt;,</span></span>
-<span><span class="co">#&gt; #   race_nonhispanic_white_alone &lt;dbl&gt;, race_nonhispanic_black_alone &lt;dbl&gt;,</span></span>
-<span><span class="co">#&gt; #   race_nonhispanic_aian_alone &lt;dbl&gt;, race_nonhispanic_asian_alone &lt;dbl&gt;,</span></span>
-<span><span class="co">#&gt; #   race_nonhispanic_nhpi_alone &lt;dbl&gt;, race_nonhispanic_otherrace_alone &lt;dbl&gt;,</span></span>
-<span><span class="co">#&gt; #   race_nonhispanic_twoormore &lt;dbl&gt;,</span></span>
-<span><span class="co">#&gt; #   race_nonhispanic_twoormore_includingotherrace &lt;dbl&gt;, …</span></span></code></pre></div>
+<span><span class="va">df</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">select</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">glimpse</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Rows: 42</span></span>
+<span><span class="co">#&gt; Columns: 10</span></span>
+<span><span class="co">#&gt; $ data_source_year             &lt;dbl&gt; 2019, 2019, 2019, 2019, 2019, 2019, 2019,…</span></span>
+<span><span class="co">#&gt; $ GEOID                        &lt;chr&gt; "34025", "34037", "34013", "34015", "3403…</span></span>
+<span><span class="co">#&gt; $ NAME                         &lt;chr&gt; "Monmouth County, New Jersey", "Sussex Co…</span></span>
+<span><span class="co">#&gt; $ total_population_universe    &lt;dbl&gt; 621659, 141483, 795404, 291165, 503637, 9…</span></span>
+<span><span class="co">#&gt; $ race_universe                &lt;dbl&gt; 621659, 141483, 795404, 291165, 503637, 9…</span></span>
+<span><span class="co">#&gt; $ race_nonhispanic_allraces    &lt;dbl&gt; 554491, 129866, 612222, 273106, 294434, 7…</span></span>
+<span><span class="co">#&gt; $ race_nonhispanic_white_alone &lt;dbl&gt; 467752, 122081, 242965, 228576, 208005, 5…</span></span>
+<span><span class="co">#&gt; $ race_nonhispanic_black_alone &lt;dbl&gt; 41697, 2991, 305796, 28452, 52523, 49249,…</span></span>
+<span><span class="co">#&gt; $ race_nonhispanic_aian_alone  &lt;dbl&gt; 440, 16, 1107, 204, 651, 1000, 123, 191, …</span></span>
+<span><span class="co">#&gt; $ race_nonhispanic_asian_alone &lt;dbl&gt; 33451, 2887, 41976, 9002, 25732, 151090, …</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="visualize-data">Visualize Data<a class="anchor" aria-label="anchor" href="#visualize-data"></a>
 </h2>
 <p><code><a href="reference/compile_acs_data.html">compile_acs_data()</a></code> makes it easy to pull multiple years and produce publication-ready visualizations:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="fu"><a href="reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
-<span>  tables <span class="op">=</span> <span class="st">"race"</span>,</span>
-<span>  <span class="co">## selecting 5-year ACS data from years with no measurement overlap</span></span>
-<span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2019</span>, <span class="fl">2024</span><span class="op">)</span>,</span>
-<span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
-<span>  states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">plot_data</span> <span class="op">=</span> <span class="va">df</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">plot_data</span> <span class="op">=</span> <span class="va">df</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">transmute</span><span class="op">(</span></span>
 <span>    county_name <span class="op">=</span> <span class="va">NAME</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span> <span class="fu">str_remove</span><span class="op">(</span><span class="st">" County, New Jersey"</span><span class="op">)</span>,</span>
 <span>    <span class="va">race_personofcolor_percent</span>,</span>
-<span>    <span class="va">race_personofcolor_percent_SE</span>,</span>
+<span>    <span class="va">race_personofcolor_percent_M</span>,</span>
 <span>    data_source_year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">data_source_year</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">state_averages</span> <span class="op">=</span> <span class="va">plot_data</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
@@ -385,7 +180,7 @@
 <span>      x <span class="op">=</span> <span class="va">county_name</span>,</span>
 <span>      ydist <span class="op">=</span> <span class="fu">distributional</span><span class="fu">::</span><span class="fu"><a href="https://pkg.mitchelloharawild.com/distributional/reference/dist_normal.html" class="external-link">dist_normal</a></span><span class="op">(</span></span>
 <span>        <span class="va">race_personofcolor_percent</span>,</span>
-<span>        <span class="va">race_personofcolor_percent_SE</span><span class="op">)</span>,</span>
+<span>        <span class="va">race_personofcolor_percent_M</span> <span class="op">/</span> <span class="fl">1.645</span><span class="op">)</span>,</span>
 <span>      color <span class="op">=</span> <span class="va">data_source_year</span><span class="op">)</span>,</span>
 <span>    point_size <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>    .width <span class="op">=</span> <span class="fl">.95</span><span class="op">)</span> <span class="op">+</span></span>
@@ -430,7 +225,111 @@
 <span>    labels <span class="op">=</span> <span class="fu">scales</span><span class="fu">::</span><span class="va"><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">percent</a></span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">coord_flip</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu">theme_urbn_print</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="reference/figures/README-unnamed-chunk-6-1.png" alt="" width="100%"></p>
+<p><img src="reference/figures/README-unnamed-chunk-5-1.png" alt="" width="100%"></p>
+</div>
+<div class="section level2">
+<h2 id="custom-geographies">Custom Geographies<a class="anchor" aria-label="anchor" href="#custom-geographies"></a>
+</h2>
+<p>ACS data are available for standard geographies (tracts, counties, states, etc.), but many analyses require non-standard areas like neighborhoods, school zones, or planning districts. <code><a href="reference/interpolate_acs.html">interpolate_acs()</a></code> aggregates tract-level data to any user-defined geography, properly re-deriving percentages and propagating margins of error:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dc_tracts</span> <span class="op">=</span> <span class="fu"><a href="reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
+<span>  tables <span class="op">=</span> <span class="st">"snap"</span>,</span>
+<span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
+<span>  geography <span class="op">=</span> <span class="st">"tract"</span>,</span>
+<span>  states <span class="op">=</span> <span class="st">"DC"</span>,</span>
+<span>  spatial <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## assign each tract to a quadrant based on its centroid</span></span>
+<span><span class="va">dc_tracts</span> <span class="op">=</span> <span class="va">dc_tracts</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">mutate</span><span class="op">(</span></span>
+<span>    centroid <span class="op">=</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_unary.html" class="external-link">st_centroid</a></span><span class="op">(</span><span class="va">geometry</span><span class="op">)</span>,</span>
+<span>    lon <span class="op">=</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_coordinates.html" class="external-link">st_coordinates</a></span><span class="op">(</span><span class="va">centroid</span><span class="op">)</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>,</span>
+<span>    lat <span class="op">=</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_coordinates.html" class="external-link">st_coordinates</a></span><span class="op">(</span><span class="va">centroid</span><span class="op">)</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>,</span>
+<span>    quadrant <span class="op">=</span> <span class="fu">case_when</span><span class="op">(</span></span>
+<span>      <span class="va">lon</span> <span class="op">&lt;</span>  <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">lon</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">lat</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">lat</span><span class="op">)</span> <span class="op">~</span> <span class="st">"NW"</span>,</span>
+<span>      <span class="va">lon</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">lon</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">lat</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">lat</span><span class="op">)</span> <span class="op">~</span> <span class="st">"NE"</span>,</span>
+<span>      <span class="va">lon</span> <span class="op">&lt;</span>  <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">lon</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">lat</span> <span class="op">&lt;</span>  <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">lat</span><span class="op">)</span> <span class="op">~</span> <span class="st">"SW"</span>,</span>
+<span>      <span class="va">lon</span> <span class="op">&gt;=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">lon</span><span class="op">)</span> <span class="op">&amp;</span> <span class="va">lat</span> <span class="op">&lt;</span>  <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">lat</span><span class="op">)</span> <span class="op">~</span> <span class="st">"SE"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">select</span><span class="op">(</span><span class="op">-</span><span class="va">centroid</span>, <span class="op">-</span><span class="va">lon</span>, <span class="op">-</span><span class="va">lat</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## aggregate tracts to quadrants</span></span>
+<span><span class="va">dc_quadrants</span> <span class="op">=</span> <span class="fu"><a href="reference/interpolate_acs.html">interpolate_acs</a></span><span class="op">(</span></span>
+<span>  .data <span class="op">=</span> <span class="va">dc_tracts</span>,</span>
+<span>  target_geoid <span class="op">=</span> <span class="st">"quadrant"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dc_quadrants</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">select</span><span class="op">(</span><span class="va">GEOID</span>, <span class="va">snap_received_percent</span>, <span class="va">snap_received_percent_M</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   GEOID snap_received_percent snap_received_percent_M</span></span>
+<span><span class="co">#&gt; 1    NE            0.15951925             0.019448994</span></span>
+<span><span class="co">#&gt; 2    NW            0.07036185             0.006889427</span></span>
+<span><span class="co">#&gt; 3    SE            0.24445974             0.012073306</span></span>
+<span><span class="co">#&gt; 4    SW            0.06525691             0.012003668</span></span></code></pre></div>
+<p>See <code><a href="articles/custom-geographies.html">vignette("custom-geographies")</a></code> for more.</p>
+</div>
+<div class="section level2">
+<h2 id="custom-derived-variables">Custom Derived Variables<a class="anchor" aria-label="anchor" href="#custom-derived-variables"></a>
+</h2>
+<p>Beyond the package’s built-in tables, you can define your own derived variables using the <code>define_*()</code> helpers and pass them directly to <code><a href="reference/compile_acs_data.html">compile_acs_data()</a></code>. Your custom variables automatically get codebook entries and margins of error:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">df</span> <span class="op">=</span> <span class="fu"><a href="reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
+<span>  tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    <span class="st">"snap"</span>,</span>
+<span>    <span class="fu"><a href="reference/define_percent.html">define_percent</a></span><span class="op">(</span></span>
+<span>      <span class="st">"snap_not_received_percent"</span>,</span>
+<span>      numerator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span><span class="op">)</span>,</span>
+<span>      numerator_subtract_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_received"</span><span class="op">)</span>,</span>
+<span>      denominator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="reference/define_one_minus.html">define_one_minus</a></span><span class="op">(</span></span>
+<span>      <span class="st">"snap_received_complement"</span>,</span>
+<span>      source_variable <span class="op">=</span> <span class="st">"snap_received_percent"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
+<span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
+<span>  states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">df</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">select</span><span class="op">(</span><span class="fu">matches</span><span class="op">(</span><span class="st">"snap.*percent"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">glimpse</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Rows: 1</span></span>
+<span><span class="co">#&gt; Columns: 4</span></span>
+<span><span class="co">#&gt; $ snap_received_percent       &lt;dbl&gt; 0.143</span></span>
+<span><span class="co">#&gt; $ snap_not_received_percent   &lt;dbl&gt; 0.857</span></span>
+<span><span class="co">#&gt; $ snap_received_percent_M     &lt;dbl&gt; 0.0064</span></span>
+<span><span class="co">#&gt; $ snap_not_received_percent_M &lt;dbl&gt; 0.0071</span></span></code></pre></div>
+<p>The available helpers are:</p>
+<table class="table">
+<colgroup>
+<col width="35%">
+<col width="64%">
+</colgroup>
+<thead><tr class="header">
+<th>Helper</th>
+<th>Use case</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code><a href="reference/define_percent.html">define_percent()</a></code></td>
+<td>Ratio of a numerator to a denominator</td>
+</tr>
+<tr class="even">
+<td><code><a href="reference/define_across_percent.html">define_across_percent()</a></code></td>
+<td>Percentages for every column matching a regex</td>
+</tr>
+<tr class="odd">
+<td><code><a href="reference/define_across_sum.html">define_across_sum()</a></code></td>
+<td>Sum paired columns (e.g., male + female counts)</td>
+</tr>
+<tr class="even">
+<td><code><a href="reference/define_one_minus.html">define_one_minus()</a></code></td>
+<td>Complement of an existing percentage (1 - x)</td>
+</tr>
+<tr class="odd">
+<td><code><a href="reference/define_metadata.html">define_metadata()</a></code></td>
+<td>Codebook-only entry for a non-computed variable</td>
+</tr>
+</tbody>
+</table>
+<p>See <code><a href="articles/custom-derived-variables.html">vignette("custom-derived-variables")</a></code> for detailed examples of each helper.</p>
 </div>
 </div>
 <div class="section level1">
@@ -443,6 +342,7 @@
 <li><p>A brief description of the package’s <a href="articles/design-philosophy.html"><strong>Design Philosophy</strong></a> to clarify the use-cases that <code>urbnindicators</code> is built to support.</p></li>
 <li><p>An illustration of how <a href="articles/quantified-survey-error.html"><strong>Quantifying Survey Error</strong></a> can improve inference making.</p></li>
 <li><p>You can re-create your indicators and their measures of error for <a href="articles/custom-geographies.html"><strong>Custom Geographies</strong></a>. Neighborhoods? Unincorporated counties? Start here.</p></li>
+<li><p>A guide to defining <a href="articles/custom-derived-variables.html"><strong>Custom Derived Variables</strong></a> using the <code>define_*()</code> helpers.</p></li>
 </ul>
 </div>
 <div class="section level1">

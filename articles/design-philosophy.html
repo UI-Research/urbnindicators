@@ -35,9 +35,9 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
-    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Aggregating to Custom Geographies</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
+    <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
     <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
-    <li><a class="dropdown-item" href="../articles/opening-a-pull-request.html">How to Open a Pull Request</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
   </ul>
 </li>
@@ -112,6 +112,36 @@ from the codebook returned by this package!) of a variable named, for
 example, <code>race_personofcolor_percent</code>. Variables in the
 codebook have their original API names included in their
 definitions.</p></li>
+<li><p><strong>Use a consistent variable naming convention.</strong>
+Variable names follow the pattern
+<code>[concept]_[subconcept]_[characteristic]_[metric]</code>. For
+example, <code>race_nonhispanic_white_alone_percent</code>. The
+<code>_percent</code> suffix always denotes a derived percentage,
+<code>_universe</code> denotes the denominator used to calculate
+percentages for that table, and <code>_M</code> denotes a margin of
+error. This consistency makes it easy to use
+<code><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">dplyr::matches()</a></code> or <code><a href="https://tidyselect.r-lib.org/reference/starts_with.html" class="external-link">dplyr::starts_with()</a></code> to
+select related groups of variables.</p></li>
+<li><p><strong>Express percentages on a 0–1 scale.</strong> All derived
+percentages are expressed as proportions (e.g., 0.25 rather than 25).
+This avoids ambiguity and simplifies downstream calculations (e.g.,
+multiplying a proportion by a population count). Use
+<code><a href="https://scales.r-lib.org/reference/percent_format.html" class="external-link">scales::percent()</a></code> for display formatting.</p></li>
+<li><p><strong>Always propagate margins of error.</strong> When
+<code>urbnindicators</code> derives a new variable from two or more raw
+ACS estimates, it also calculates a margin of error for that derived
+variable using Census Bureau-recommended formulae. This means every
+<code>_percent</code> variable in the output has a corresponding
+<code>_percent_M</code> variable. These derived MOEs have known
+limitations (see <code><a href="../articles/quantified-survey-error.html">vignette("quantified-survey-error")</a></code>) but
+are far preferable to dropping error information entirely.</p></li>
+<li><p><strong>Design for extensibility.</strong> New ACS tables can be
+added to the package via a single <code>register_table()</code> call in
+<code>R/table_registry.R</code>. The registration declaratively
+specifies raw variables, derived calculations, and codebook metadata;
+the codebook and margin of error calculations are generated
+automatically. See <code><a href="../articles/custom-derived-variables.html">vignette("custom-derived-variables")</a></code> for
+a walkthrough.</p></li>
 </ul>
 </div>
   </main>

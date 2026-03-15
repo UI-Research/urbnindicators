@@ -72,7 +72,13 @@ coefficient of variation (CV = SE / estimate \* 100, where SE = MOE /
 As shown below, variables that rely on larger sample sizes tend to have
 smaller MOEs. Typically, there are two strategies to reduce error: (1)
 aggregate estimates, either across geographies or across variables, or
-(2) use larger geographies.
+(2) use larger geographies. For the first strategy,
+[`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
+can aggregate tract-level data to user-defined geographies (e.g.,
+neighborhoods or planning districts) while properly propagating margins
+of error. See
+[`vignette("custom-geographies")`](https://ui-research.github.io/urbnindicators/articles/custom-geographies.md)
+for a worked example.
 
 ``` r
 acs_df_county = compile_acs_data(

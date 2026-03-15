@@ -148,6 +148,10 @@ is in the resolved tables
 ### Exported functions
 
 - `compile_acs_data(tables, ...)` - Pull and compute ACS data
+- `interpolate_acs(.data, target_geoid, weight, ...)` - Aggregate or
+  interpolate ACS data to custom geographies. `weight = NULL` for
+  complete nesting (direct aggregation); `weight = "col"` for fractional
+  allocation via crosswalk.
 - [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md) -
   Available table names for the `tables` parameter (construct-level
   names)
