@@ -28,6 +28,7 @@ Imports:
     tibble,
     sf
 Suggests:
+    crosswalk,
     distributional,
     ggdist,
     ggplot2,
@@ -39,7 +40,8 @@ Suggests:
     testthat (>= 3.0.0),
     scales,
     urbnthemes (>= 0.0.2)
-Remotes: 
+Remotes:
+    UI-Research/crosswalk,
     UrbanInstitute/urbnthemes
 RoxygenNote: 7.3.3
 URL: https://ui-research.github.io/urbnindicators/

@@ -7,7 +7,7 @@ reference:
 - title: Acquire data
   contents:
   - compile_acs_data
-  - calculate_custom_geographies
+  - interpolate_acs
   - define_percent
   - define_across_percent
   - define_across_sum
@@ -18,9 +18,9 @@ reference:
   - se_simple
   - se_sum
   - se_proportion_ratio
+  - cv
 - title: Helper functions
   contents:
-  - get_acs_codebook
   - list_tables
   - list_variables 
   - select_variables_by_name
@@ -29,4 +29,5 @@ reference:
   - safe_divide
   - list_acs_variables
   - get_acs_codebook
+  
 

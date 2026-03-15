@@ -115,7 +115,7 @@ As shown below, variables that rely on larger sample sizes tend to have
 smaller MOEs. Typically, there are two strategies to reduce error: (1)
 aggregate estimates, either across geographies or across variables, or
 (2) use larger geographies. For the first strategy,
-`calculate_custom_geographies()` can aggregate tract-level data to
+`interpolate_acs()` can aggregate tract-level data to
 user-defined geographies (e.g., neighborhoods or planning districts)
 while properly propagating margins of error. See
 `vignette("custom-geographies")` for a worked example.

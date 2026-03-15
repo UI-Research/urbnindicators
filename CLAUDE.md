@@ -101,6 +101,7 @@ When `tables` are specified:
 ### Exported functions
 
 - `compile_acs_data(tables, ...)` - Pull and compute ACS data
+- `interpolate_acs(.data, target_geoid, weight, ...)` - Aggregate or interpolate ACS data to custom geographies. `weight = NULL` for complete nesting (direct aggregation); `weight = "col"` for fractional allocation via crosswalk.
 - `list_tables()` - Available table names for the `tables` parameter (construct-level names)
 - `get_acs_codebook(year, table)` - Browse ACS variables with clean names and table codes
 - `list_variables(year)` - Tibble mapping all variables (raw + computed) to their table name

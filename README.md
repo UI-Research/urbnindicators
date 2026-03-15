@@ -208,10 +208,9 @@ Confidence intervals are presented around each point but are extremely small"),
 
 ACS data are available for standard geographies (tracts, counties,
 states, etc.), but many analyses require non-standard areas like
-neighborhoods, school zones, or planning districts.
-`calculate_custom_geographies()` aggregates tract-level data to any
-user-defined geography, properly re-deriving percentages and propagating
-margins of error:
+neighborhoods, school zones, or planning districts. `interpolate_acs()`
+aggregates tract-level data to any user-defined geography, properly
+re-deriving percentages and propagating margins of error:
 
 ``` r
 dc_tracts = compile_acs_data(
@@ -235,10 +234,9 @@ dc_tracts = dc_tracts %>%
   select(-centroid, -lon, -lat)
 
 ## aggregate tracts to quadrants
-dc_quadrants = calculate_custom_geographies(
+dc_quadrants = interpolate_acs(
   .data = dc_tracts,
-  group_id = "quadrant",
-  spatial = TRUE)
+  target_geoid = "quadrant")
 
 dc_quadrants %>%
   sf::st_drop_geometry() %>%
