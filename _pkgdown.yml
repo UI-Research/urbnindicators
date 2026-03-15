@@ -7,7 +7,7 @@ reference:
 - title: Acquire data
   contents:
   - compile_acs_data
-  - calculate_custom_geographies
+  - interpolate_acs
   - define_percent
   - define_across_percent
   - define_across_sum

@@ -255,7 +255,7 @@ codebook %>%
 
 ACS data are available for standard geographies, but many analyses
 require non-standard areas like neighborhoods or planning districts.
-`calculate_custom_geographies()` aggregates tract-level data to any
+`interpolate_acs()` aggregates tract-level data to any
 user-defined geography, properly re-deriving percentages and
 propagating margins of error. See
 [Aggregating to Custom Geographies](custom-geographies.html) for a
