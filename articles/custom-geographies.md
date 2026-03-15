@@ -242,7 +242,7 @@ gridExtra::grid.arrange(
   map_tracts_sig, map_quadrants_sig,
   ncol = 2,
   top = grid::textGrob(
-    "Aggregation can mitigate challenges with small-population, high-error observations",
+    "Aggregation can mitigate challenges with small-population, high-error observations" %>% str_wrap(60),
     gp = grid::gpar(fontsize = 12, fontface = "bold")))
 ```
 
@@ -360,6 +360,8 @@ gridExtra::grid.arrange(
     "Change in SNAP receipt, 2019 to 2024",
     gp = grid::gpar(fontsize = 12, fontface = "bold")))
 ```
+
+![](custom-geographies_files/figure-html/unnamed-chunk-10-1.png)
 
 With `weight = NULL` (the default used in the quadrant example),
 [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
