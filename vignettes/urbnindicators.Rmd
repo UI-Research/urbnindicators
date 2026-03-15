@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
   out.width = "100%")
 ```
 
-```{r setup, echo = FALSE}
+```{r setup}
 library(urbnindicators)
 library(tidycensus)
 library(dplyr)
@@ -124,9 +124,7 @@ how `library(urbnindicators)` helps simplify this task.)
 of a call to `tidycensus::get_acs()`, a call to
 `urbnindicators::compile_acs_data()` returns a dataset of both raw ACS
 measures and derived estimates (such as the share of all individuals who
-are disabled). And that dataset can include a range of measures–-spanning
-things such as health insurance, employment, housing costs, and race and
-ethnicity–-not just one variable or table from the ACS.
+are disabled).
 
 ### Acquire data
 
@@ -136,8 +134,7 @@ geographies.
 
 Note that selecting more tables or more geographic units--either by selecting 
 a `geography` option comprising more units, by selecting more states, or selecting 
-more years--can significantly increase the query time. A tract-level query of the 
-entire US for all supported variables can take 30+ minutes.
+more years--can significantly increase the query time.
 
 Use `list_tables()` to see some of the most commonly-used tables:
 
@@ -251,12 +248,19 @@ codebook %>%
   pull(definition)
 ```
 
-### Aggregate to custom geographies
+### Create your own derived variables
 
-ACS data are available for standard geographies, but many analyses
-require non-standard areas like neighborhoods or planning districts.
-`interpolate_acs()` aggregates tract-level data to any
+For tables from `list_tables()`, raw ACS variables and derived variables are automatically returned. But for other tables, there are no pre-computed (by `urbnindicators`) derived variables. And even for tables reflected in `list_tables()`, 
+you may want alternate or additional derived variables. `urbnindicators` provides a
+suite of helper functions (`define_*()`) that allow you to specify how you want to create these derived variables; these helper functions abstract away the actual calculations and ensure that you get an updated codeboook and correctly-pooled margins
+of error for each of your newly-derived variables. See [Custom Derived Variables](custom-derived-variables.html) for more.
+
+### Interpolate data to custom geographies
+
+ACS data are available for many statistical and political geographies, but many analyses
+rfocus on other geographies like neighborhoods or planning districts.
+`interpolate_acs()` translates data from ACS-supported geographies to any
 user-defined geography, properly re-deriving percentages and
 propagating margins of error. See
-[Aggregating to Custom Geographies](custom-geographies.html) for a
+[Translating ACS Data to Custom Geographies](custom-geographies.html) for a
 worked example.

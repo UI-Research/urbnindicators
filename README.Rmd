@@ -27,7 +27,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Codecov test
 coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](https://app.codecov.io/gh/UI-Research/urbnindicators)
-
+[![Codecov test coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](https://app.codecov.io/gh/UI-Research/urbnindicators)
 <!-- badges: end -->
 
 # Overview
@@ -35,28 +35,32 @@ coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](htt
 **urbnindicators** aims to provide users with analysis-ready data from
 the American Community Survey (ACS).
 
-With a single function call, you get:
+What you can access:
 
--   Access to hundreds of standardized variables, such as percentages and
-    the raw count variables used to produce them.
+-   Hundreds of pre-computed variables, including percentages and
+    the raw count variables used to produce them. Or flexibly query 
+    any table your heart desires.
+
+-   Or flexibly specify your own derived variables with a series of
+    helper functions.
 
 -   Margins of error for all variables--those direct from the API as
-    well as derived variables.
+    well as derived variables--with correctly calculated pooled margins
+    of error, per Census Bureau guidance.
 
--   Meaningful, consistent variable names.
+-   Meaningful, consistent variable names--no more "B01003_001"; try 
+    "total_population_universe" instead. (But if you're fond of the API's
+    variable names, those are stored in the codebook as well for cross-referencing.)
 
 -   A codebook that describes how each variable is calculated.
 
--   The built-in capacity to pull data for multiple years and multiple
-    states.
+-   Data for multiple years and multiple states out of the box.
 
 -   Supplemental measures, such as population density, that aren't
     available from the ACS.
 
--   Built-in quality checks to help ensure that calculated variables 
-    and measures of error are accurate. Plus some good, old-fashioned manual QC.
-    That said--use at your own risk. We cannot and do not guarantee there aren't bugs.
-
+-   Tools to aggregate or interpolate your data to different 
+    geographies--along with correctly adjusted margins of error.
 
 
 # Installation
@@ -222,7 +226,7 @@ Confidence intervals are presented around each point but are extremely small"),
 ACS data are available for standard geographies (tracts, counties,
 states, etc.), but many analyses require non-standard areas like
 neighborhoods, school zones, or planning districts.
-`interpolate_acs()` aggregates tract-level data to
+`interpolate_acs()` aggregates source data to
 any user-defined geography, properly re-deriving percentages and
 propagating margins of error:
 
@@ -274,10 +278,7 @@ df = compile_acs_data(
       "snap_not_received_percent",
       numerator_variables = c("snap_universe"),
       numerator_subtract_variables = c("snap_received"),
-      denominator_variables = c("snap_universe")),
-    define_one_minus(
-      "snap_received_complement",
-      source_variable = "snap_received_percent")),
+      denominator_variables = c("snap_universe"))),
   years = 2024,
   geography = "county",
   states = "DC")
@@ -287,18 +288,8 @@ df %>%
   glimpse()
 ```
 
-The available helpers are:
-
-| Helper | Use case |
-|---|---|
-| `define_percent()` | Ratio of a numerator to a denominator |
-| `define_across_percent()` | Percentages for every column matching a regex |
-| `define_across_sum()` | Sum paired columns (e.g., male + female counts) |
-| `define_one_minus()` | Complement of an existing percentage (1 - x) |
-| `define_metadata()` | Codebook-only entry for a non-computed variable |
-
 See `vignette("custom-derived-variables")` for detailed examples of
-each helper.
+each of the `define_*()` helpers.
 
 # Learn More
 
@@ -331,9 +322,5 @@ Check out the vignettes for additional details:
 
 This package is built on top of and enormously indebted to
 `library(tidycensus)`, which provides the core functionality for
-accessing the Census Bureau API. For users who want additional
-variables, `library(tidycensus)` exposes the entire range of
-pre-tabulated variables available from the ACS and provides access to
-ACS microdata and other Census Bureau datasets.
-
-Learn more here: <https://walker-data.com/tidycensus/index.html>.
+accessing the Census Bureau API. Learn more here: 
+<https://walker-data.com/tidycensus/index.html>.
