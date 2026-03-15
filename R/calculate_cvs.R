@@ -232,10 +232,10 @@ se_weighted_mean = function(
 }
 
 #' @title Calculate a coefficient of variation
-#' @details Return a coefficient of variation at the 90% level
+#' @details Return a coefficient of variation reflecting the ration of the SE to the estimate
 #' @param estimate The estimate
-#' @param se The standard error
-#' @returns A coefficient of variation at the 90% level
+#' @param se The standard error (SE)
+#' @returns A coefficient of variation
 cv = function(estimate, se) {
   cv = se / estimate * 100
 

@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
   comment = "#>")
 ```
 
-```{r setup, echo = FALSE}
+```{r setup}
 library(urbnindicators)
 library(dplyr)
 library(reactable)
@@ -68,7 +68,10 @@ critical.
 ## Browse the codebook
 
 Use the search box below to filter by variable name, type, or
-definition text.
+definition text. Note that this codebook reflects all variables from
+the tables returned by `list_tables()`, but if you were to specify
+different tables in your `compile_acs_data()` call, your codebook
+would comprise different variable listings. 
 
 ```{r, echo = FALSE}
 reactable(

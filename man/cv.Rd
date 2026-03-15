@@ -9,14 +9,14 @@ cv(estimate, se)
 \arguments{
 \item{estimate}{The estimate}
 
-\item{se}{The standard error}
+\item{se}{The standard error (SE)}
 }
 \value{
-A coefficient of variation at the 90\% level
+A coefficient of variation
 }
 \description{
 Calculate a coefficient of variation
 }
 \details{
-Return a coefficient of variation at the 90\% level
+Return a coefficient of variation reflecting the ration of the SE to the estimate
 }
