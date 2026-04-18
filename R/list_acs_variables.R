@@ -49,7 +49,7 @@ filter_variables = function(variable_vector, match_string, match_type = "positiv
   else if (match_type == "negative") {
     variable_vector[!stringr::str_detect(names(variable_vector), match_string)] }
   else {
-    stop("`match_type` must be 'positive' or 'negative'.") }
+    cli::cli_abort("{.arg match_type} must be {.val positive} or {.val negative}.") }
 }
 
 #' @title Return ACS variables codes and names
@@ -112,7 +112,7 @@ get_acs_codebook = function(year = 2024, table = NULL) {
     census_variables = census_variables %>%
       dplyr::filter(stringr::str_detect(name, pattern))
     if (nrow(census_variables) == 0) {
-      stop(paste0("No variables found for table '", table, "' in year ", year, "."))
+      cli::cli_abort("No variables found for table {.val {table}} in year {year}.")
     }
   }
 

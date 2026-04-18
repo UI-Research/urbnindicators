@@ -1,16 +1,71 @@
 #' @title Division without NAs
 #' @description Return 0 when the divisor is 0.
 #' @details A modified division operation that returns zero when the divisor is zero
-#'    rather than returning NA. Otherwise returns the quotient.
+#'    rather than returning NaN. Otherwise returns the quotient. Note that when
+#'    \code{y} is \code{NA}, the result is \code{NA} (NA divisors are not coerced
+#'    to 0); when \code{x} is \code{NA} and \code{y} is nonzero, the result is
+#'    also \code{NA}.
 #' @param x A numeric scalar.
 #' @param y A numeric scalar.
 #' @returns The traditional dividend in all cases except where \code{y == 0}, in which
-#'    case it returns 0.
+#'    case it returns 0. Returns \code{NA} when either \code{x} or \code{y} is
+#'    \code{NA} (for \code{y}, except when also \code{0}, which is not possible
+#'    since \code{NA} is not equal to \code{0}).
 #' @examples
 #' safe_divide(1, 2)
 #' safe_divide(3, 0)
+#' safe_divide(3, NA)  # returns NA
 #' @export
 safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
+
+## Internal helper: fetch raw ACS estimates across years, states, and counties.
+## Handles three query modes (national, state-level, county-level) so the
+## main function doesn't duplicate the iteration logic.
+fetch_acs = function(geography, variables, years, states, counties,
+                     county_codes, super_state_geographies) {
+  if (geography %in% super_state_geographies) {
+    purrr::map(years, function(year) {
+      tidycensus::get_acs(
+        geography = geography, variables = variables,
+        year = as.numeric(year), survey = "acs5", output = "wide") %>%
+        dplyr::mutate(data_source_year = year)
+    }) %>% purrr::list_rbind()
+
+  } else if (length(counties) == 0) {
+    purrr::map(states, function(state) {
+      purrr::map(years, function(year) {
+        tidycensus::get_acs(
+          geography = geography, variables = variables,
+          year = as.numeric(year), state = state,
+          survey = "acs5", output = "wide") %>%
+          dplyr::mutate(data_source_year = year)
+      }) %>% purrr::list_rbind()
+    }) %>% purrr::list_rbind()
+
+  } else {
+    purrr::map(states, function(state) {
+      purrr::map(years, function(year) {
+        if (geography %in% c("tract", "county")) {
+          purrr::map(
+            county_codes %>% dplyr::filter(state == !!state) %>% dplyr::pull(county),
+            function(cty) {
+              tidycensus::get_acs(
+                geography = geography, variables = variables,
+                year = as.numeric(year), state = state, county = cty,
+                survey = "acs5", output = "wide")
+            }) %>% purrr::list_rbind() %>%
+            dplyr::mutate(data_source_year = year)
+        } else {
+          tidycensus::get_acs(
+            geography = geography, variables = variables,
+            year = as.numeric(year), state = state,
+            survey = "acs5", output = "wide") %>%
+            dplyr::mutate(data_source_year = year)
+        }
+      }) %>% purrr::list_rbind()
+    }) %>% purrr::list_rbind()
+  }
+}
 
 #' @title Analysis-ready social science measures
 #' @description Construct measures frequently used in social sciences
@@ -122,33 +177,32 @@ compile_acs_data = function(
   }
   unknown_args = setdiff(names(dots), "variables")
   if (length(unknown_args) > 0) {
-    rlang::warn(
-      paste0(
-        "Unknown argument(s) passed to `compile_acs_data()`: ",
-        paste0("`", unknown_args, "`", collapse = ", "),
-        ". These will be ignored."
-      )
+    cli::cli_warn(
+      "Unknown argument{?s} passed to {.fun compile_acs_data}: {.arg {unknown_args}}. {?It/They} will be ignored."
     )
   }
 
   old_tigris_cache = getOption("tigris_use_cache")
-  options(tigris_use_cache = FALSE)
+  options(tigris_use_cache = TRUE)
   on.exit(options(tigris_use_cache = old_tigris_cache), add = TRUE)
+
+  ## normalize geography to lowercase for consistent downstream comparisons
+  geography = tolower(geography)
 
   ## validate years
   years = as.numeric(years)
   if (any(is.na(years)) || any(years != as.integer(years)) || any(nchar(as.integer(years)) != 4)) {
-    stop("`years` must be a vector of four-digit integers (e.g., 2022).")
+    cli::cli_abort("{.arg years} must be a vector of four-digit integers (e.g., 2022).")
   }
   if (any(years < 2009) || any(years > as.numeric(format(Sys.Date(), "%Y")))) {
-    stop("`years` must be between 2009 (earliest 5-year ACS) and the current year.")
+    cli::cli_abort("{.arg years} must be between 2009 (earliest 5-year ACS) and the current year.")
   }
 
   ## validate denominator parameter
   valid_denominator = denominator %in% c("parent", "total") ||
     grepl("^[BC][0-9]{5}[A-I]?(_[0-9]{3})?$", denominator, perl = TRUE)
   if (!valid_denominator) {
-    stop(paste0("`denominator` must be \"parent\", \"total\", or a valid ACS variable code (e.g., \"B25070_001\"). Got: \"", denominator, "\"."))
+    cli::cli_abort("{.arg denominator} must be {.val parent}, {.val total}, or a valid ACS variable code (e.g., {.val B25070_001}). Got: {.val {denominator}}.")
   }
 
   ####----Partition tables into registry vs auto vs user definitions----####
@@ -234,7 +288,6 @@ compile_acs_data = function(
     resolved_tables = names(.table_registry$tables)
   } else if (is.null(tables) && has_explicit_tables) {
     ## user passed only definitions, no string tables — include total_population only
-    resolved_tables = resolve_tables(tables = NULL)
     resolved_tables = "total_population"
   } else {
     ## pass only registry tables (not raw ACS codes) to resolve_tables
@@ -294,25 +347,22 @@ compile_acs_data = function(
 
   ## warning about inter-decadal tract geometry changes
   if ( (max(years) >= 2020) & (min(years) < 2020) & (geography == "tract") ) {
-    message("Requested years span the year 2020, which is when the Census Bureau re-configures
-      census tract boundaries. It is not valid to compare census tract-level statistics for years before 2020 to
-      statistics from 2020 and after.
-      
-      Crosswalks are available from NHGIS, or via `library(crosswalk)`, which is currently
-      under development and can be installed via renv::install('UI-Research/crosswalk').)") }
+    cli::cli_warn(c(
+      "Requested years span 2020, when the Census Bureau reconfigured tract boundaries.",
+      "i" = "It is not valid to compare tract-level statistics across the 2020 boundary.",
+      "i" = "Crosswalks are available from NHGIS, or via {.pkg crosswalk} ({.code renv::install('UI-Research/crosswalk')}).")) }
 
   ## tracts and larger are supported
-  if ((geography %>% tolower) %in% c("block", "block group")) {
-    stop("Block and block group geographies are not supported at this time.") }
+  if (geography %in% c("block", "block group")) {
+    cli::cli_abort("Block and block group geographies are not supported.") }
 
   ## warn user -- county-by-county queries are slow and should be used if only
   ## one or a few counties are desired
-  if (!any(is.null(counties)) && length(counties) > 5) {
+  if (length(counties) > 5) {
 
-warning(
-"County-level queries can be slow for more than a few counties. Omit the county parameter
-if you are interested in more than five counties; filter to your desired counties after
-this function returns.")}
+    cli::cli_warn(c(
+      "County-level queries can be slow for more than a few counties.",
+      "i" = "Omit the {.arg counties} parameter and filter after the function returns."))}
 
   super_state_geographies = c(
     "us", "region", "division", "metropolitan/micropolitan statistical area",
@@ -347,7 +397,8 @@ this function returns.")}
             "metropolitan statistical area/micropolitan statistical area" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
             "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
             "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
-            "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA")) %>%
+            "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA"),
+            cli::cli_abort("Unsupported geography: {.val {geography}}. See {.help compile_acs_data} for supported geographies.")) %>%
             dplyr::transmute(
               area_land_sq_kilometer = ALAND / 1000000,
               area_water_sq_kilometer = AWATER / 1000000,
@@ -358,17 +409,17 @@ this function returns.")}
   }
 
   ## configuring to subset call to specified counties, if applicable
-  if (geography %in% c("county", "county subdivision", "tract") & !is.null(counties)) {
+  if (geography %in% c("county", "county subdivision", "tract") & length(counties) > 0) {
     county_codes = tidycensus::fips_codes %>%
       dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
       dplyr::filter(county_fips %in% counties)
 
     if (nrow(county_codes) == 0) {
-      stop("No valid county FIPS codes were found in the `counties` argument.") }
+      cli::cli_abort("No valid county FIPS codes were found in {.arg counties}.") }
 
     if (nrow(county_codes) != length(counties)) {
       invalid_county_count = length(counties) - nrow(county_codes)
-      warning(paste0("There were ", invalid_county_count, " invalid county codes; no results are returned for these counties.")) }
+      cli::cli_warn("{invalid_county_count} invalid county code{?s} found; no results are returned for {?this county/these counties}.") }
   } else {
     county_codes = tidycensus::fips_codes %>%
       dplyr::filter(state %in% states | state_code %in% states | state_name %in% states)
@@ -377,76 +428,14 @@ this function returns.")}
   states = county_codes$state %>% unique
 
   suppressMessages({ suppressWarnings({
-
-    ## some geographies are not available by state and can only be returned nationally
-    if (geography %in% super_state_geographies) {
-      df_raw_estimates = purrr::map(
-        ## when year is a vector with length > 1 (i.e., there are multiple years)
-        ## loop over each item in the vector (and this approach also works for a single year)
-        years,
-        ~ tidycensus::get_acs(
-            geography = geography,
-            variables = variables,
-            year = as.numeric(.x),
-            survey = "acs5",
-            output = "wide") %>%
-          dplyr::mutate(data_source_year = .x)) %>% purrr::list_rbind()
-
-    } else if (is.null(counties)) {
-      ## for those geographies that can (or must) be returned by state, but where
-      ## we do not need to query individual counties:
-      ## iteratively make calls for data from each state
-      ## and then combine the resulting dataframes together into a single dataframe
-      df_raw_estimates = purrr::map(
-        states,
-        function (state) {
-          purrr::map(
-            ## when year is a vector with length > 1 (i.e., there are multiple years)
-            ## loop over each item in the vector (and this approach also works for a single year)
-            years,
-            ~ tidycensus::get_acs(
-              geography = geography,
-              variables = variables,
-              year = as.numeric(.x),
-              state = state,
-              ## this argument is ignored when a query cannot be made at the county level
-              survey = "acs5",
-              output = "wide") %>%
-              dplyr::mutate(data_source_year = .x)) %>% purrr::list_rbind()}) %>% purrr::list_rbind()} else {
-
-      ## for queries that must be returned by county within state
-      ## iteratively make calls for data from each state, by county,
-      ## and then combine the resulting dataframes together into a single dataframe
-      df_raw_estimates = purrr::map(
-        states,
-        function(state) {
-          purrr::map(
-            ## when year is a vector with length > 1 (i.e., there are multiple years)
-            ## loop over each item in the vector (and this approach also works for a single year)
-            years,
-            function(year) {
-              if (geography %in% c("tract", "county")) {
-                result = purrr::map(
-                  county_codes %>% dplyr::filter(state == !!state) %>% dplyr::pull(county),
-                  ~ tidycensus::get_acs(
-                    geography = geography,
-                    variables = variables,
-                    year = as.numeric(year),
-                    state = state,
-                    county = .x,
-                    survey = "acs5",
-                    output = "wide")) %>% purrr::list_rbind() %>%
-                  dplyr::mutate(data_source_year = year) } else {
-
-                result = tidycensus::get_acs(
-                  geography = geography,
-                  variables = variables,
-                  year = as.numeric(year),
-                  state = state,
-                  survey = "acs5",
-                  output = "wide") %>%
-                  dplyr::mutate(data_source_year = year)}}) %>% purrr::list_rbind()}) %>% purrr::list_rbind()
-      }
+    df_raw_estimates = fetch_acs(
+      geography = geography,
+      variables = variables,
+      years = years,
+      states = states,
+      counties = counties,
+      county_codes = county_codes,
+      super_state_geographies = super_state_geographies)
     moes = df_raw_estimates %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$"))
   })})
 
@@ -487,13 +476,21 @@ this function returns.")}
   codebook = generate_codebook(.data = df_calculated_estimates,
                                resolved_tables = resolved_tables,
                                auto_table_entries = auto_table_entries,
-                               user_definitions = user_definitions)
+                               user_definitions = user_definitions,
+                               year = years[1])
 
   df_calculated_estimates = df_calculated_estimates %>%
     ## ensure the vintage of the data and the GEOID for each observation are the first columns
     dplyr::select(data_source_year, GEOID, dplyr::everything())
 
   if (needs_tigris) {
+    ## filter geometries to only the GEOIDs present in the estimates. tigris
+    ## returns all counties/tracts in the requested state(s), so when the user
+    ## specified a subset via `counties`, an unfiltered right_join would inflate
+    ## the result with NA-estimate rows for unrequested geographies.
+    geometries = geometries %>%
+      dplyr::filter(GEOID %in% df_calculated_estimates$GEOID)
+
     df_calculated_estimates = df_calculated_estimates %>%
       dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one") %>%
       {if (spatial == FALSE) sf::st_drop_geometry(.) else sf::st_as_sf(.) } %>%
@@ -527,6 +524,4 @@ this function returns.")}
 utils::globalVariables(c(
   "ALAND", "AWATER", "area_land_sq_kilometer", "area_water_sq_kilometer", "total_population_universe",
   "state", "GEOID", "data_source_year", ".",
-  "state_code", "county_code", "county_fips", "state_name", "county",
-  "needs_tigris", "resolved_tables", "auto_table_entries", "user_definitions",
-  "has_explicit_tables"))
+  "state_code", "county_code", "county_fips", "state_name", "county"))

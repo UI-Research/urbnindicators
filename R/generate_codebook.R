@@ -26,7 +26,7 @@
 #' @importFrom magrittr %>%
 #' @keywords internal
 
-generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries = list(), user_definitions = list()) {
+generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries = list(), user_definitions = list(), year = 2024) {
 
   .data = .data %>%
     sf::st_drop_geometry()
@@ -52,7 +52,7 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
   ## Also build crosswalk for select_variables()-sourced variables using
   ## the census codebook
   suppressMessages({suppressWarnings({
-    census_variables = tidycensus::load_variables(year = 2022, dataset = "acs5")
+    census_variables = tidycensus::load_variables(year = year, dataset = "acs5")
   })})
 
   ## Collect all ACS table codes from the registry
@@ -219,16 +219,25 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
         numerator_count > 1 & denominator_count == 1 ~ "complex_numerator",
         numerator_count == 1 & denominator_count > 1 ~ "complex_denominator",
         numerator_count > 1 & denominator_count > 1 ~ "complex_both",
-        TRUE ~ "unknown"),
+        TRUE ~ "unknown")) %>%
+    dplyr::select(-numerator_count, -denominator_count) %>%
+    ensure_aggregation_strategy()
+
+  return(result1)
+}
+
+## Add aggregation_strategy column to a codebook tibble based on variable_type.
+## Shared by generate_codebook(), interpolate_acs(), and .aggregate_to_target().
+ensure_aggregation_strategy = function(codebook) {
+  if ("aggregation_strategy" %in% colnames(codebook)) return(codebook)
+  codebook %>%
+    dplyr::mutate(
       aggregation_strategy = dplyr::case_when(
         variable_type %in% c("Count", "Sum") ~ "sum",
         variable_type == "Percent" ~ "recalculate_percent",
         variable_type %in% c("Median ($)", "Median", "Average", "Quintile ($)", "Index") ~ "weighted_average",
         variable_type == "Metadata" ~ "metadata",
-        TRUE ~ "unknown")) %>%
-    dplyr::select(-numerator_count, -denominator_count)
-
-  return(result1)
+        TRUE ~ "unknown"))
 }
 
 utils::globalVariables(c(

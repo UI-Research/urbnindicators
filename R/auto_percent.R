@@ -146,8 +146,7 @@ generate_auto_definitions = function(nodes, denominator_mode = "parent",
     if (nrow(match_row) > 0) {
       custom_denom_clean = match_row$clean_name_trimmed[1]
     } else {
-      rlang::warn(paste0("Custom denominator '", custom_denominator,
-                         "' not found in table. Falling back to table total."))
+      cli::cli_warn("Custom denominator {.val {custom_denominator}} not found in table. Falling back to table total.")
       denominator_mode = "total"
     }
   }
@@ -198,8 +197,7 @@ build_auto_table_entry = function(table_code, year, denominator_mode = "parent",
     dplyr::filter(stringr::str_detect(name, paste0("^", table_code, "_")))
 
   if (nrow(table_vars) == 0) {
-    stop(paste0("ACS table '", table_code, "' not found in the ", year,
-                " 5-year ACS. Check the table code."))
+    cli::cli_abort("ACS table {.val {table_code}} not found in the {year} 5-year ACS. Check the table code.")
   }
 
   ## apply clean_acs_names

@@ -5,8 +5,7 @@
 #' @param moe A margin of error, or a vector thereof
 #' @returns A 90% standard error
 se_simple = function(moe) {
-  se = purrr::map_dbl(moe,  ~ .x / 1.645)
-  return(se)
+  moe / 1.645
 }
 
 #' @title Calculate a pooled standard error for a summed or subtracted estimate
@@ -16,48 +15,25 @@ se_simple = function(moe) {
 se_sum = function(...) {
   dots = list(...)
 
-  moes = dots[[1]] %>%
-    as.data.frame() %>%
-    stats::setNames(paste0("x", seq_along(.))) %>%
-    dplyr::mutate(
-      observation = dplyr::row_number(),
-      type = "moe")
-  estimates = dots[[2]] %>%
-    as.data.frame() %>%
-    stats::setNames(paste0("x", seq_along(.))) %>%
-    dplyr::mutate(
-      observation = dplyr::row_number(),
-      type = "estimate")
+  moe_mat = do.call(cbind, dots[[1]])
+  est_mat = do.call(cbind, dots[[2]])
 
-  data_long = rbind(moes, estimates) %>%
-    janitor::clean_names() %>%
-    tidyr::pivot_longer(
-      cols = -c(observation, type),
-      names_to = "name",
-      values_to = "value")  %>%
-    tidyr::pivot_wider(
-      names_from = type,
-      values_from = value)
+  se_mat = moe_mat / 1.645
 
-  ## if there are multiple zero-estimate observations that are summed,
-  ## Census recommends taking only the largest MOE corresponding to these estimates:
-  se =
-    dplyr::bind_rows(
-      data_long %>% dplyr::filter(estimate != 0),
-      data_long %>% dplyr::filter(is.na(estimate)),
-      data_long %>%
-        dplyr::filter(estimate == 0) %>%
-        dplyr::slice_max(order_by = moe, by = "observation", n = 1, with_ties = FALSE)) %>%
-    dplyr::group_split(observation) %>%
-    purrr::map(~ .x %>% dplyr::pull(moe)) %>%
-    purrr::map(se_simple) %>%
-    purrr::map(~ .x ^2) %>%
-    purrr::map(sum) %>%
-    purrr::map_dbl(sqrt)
+  ## Census zero-estimate rule: among components with estimate == 0 in a row,
+  ## keep only the one with the largest MOE; zero out the rest
+  is_zero = (est_mat == 0)
+  if (any(is_zero, na.rm = TRUE)) {
+    for (i in seq_len(nrow(moe_mat))) {
+      zero_cols = which(is_zero[i, ])
+      if (length(zero_cols) > 1) {
+        max_col = zero_cols[which.max(moe_mat[i, zero_cols])]
+        se_mat[i, setdiff(zero_cols, max_col)] = 0
+      }
+    }
+  }
 
-  stopifnot(nrow(moes) == length(se))
-
-  return(se)
+  sqrt(rowSums(se_mat^2))
 }
 
 #' @title Calculate a pooled standard error for a proportion or ratio
@@ -87,8 +63,8 @@ se_proportion_ratio = function(
     stop("Only one of a margin of error or a standard error can be provided for the numerator and denominator.")
   }
 
-  if (!is.null(moe_numerator)) { se_numerator = purrr::map_dbl(moe_numerator, se_simple) }
-  if (!is.null(moe_denominator)) { se_denominator = purrr::map_dbl(moe_denominator, se_simple) }
+  if (!is.null(moe_numerator)) { se_numerator = se_simple(moe_numerator) }
+  if (!is.null(moe_denominator)) { se_denominator = se_simple(moe_denominator) }
 
   ## squared standard error of the numerator
   radical_term_one = se_numerator %>% `^`(2)
@@ -97,10 +73,14 @@ se_proportion_ratio = function(
   radical_term_two = ( (estimate_numerator ^ 2) / (estimate_denominator ^ 2) ) *
     (se_denominator %>% `^`(2))
 
-  ## if the value under the radical is negative, use the formula for ratio standard errors
-  ## i.e., add the radical terms, rather than subtract them
+  ## If the value under the radical is negative, or the numerator exceeds the
+  ## denominator (p > 1, so the "proportion" is degenerate), use the formula
+  ## for ratio standard errors — i.e., add the radical terms, rather than
+  ## subtract them. Census Bureau guidance: the proportion SE formula should
+  ## not be applied when p > 1.
   se = dplyr::if_else(
-    radical_term_one < radical_term_two | type == "ratio",
+    radical_term_one < radical_term_two | type == "ratio" |
+      abs(estimate_numerator) > abs(estimate_denominator),
     ((1 / estimate_denominator) * sqrt( radical_term_one + radical_term_two )),
     ((1 / estimate_denominator) * sqrt( radical_term_one - radical_term_two )))
 
@@ -259,9 +239,6 @@ cv = function(estimate, se) {
 #'   \code{_M}) for derived variables.
 #' @keywords internal
 calculate_moes = function(.df) {
-  warning("Margins of error for derived variables are experimental features
-          and should be used with caution. Such measures are suffixed with `_M`.")
-
   ## the codebook attached to the default compile_acs_data() return
   codebook = .df %>% attr("codebook")
 

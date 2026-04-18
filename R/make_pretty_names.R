@@ -56,7 +56,7 @@ make_pretty_names = function(.data, .case = "title") {
     "internet subscription household" = "internet access",
     "types of computing devices household" = "computer access",
     "owneroccupied" = "owner-occupied",
-    "renteroccupied" = "renter-occuiped",
+    "renteroccupied" = "renter-occupied",
     "owner occupied" = "owner-occupied",
     "renter occupied" = "renter-occupied",
     "percentormore" = " percent or more",
@@ -110,7 +110,6 @@ make_pretty_names = function(.data, .case = "title") {
     "75 79" = "75-79",
     "80 84" = "80-84",
     "3 4" = "3-4",
-    "5 9" = "5-9",
     "10 19" = "10-19",
     "20 49" = "20-49",
     "2010 2019" = "2010-2019",
@@ -133,20 +132,14 @@ make_pretty_names = function(.data, .case = "title") {
     "49 9" = "49.9",
     "50 0" = "50.0",
     "20 29" = "20-29",
-    "10 14" = "10-14",
     "15 19" = "15-19",
     "20 24" = "20-24",
-    "25 29" = "25-29",
-    "30 34" = "30-34",
-    "35 39" = "35-39",
-    "40 44" = "40-44",
     "45 59" = "45-59",
     "60 89" = "60-89"
     )
 
   if (! (is.data.frame(.data) | is.character(.data))) {
-    stop("The `.data` argument must be either a data.frame (or coercible thereto)
-         or a character vector.")
+    cli::cli_abort("{.arg .data} must be either a data frame or a character vector.")
   }
 
   if (is.character(.data)) {
