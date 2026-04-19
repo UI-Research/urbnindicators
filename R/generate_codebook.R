@@ -9,7 +9,8 @@
 #' @param auto_table_entries A list of auto-generated table entries from
 #'   \code{build_auto_table_entry()}. Default is an empty list.
 #' @param user_definitions A list of user-supplied DSL definition objects
-#'   (e.g., from \code{define_percent()}). Default is an empty list.
+#'   (e.g., from \code{define_percent()}, \code{define_sum()}). Default is an
+#'   empty list.
 #' @returns A tibble containing the names and definitions of  variables returned from
 #' \code{urbnindicators::compile_acs_data()}.
 #' @examples

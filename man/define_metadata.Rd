@@ -4,12 +4,12 @@
 \alias{define_metadata}
 \title{Define a metadata variable}
 \usage{
-define_metadata(output, definition_text)
+define_metadata(output, definition)
 }
 \arguments{
 \item{output}{A string. The name of the metadata column.}
 
-\item{definition_text}{A string. Human-readable description for the codebook.}
+\item{definition}{A string. Human-readable description for the codebook.}
 }
 \value{
 A list with \code{type = "metadata"} and the associated fields.

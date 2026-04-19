@@ -177,7 +177,8 @@ generate_auto_definitions = function(nodes, denominator_mode = "parent",
     } else {
       output = paste0(numerator, "_percent")
     }
-    define_percent(output = output, numerator = numerator, denominator = denominator)
+    list(type = "simple_percent", output = output,
+         numerator = numerator, denominator = denominator)
   }) %>% purrr::compact()
 }
 
