@@ -18,7 +18,7 @@ resolve_to_acs_table = function(x, year, census_variables = NULL) {
   ## load census codebook if not provided
   if (is.null(census_variables)) {
     suppressMessages({suppressWarnings({
-      census_variables = tidycensus::load_variables(year = year, dataset = "acs5")
+      census_variables = load_acs_variables(year = year, dataset = "acs5")
     })})
   }
 
@@ -190,7 +190,7 @@ build_auto_table_entry = function(table_code, year, denominator_mode = "parent",
   ## load variables only if not provided
   if (is.null(census_variables)) {
     suppressMessages({suppressWarnings({
-      census_variables = tidycensus::load_variables(year = year, dataset = "acs5")
+      census_variables = load_acs_variables(year = year, dataset = "acs5")
     })})
   }
 

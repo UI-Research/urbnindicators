@@ -176,7 +176,7 @@ compile_acs_data = function(
 
     ## load census variables once for resolve_to_acs_table lookups
     suppressMessages({suppressWarnings({
-      census_variables_for_resolve = tidycensus::load_variables(year = years[1], dataset = "acs5")
+      census_variables_for_resolve = load_acs_variables(year = years[1], dataset = "acs5")
     })})
 
     ## collect all acs_tables from registered tables to detect overlap

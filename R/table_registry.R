@@ -646,7 +646,7 @@ resolve_tables = function(tables = NULL) {
 ## Build named ACS variable vector for resolved tables (internal)
 collect_raw_variables = function(resolved_tables, year = 2022) {
   suppressWarnings({suppressMessages({
-    census_codebook = tidycensus::load_variables(year = 2022, dataset = "acs5")
+    census_codebook = load_acs_variables(year = 2022, dataset = "acs5")
   })})
 
   select_variables = purrr::partial(select_variables_by_name, census_codebook = census_codebook)
@@ -695,7 +695,7 @@ collect_raw_variables = function(resolved_tables, year = 2022) {
 #' @export
 list_variables = function(year = 2022) {
   suppressWarnings({suppressMessages({
-    census_codebook = tidycensus::load_variables(year = year, dataset = "acs5")
+    census_codebook = load_acs_variables(year = year, dataset = "acs5")
   })})
 
   select_variables = purrr::partial(select_variables_by_name, census_codebook = census_codebook)
