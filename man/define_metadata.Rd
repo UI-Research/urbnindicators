@@ -6,7 +6,17 @@
 \usage{
 define_metadata(output, definition_text)
 }
-\description{
-Define a metadata variable
+\arguments{
+\item{output}{A string. The name of the metadata column.}
+
+\item{definition_text}{A string. Human-readable description for the codebook.}
 }
-\keyword{internal}
+\value{
+A list with \code{type = "metadata"} and the associated fields.
+Can be passed in the \code{tables} parameter of
+\code{\link{compile_acs_data}}.
+}
+\description{
+Creates a definition for a non-computed variable that only generates a
+codebook entry.
+}

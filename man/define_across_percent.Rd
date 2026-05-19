@@ -13,7 +13,29 @@ define_across_percent(
   exclude_regex = NULL
 )
 }
-\description{
-Define an across-percent variable
+\arguments{
+\item{input_regex}{A regex pattern to match input columns.}
+
+\item{output_suffix}{A string appended to each matched column name to form
+the output column name (e.g., \code{"_percent"}).}
+
+\item{denominator}{A string. A fixed denominator column name.}
+
+\item{denominator_function}{A function that takes a matched column name and
+returns the denominator column name for that match.}
+
+\item{denominator_subtract}{A string. A column to subtract from the
+denominator value.}
+
+\item{exclude_regex}{A regex pattern to exclude from matched columns.}
 }
-\keyword{internal}
+\value{
+A list with \code{type = "across_percent"} and the associated
+fields. Can be passed in the \code{tables} parameter of
+\code{\link{compile_acs_data}}.
+}
+\description{
+Creates a definition that computes a percentage for every column matching a
+regex pattern. Each matched column becomes a numerator; the denominator is
+either a fixed column or computed by a function.
+}

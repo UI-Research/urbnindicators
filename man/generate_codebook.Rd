@@ -4,7 +4,12 @@
 \alias{generate_codebook}
 \title{Document variables from \code{compile_acs_data()}}
 \usage{
-generate_codebook(.data, resolved_tables = NULL, auto_table_entries = list())
+generate_codebook(
+  .data,
+  resolved_tables = NULL,
+  auto_table_entries = list(),
+  user_definitions = list()
+)
 }
 \arguments{
 \item{.data}{The dataset returned from \code{urbnindicators::compile_acs_data()}.}
@@ -14,6 +19,9 @@ table registry. When NULL (default), all registered tables are used.}
 
 \item{auto_table_entries}{A list of auto-generated table entries from
 \code{build_auto_table_entry()}. Default is an empty list.}
+
+\item{user_definitions}{A list of user-supplied DSL definition objects
+(e.g., from \code{define_percent()}). Default is an empty list.}
 }
 \value{
 A tibble containing the names and definitions of  variables returned from

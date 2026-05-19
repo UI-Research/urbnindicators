@@ -8,6 +8,8 @@
 #'   table registry. When NULL (default), all registered tables are used.
 #' @param auto_table_entries A list of auto-generated table entries from
 #'   \code{build_auto_table_entry()}. Default is an empty list.
+#' @param user_definitions A list of user-supplied DSL definition objects
+#'   (e.g., from \code{define_percent()}). Default is an empty list.
 #' @returns A tibble containing the names and definitions of  variables returned from
 #' \code{urbnindicators::compile_acs_data()}.
 #' @examples
@@ -24,7 +26,7 @@
 #' @importFrom magrittr %>%
 #' @keywords internal
 
-generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries = list()) {
+generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries = list(), user_definitions = list()) {
 
   .data = .data %>%
     sf::st_drop_geometry()
@@ -138,6 +140,15 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
     }) %>% purrr::list_rbind()
 
     partial_documentation = dplyr::bind_rows(partial_documentation, auto_documentation)
+  }
+
+  ## Expand user-supplied definitions into codebook rows
+  if (length(user_definitions) > 0) {
+    user_documentation = purrr::map(
+      user_definitions,
+      ~ expand_codebook_entry(entry = .x, .data = .data, crosswalk = variable_name_crosswalk)) %>% purrr::list_rbind()
+
+    partial_documentation = dplyr::bind_rows(partial_documentation, user_documentation)
   }
 
   ####----Raw Variables----####

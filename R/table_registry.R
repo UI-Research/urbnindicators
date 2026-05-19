@@ -52,7 +52,48 @@ build_construct_map = function() {
 ####----DSL CONSTRUCTORS----####
 
 #' Define a percentage variable (simple or complex)
-#' @keywords internal
+#'
+#' Creates a definition object for a derived percentage variable. When both
+#' \code{numerator} and \code{denominator} are single strings and no other
+#' fields are set, a \code{simple_percent} definition is returned. Otherwise a
+#' \code{complex} definition is returned, allowing multi-variable numerators
+#' and denominators.
+#'
+#' @param output A string. The name of the output column to create.
+#' @param numerator A string. Single numerator column name (simple case).
+#' @param denominator A string. Single denominator column name (simple case).
+#' @param numerator_variables A character vector of column names to sum for the
+#'   numerator (complex case).
+#' @param numerator_regex A regex pattern to match numerator columns (complex case).
+#' @param numerator_exclude_regex A regex pattern to exclude from numerator matches.
+#' @param numerator_note An optional annotation (not used in computation).
+#' @param numerator_subtract_variables A character vector of column names to
+#'   subtract from the numerator sum.
+#' @param numerator_subtract_regex A regex pattern to match columns to subtract
+#'   from the numerator.
+#' @param denominator_variables A character vector of column names to sum for the
+#'   denominator (complex case).
+#' @param denominator_regex A regex pattern to match denominator columns (complex case).
+#' @param denominator_exclude_regex A regex pattern to exclude from denominator matches.
+#' @param subtract_variables A character vector of column names to subtract from
+#'   the denominator sum.
+#' @param subtract_regex A regex pattern to match columns to subtract from
+#'   the denominator.
+#' @returns A list with a \code{type} field (\code{"simple_percent"} or
+#'   \code{"complex"}) and the associated fields. Can be passed in the
+#'   \code{tables} parameter of \code{\link{compile_acs_data}}.
+#' @examples
+#' # Simple percentage
+#' define_percent("snap_received_percent",
+#'               numerator = "snap_received",
+#'               denominator = "snap_universe")
+#'
+#' # Complex percentage with subtraction
+#' define_percent("snap_not_received_percent",
+#'               numerator_variables = c("snap_universe"),
+#'               numerator_subtract_variables = c("snap_received"),
+#'               denominator_variables = c("snap_universe"))
+#' @export
 define_percent = function(output,
                           numerator = NULL,
                           denominator = NULL,
@@ -98,7 +139,24 @@ define_percent = function(output,
 }
 
 #' Define an across-percent variable
-#' @keywords internal
+#'
+#' Creates a definition that computes a percentage for every column matching a
+#' regex pattern. Each matched column becomes a numerator; the denominator is
+#' either a fixed column or computed by a function.
+#'
+#' @param input_regex A regex pattern to match input columns.
+#' @param output_suffix A string appended to each matched column name to form
+#'   the output column name (e.g., \code{"_percent"}).
+#' @param denominator A string. A fixed denominator column name.
+#' @param denominator_function A function that takes a matched column name and
+#'   returns the denominator column name for that match.
+#' @param denominator_subtract A string. A column to subtract from the
+#'   denominator value.
+#' @param exclude_regex A regex pattern to exclude from matched columns.
+#' @returns A list with \code{type = "across_percent"} and the associated
+#'   fields. Can be passed in the \code{tables} parameter of
+#'   \code{\link{compile_acs_data}}.
+#' @export
 define_across_percent = function(input_regex,
                                  output_suffix,
                                  denominator = NULL,
@@ -117,7 +175,21 @@ define_across_percent = function(input_regex,
 }
 
 #' Define an across-sum variable
-#' @keywords internal
+#'
+#' Creates a definition that sums each matched column with a corresponding
+#' addend column. The addend and output names are determined by user-supplied
+#' functions.
+#'
+#' @param input_regex A regex pattern to match input columns.
+#' @param addend_function A function that takes a matched column name and
+#'   returns the name of the column to add.
+#' @param output_naming_function A function that takes a matched column name
+#'   and returns the output column name.
+#' @param exclude_regex A regex pattern to exclude from matched columns.
+#' @returns A list with \code{type = "across_sum"} and the associated fields.
+#'   Can be passed in the \code{tables} parameter of
+#'   \code{\link{compile_acs_data}}.
+#' @export
 define_across_sum = function(input_regex,
                              addend_function,
                              output_naming_function,
@@ -131,8 +203,16 @@ define_across_sum = function(input_regex,
   return(result)
 }
 
-#' Define a one-minus variable
-#' @keywords internal
+#' Define a one-minus (complement) variable
+#'
+#' Creates a definition that computes \code{1 - source_variable}.
+#'
+#' @param output A string. The name of the output column to create.
+#' @param source_variable A string. The column to subtract from 1.
+#' @returns A list with \code{type = "one_minus"} and the associated fields.
+#'   Can be passed in the \code{tables} parameter of
+#'   \code{\link{compile_acs_data}}.
+#' @export
 define_one_minus = function(output, source_variable) {
   list(
     type = "one_minus",
@@ -141,12 +221,239 @@ define_one_minus = function(output, source_variable) {
 }
 
 #' Define a metadata variable
-#' @keywords internal
+#'
+#' Creates a definition for a non-computed variable that only generates a
+#' codebook entry.
+#'
+#' @param output A string. The name of the metadata column.
+#' @param definition_text A string. Human-readable description for the codebook.
+#' @returns A list with \code{type = "metadata"} and the associated fields.
+#'   Can be passed in the \code{tables} parameter of
+#'   \code{\link{compile_acs_data}}.
+#' @export
 define_metadata = function(output, definition_text) {
   list(
     type = "metadata",
     output = output,
     definition_text = definition_text)
+}
+
+####----DSL VALIDATION AND HELPERS----####
+
+.dsl_types = c("simple_percent", "complex", "across_percent", "across_sum",
+               "one_minus", "metadata")
+
+## Check whether an object is a DSL definition
+is_dsl_definition = function(x) {
+  is.list(x) && !is.null(x[["type"]]) && x[["type"]] %in% .dsl_types
+}
+
+## Assert that a field is a non-empty string
+check_required_string = function(value, field_name, def_label) {
+  if (is.null(value) || !is.character(value) || length(value) != 1 || nchar(value) == 0) {
+    stop(paste0("Definition `", def_label, "`: `", field_name, "` must be a non-empty string."))
+  }
+}
+
+## Assert that a field is a character vector
+check_character_vector = function(value, field_name, def_label) {
+  if (!is.character(value) || length(value) == 0) {
+    stop(paste0("Definition `", def_label, "`: `", field_name, "` must be a non-empty character vector."))
+  }
+}
+
+## Assert that a string is a valid regex
+check_valid_regex = function(value, field_name, def_label) {
+  check_required_string(value, field_name, def_label)
+  tryCatch(
+    grepl(value, "", perl = TRUE),
+    warning = function(w) {
+      stop(paste0("Definition `", def_label, "`: `", field_name,
+                   "` is not a valid regex: ", conditionMessage(w)))
+    },
+    error = function(e) {
+      stop(paste0("Definition `", def_label, "`: `", field_name,
+                   "` is not a valid regex: ", conditionMessage(e)))
+    })
+}
+
+## Structural validation of a single definition
+validate_definition = function(definition) {
+  if (!is.list(definition)) {
+    stop("Definition must be a list.")
+  }
+  type = definition[["type"]]
+  if (is.null(type) || !type %in% .dsl_types) {
+    stop(paste0("Definition has invalid or missing `type`. Must be one of: ",
+                paste0(.dsl_types, collapse = ", "), "."))
+  }
+  label = definition[["output"]] %||% definition[["input_regex"]] %||% "<unnamed>"
+
+  if (type == "simple_percent") {
+    check_required_string(definition[["output"]], "output", label)
+    check_required_string(definition[["numerator"]], "numerator", label)
+    check_required_string(definition[["denominator"]], "denominator", label)
+  } else if (type == "complex") {
+    check_required_string(definition[["output"]], "output", label)
+    has_num = !is.null(definition[["numerator_variables"]]) || !is.null(definition[["numerator_regex"]])
+    has_den = !is.null(definition[["denominator_variables"]]) || !is.null(definition[["denominator_regex"]])
+    if (!has_num) stop(paste0("Definition `", label, "`: complex type requires `numerator_variables` or `numerator_regex`."))
+    if (!has_den) stop(paste0("Definition `", label, "`: complex type requires `denominator_variables` or `denominator_regex`."))
+    if (!is.null(definition[["numerator_variables"]])) check_character_vector(definition[["numerator_variables"]], "numerator_variables", label)
+    if (!is.null(definition[["numerator_regex"]])) check_valid_regex(definition[["numerator_regex"]], "numerator_regex", label)
+    if (!is.null(definition[["denominator_variables"]])) check_character_vector(definition[["denominator_variables"]], "denominator_variables", label)
+    if (!is.null(definition[["denominator_regex"]])) check_valid_regex(definition[["denominator_regex"]], "denominator_regex", label)
+    if (!is.null(definition[["numerator_subtract_variables"]])) check_character_vector(definition[["numerator_subtract_variables"]], "numerator_subtract_variables", label)
+    if (!is.null(definition[["subtract_variables"]])) check_character_vector(definition[["subtract_variables"]], "subtract_variables", label)
+  } else if (type == "across_percent") {
+    check_valid_regex(definition[["input_regex"]], "input_regex", label)
+    check_required_string(definition[["output_suffix"]], "output_suffix", label)
+    has_denom = !is.null(definition[["denominator"]]) || !is.null(definition[["denominator_function"]])
+    if (!has_denom) stop(paste0("Definition `", label, "`: across_percent type requires `denominator` or `denominator_function`."))
+    if (!is.null(definition[["denominator"]]) && !is.character(definition[["denominator"]])) {
+      stop(paste0("Definition `", label, "`: `denominator` must be a string."))
+    }
+    if (!is.null(definition[["denominator_function"]]) && !is.function(definition[["denominator_function"]])) {
+      stop(paste0("Definition `", label, "`: `denominator_function` must be a function."))
+    }
+  } else if (type == "across_sum") {
+    check_valid_regex(definition[["input_regex"]], "input_regex", label)
+    if (!is.function(definition[["addend_function"]])) {
+      stop(paste0("Definition `", label, "`: `addend_function` must be a function."))
+    }
+    if (!is.function(definition[["output_naming_function"]])) {
+      stop(paste0("Definition `", label, "`: `output_naming_function` must be a function."))
+    }
+  } else if (type == "one_minus") {
+    check_required_string(definition[["output"]], "output", label)
+    check_required_string(definition[["source_variable"]], "source_variable", label)
+  } else if (type == "metadata") {
+    check_required_string(definition[["output"]], "output", label)
+    check_required_string(definition[["definition_text"]], "definition_text", label)
+  }
+
+  invisible(TRUE)
+}
+
+## Extract all explicitly-named variable references from a definition
+## (not regex patterns). Used for variable existence checks.
+extract_explicit_variables = function(definition) {
+  type = definition[["type"]]
+  vars = character(0)
+
+  if (type == "simple_percent") {
+    vars = c(definition[["numerator"]], definition[["denominator"]])
+  } else if (type == "complex") {
+    if (!is.null(definition[["numerator_variables"]])) vars = c(vars, definition[["numerator_variables"]])
+    if (!is.null(definition[["denominator_variables"]])) vars = c(vars, definition[["denominator_variables"]])
+    if (!is.null(definition[["numerator_subtract_variables"]])) vars = c(vars, definition[["numerator_subtract_variables"]])
+    if (!is.null(definition[["subtract_variables"]])) vars = c(vars, definition[["subtract_variables"]])
+  } else if (type == "across_percent") {
+    if (is.character(definition[["denominator"]])) vars = c(vars, definition[["denominator"]])
+    if (is.character(definition[["denominator_subtract"]])) vars = c(vars, definition[["denominator_subtract"]])
+  } else if (type == "one_minus") {
+    vars = c(vars, definition[["source_variable"]])
+  }
+  ## across_sum and metadata have no explicit variable refs to check
+  unique(vars)
+}
+
+## Resolve ACS variable codes (e.g. "B22003_002") in definitions to their clean
+## column names using the raw variable crosswalk. Returns updated definitions.
+resolve_definition_variables = function(definitions, all_raw_variables) {
+  ## build code -> clean_name lookup from the named variable vector
+  ## all_raw_variables is c(clean_name_ = "B22003_002", ...) — names have trailing _
+  if (length(all_raw_variables) == 0) return(definitions)
+
+  code_to_clean = stats::setNames(
+    stringr::str_remove(names(all_raw_variables), "_$"),
+    as.character(all_raw_variables))
+
+  resolve_one = function(value) {
+    if (is.null(value)) return(NULL)
+    if (is.character(value)) {
+      resolved = code_to_clean[value]
+      unname(dplyr::if_else(!is.na(resolved), resolved, value))
+    } else {
+      value
+    }
+  }
+
+  purrr::map(definitions, function(def) {
+    type = def[["type"]]
+    if (type == "simple_percent") {
+      def[["numerator"]] = resolve_one(def[["numerator"]])
+      def[["denominator"]] = resolve_one(def[["denominator"]])
+    } else if (type == "complex") {
+      def[["numerator_variables"]] = resolve_one(def[["numerator_variables"]])
+      def[["denominator_variables"]] = resolve_one(def[["denominator_variables"]])
+      def[["numerator_subtract_variables"]] = resolve_one(def[["numerator_subtract_variables"]])
+      def[["subtract_variables"]] = resolve_one(def[["subtract_variables"]])
+    } else if (type == "across_percent") {
+      def[["denominator"]] = resolve_one(def[["denominator"]])
+      def[["denominator_subtract"]] = resolve_one(def[["denominator_subtract"]])
+    } else if (type == "one_minus") {
+      def[["source_variable"]] = resolve_one(def[["source_variable"]])
+    }
+    def
+  })
+}
+
+## Validate that all explicitly-referenced variables in user definitions exist
+## in the data frame. Errors with missing variable names and suggests list_variables().
+validate_definition_variables = function(definitions, available_columns) {
+  all_referenced = purrr::map(definitions, extract_explicit_variables) %>% unlist() %>% unique()
+  missing = setdiff(all_referenced, available_columns)
+  if (length(missing) > 0) {
+    stop(paste0(
+      "User-supplied definitions reference variables not found in the data: ",
+      paste0("`", missing, "`", collapse = ", "),
+      ". Use `list_variables()` to see available variable names."))
+  }
+  invisible(TRUE)
+}
+
+## Warn if a definition's referenced variables span multiple ACS tables.
+## MOE calculations assume variables come from the same table.
+check_multi_table_variables = function(definitions, resolved_tables, auto_table_entries) {
+  ## build variable -> ACS table code map
+  var_to_table = list()
+  purrr::walk(resolved_tables, function(table_name) {
+    entry = get_table(table_name)
+    if (!is.null(entry[["raw_variables"]])) {
+      clean = stringr::str_remove(names(entry[["raw_variables"]]), "_$")
+      codes = stringr::str_extract(as.character(entry[["raw_variables"]]), "^[BC][0-9]{5}[A-I]?")
+      purrr::walk2(clean, codes, function(cl, cd) {
+        var_to_table[[cl]] <<- cd
+      })
+    }
+  })
+  if (length(auto_table_entries) > 0) {
+    purrr::walk(auto_table_entries, function(auto_entry) {
+      if (!is.null(auto_entry[["raw_variables"]])) {
+        clean = stringr::str_remove(names(auto_entry[["raw_variables"]]), "_$")
+        codes = stringr::str_extract(as.character(auto_entry[["raw_variables"]]), "^[BC][0-9]{5}[A-I]?")
+        purrr::walk2(clean, codes, function(cl, cd) {
+          var_to_table[[cl]] <<- cd
+        })
+      }
+    })
+  }
+
+  purrr::walk(definitions, function(def) {
+    vars = extract_explicit_variables(def)
+    tables_used = unique(unlist(var_to_table[vars]))
+    tables_used = tables_used[!is.na(tables_used)]
+    if (length(tables_used) > 1) {
+      label = def[["output"]] %||% def[["input_regex"]] %||% "<unnamed>"
+      rlang::warn(paste0(
+        "Definition `", label, "` references variables from multiple ACS tables (",
+        paste0(tables_used, collapse = ", "),
+        "). MOE calculations assume variables come from the same table; ",
+        "the computed MOE for this variable may be approximate."))
+    }
+  })
+  invisible(TRUE)
 }
 
 ####----EXECUTION ENGINE----####

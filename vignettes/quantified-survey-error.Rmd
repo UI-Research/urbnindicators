@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
   comment = "#>")
 ```
 
-```{r setup, echo = FALSE}
+```{r setup}
 library(dplyr)
 library(ggplot2)
 library(tidyr)
@@ -86,8 +86,8 @@ measures of error.
     have no access to a car." (And then we should include, either as a
     footnote or in the body of the document, that this and other MOEs
     are calculated at the 90% confidence level). What this means in
-    practice is that if we were to repeat 100 times–using exactly the
-    same methods–our approach to calculating this estimate, 90 of those
+    practice is that if we were to repeat 100 times–-using exactly the
+    same methods–-our approach to calculating this estimate, 90 of those
     times we would produce a parallel estimate between 15% and 25%,
     while 10 of those times, our estimate would fall outside this range.
 
@@ -114,7 +114,11 @@ coefficient of variation (CV = SE / estimate * 100, where SE = MOE /
 As shown below, variables that rely on larger sample sizes tend to have
 smaller MOEs. Typically, there are two strategies to reduce error: (1)
 aggregate estimates, either across geographies or across variables, or
-(2) use larger geographies.
+(2) use larger geographies. For the first strategy,
+`interpolate_acs()` can aggregate tract-level data to
+user-defined geographies (e.g., neighborhoods or planning districts)
+while properly propagating margins of error. See
+`vignette("custom-geographies")` for a worked example.
 
 ```{r, warning = FALSE, message = FALSE}
 acs_df_county = compile_acs_data(
