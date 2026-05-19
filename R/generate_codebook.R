@@ -50,7 +50,7 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
   ## Also build crosswalk for select_variables()-sourced variables using
   ## the census codebook
   suppressMessages({suppressWarnings({
-    census_variables = tidycensus::load_variables(year = 2022, dataset = "acs5")
+    census_variables = load_acs_variables(year = 2022, dataset = "acs5")
   })})
 
   ## Collect all ACS table codes from the registry

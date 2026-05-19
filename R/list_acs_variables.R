@@ -104,7 +104,7 @@ list_acs_variables = function(year = "2022", tables = NULL) {
 #' @export
 get_acs_codebook = function(year = 2022, table = NULL) {
   suppressWarnings({suppressMessages({
-    census_variables = tidycensus::load_variables(year = year, dataset = "acs5")
+    census_variables = load_acs_variables(year = year, dataset = "acs5")
   })})
 
   if (!is.null(table)) {
