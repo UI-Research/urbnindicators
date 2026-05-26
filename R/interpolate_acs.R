@@ -23,17 +23,7 @@
     codebook,
     resolved_tables) {
 
-  ####----Ensure codebook has aggregation_strategy column----####
-  if (!"aggregation_strategy" %in% colnames(codebook)) {
-    codebook = codebook %>%
-      dplyr::mutate(
-        aggregation_strategy = dplyr::case_when(
-          variable_type %in% c("Count", "Sum") ~ "sum",
-          variable_type == "Percent" ~ "recalculate_percent",
-          variable_type %in% c("Median ($)", "Median", "Average", "Quintile ($)", "Index") ~ "weighted_average",
-          variable_type == "Metadata" ~ "metadata",
-          TRUE ~ "unknown"))
-  }
+  codebook = ensure_aggregation_strategy(codebook)
 
   ####----Classify Variables (using pre-parsed codebook columns)----####
   sum_variables = codebook %>%
@@ -53,20 +43,40 @@
   percent_variables = percent_variables[percent_variables %in% colnames(data_no_geom)]
   weighted_avg_variables = weighted_avg_variables[weighted_avg_variables %in% colnames(data_no_geom)]
 
+  ####----Warn about NAs in columns being aggregated----####
+  ## Aggregations propagate NA (na.rm = FALSE); if any input column has NA,
+  ## the corresponding target geography will be NA in the result. Surface this
+  ## once per call so users can filter or impute upstream if they want different
+  ## behavior.
+  aggregated_cols = c(
+    sum_variables,
+    weighted_avg_variables,
+    paste0(sum_variables, "_M"),
+    paste0(weighted_avg_variables, "_M"))
+  aggregated_cols = aggregated_cols[aggregated_cols %in% colnames(data_no_geom)]
+  na_cols = aggregated_cols[purrr::map_lgl(
+    data_no_geom[aggregated_cols], ~ any(is.na(.x)))]
+  if (length(na_cols) > 0) {
+    preview = paste0("`", utils::head(na_cols, 5), "`", collapse = ", ")
+    more = if (length(na_cols) > 5) paste0(", and ", length(na_cols) - 5, " more") else ""
+    cli::cli_warn(c(
+      "Input has NA values in {length(na_cols)} column{?s} being aggregated: {preview}{more}.",
+      "i" = "These NAs will propagate to the corresponding target geographies.",
+      "i" = "Filter or impute upstream if a different behavior is desired."))
+  }
+
   ####----Aggregate Sum Variables----####
   aggregated_sums = data_no_geom %>%
     dplyr::group_by(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))) %>%
     dplyr::summarise(
-      dplyr::across(dplyr::all_of(sum_variables), ~ sum(.x, na.rm = TRUE)),
+      dplyr::across(dplyr::all_of(sum_variables), ~ sum(.x)),
       .groups = "drop")
 
   ## Calculate MOEs for summed variables using se_sum()
-  aggregated_sum_moes = data_no_geom %>%
-    dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year"))))
+  sum_vars_with_moe = sum_variables[paste0(sum_variables, "_M") %in% colnames(data_no_geom)]
 
-  for (var in sum_variables) {
+  aggregated_sum_moes = purrr::reduce(sum_vars_with_moe, function(acc, var) {
     moe_var = paste0(var, "_M")
-    if (!moe_var %in% colnames(data_no_geom)) next
 
     var_moes = data_no_geom %>%
       dplyr::group_by(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))) %>%
@@ -75,18 +85,16 @@
         group_keys = group_df %>%
           dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year"))))
 
-        estimates = group_df[[var]]
-        moes = group_df[[moe_var]]
-
-        se = se_sum(as.list(moes), as.list(estimates))
+        se = se_sum(as.list(group_df[[moe_var]]), as.list(group_df[[var]]))
 
         group_keys %>%
           dplyr::mutate(!!moe_var := se * 1.645)
       }) %>% purrr::list_rbind()
 
-    aggregated_sum_moes = aggregated_sum_moes %>%
+    acc %>%
       dplyr::left_join(var_moes, by = c(target_col, "data_source_year"))
-  }
+  }, .init = data_no_geom %>%
+    dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))))
 
   ####----Aggregate Weighted Average Variables----####
   if (length(weighted_avg_variables) > 0) {
@@ -94,8 +102,7 @@
     has_weight_moe = weight_moe_variable %in% colnames(data_no_geom)
 
     if (!has_weight_moe) {
-      warning(paste0("MOE column '", weight_moe_variable, "' not found for weight variable. ",
-                     "SE calculations for weighted averages will be skipped."))
+      cli::cli_warn("MOE column {.var {weight_moe_variable}} not found for weight variable. SE calculations for weighted averages will be skipped.")
     }
 
     aggregated_weighted = data_no_geom %>%
@@ -103,18 +110,16 @@
       dplyr::summarise(
         dplyr::across(
           dplyr::all_of(weighted_avg_variables),
-          ~ sum(.x * .data[[weight_variable]], na.rm = TRUE) / sum(.data[[weight_variable]], na.rm = TRUE)),
+          ~ sum(.x * .data[[weight_variable]]) / sum(.data[[weight_variable]])),
         .groups = "drop")
 
     ## Calculate SEs for weighted averages
     if (has_weight_moe) {
-      aggregated_weighted_ses = data_no_geom %>%
-        dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year"))))
+      weighted_vars_with_moe = weighted_avg_variables[
+        paste0(weighted_avg_variables, "_M") %in% colnames(data_no_geom)]
 
-      for (var in weighted_avg_variables) {
+      aggregated_weighted_ses = purrr::reduce(weighted_vars_with_moe, function(acc, var) {
         moe_var = paste0(var, "_M")
-        if (!moe_var %in% colnames(data_no_geom)) next
-
         se_col_name = paste0(var, "_SE")
 
         var_ses = data_no_geom %>%
@@ -136,9 +141,10 @@
               dplyr::mutate(!!se_col_name := se_result)
           }) %>% purrr::list_rbind()
 
-        aggregated_weighted_ses = aggregated_weighted_ses %>%
+        acc %>%
           dplyr::left_join(var_ses, by = c(target_col, "data_source_year"))
-      }
+      }, .init = data_no_geom %>%
+        dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))))
 
       ## Convert SEs to MOEs
       se_col_names = paste0(weighted_avg_variables, "_SE")
@@ -170,7 +176,7 @@
     aggregated_areas = data_no_geom %>%
       dplyr::group_by(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))) %>%
       dplyr::summarise(
-        dplyr::across(dplyr::all_of(area_variables), ~ sum(.x, na.rm = TRUE)),
+        dplyr::across(dplyr::all_of(area_variables), ~ sum(.x)),
         .groups = "drop")
   } else {
     aggregated_areas = data_no_geom %>%
@@ -196,12 +202,6 @@
     result = result %>%
       dplyr::mutate(
         population_density_land_sq_kilometer = safe_divide(total_population_universe, area_land_sq_kilometer))
-
-    if ("total_population_universe_M" %in% colnames(result)) {
-      result = result %>%
-        dplyr::mutate(
-          population_density_land_sq_kilometer_M = (se_simple(total_population_universe_M) / area_land_sq_kilometer) * 1.645)
-    }
   }
 
   ####----Recalculate Percent Variables via Registry Definitions----####
@@ -270,17 +270,17 @@
       if (!all(all_required %in% colnames(df))) return(df)
 
       num_est = if (length(num_add) > 0) {
-        rowSums(as.matrix(dplyr::select(df, dplyr::all_of(num_add))), na.rm = TRUE)
+        rowSums(as.matrix(dplyr::select(df, dplyr::all_of(num_add))))
       } else { rep(0, nrow(df)) }
       if (length(num_sub) > 0) {
-        num_est = num_est - rowSums(as.matrix(dplyr::select(df, dplyr::all_of(num_sub))), na.rm = TRUE)
+        num_est = num_est - rowSums(as.matrix(dplyr::select(df, dplyr::all_of(num_sub))))
       }
 
       denom_est = if (length(denom_add) > 0) {
-        rowSums(as.matrix(dplyr::select(df, dplyr::all_of(denom_add))), na.rm = TRUE)
+        rowSums(as.matrix(dplyr::select(df, dplyr::all_of(denom_add))))
       } else { rep(0, nrow(df)) }
       if (length(denom_sub) > 0) {
-        denom_est = denom_est - rowSums(as.matrix(dplyr::select(df, dplyr::all_of(denom_sub))), na.rm = TRUE)
+        denom_est = denom_est - rowSums(as.matrix(dplyr::select(df, dplyr::all_of(denom_sub))))
       }
 
       num_se = tryCatch({
@@ -339,8 +339,24 @@
 #'    Percentages are recalculated from interpolated components. Intensive
 #'    variables use the allocated population as weights.
 #'
+#'    In fractional-allocation mode, area variables
+#'    (`area_land_sq_kilometer`, `area_water_sq_kilometer`,
+#'    `area_land_water_sq_kilometer`) and `population_density_land_sq_kilometer`
+#'    (and its MOE) are set to `NA` in the result. Crosswalk weights typically
+#'    represent a population share rather than an area share, so scaling
+#'    source-geography areas by the weight is not meaningful. If you need area
+#'    or density for the target geographies, join your own area measurements
+#'    onto the returned data frame.
+#'
 #'    MOE propagation uses Census Bureau approximation formulas throughout.
 #'    Crosswalk weights are treated as constants (no sampling error).
+#'
+#'    **NA handling**: Missing values (`NA`) in aggregated input columns
+#'    propagate to the corresponding target geographies — i.e., if any source
+#'    geography within a target has `NA` for a column being summed or averaged,
+#'    the target's value for that column will be `NA`. A one-time warning is
+#'    issued listing the affected columns. Filter or impute NAs upstream if a
+#'    different behavior is desired.
 #' @param .data A dataframe returned from \code{compile_acs_data()}.
 #'    Must have a codebook attribute attached.
 #' @param target_geoid Character. Column name for target geography identifiers.
@@ -409,15 +425,15 @@ interpolate_acs = function(
   ####----Input Validation----####
   codebook = attr(.data, "codebook")
   if (is.null(codebook)) {
-    stop("Input data must have a codebook attribute. Use output from compile_acs_data().")
+    cli::cli_abort("Input data must have a {.var codebook} attribute. Use output from {.fun compile_acs_data}.")
   }
 
   if (!source_geoid %in% colnames(.data)) {
-    stop(paste0("Column '", source_geoid, "' not found in .data."))
+    cli::cli_abort("Column {.var {source_geoid}} not found in {.arg .data}.")
   }
 
   if (!weight_variable %in% colnames(.data)) {
-    stop(paste0("Weight variable '", weight_variable, "' not found in .data."))
+    cli::cli_abort("Weight variable {.var {weight_variable}} not found in {.arg .data}.")
   }
 
   ## Get resolved tables from attribute (for re-running definitions)
@@ -434,19 +450,19 @@ interpolate_acs = function(
   ## Join crosswalk if provided
   if (!is.null(crosswalk)) {
     if (!is.data.frame(crosswalk)) {
-      stop("`crosswalk` must be a data frame.")
+      cli::cli_abort("{.arg crosswalk} must be a data frame.")
     }
     if (!source_geoid %in% colnames(crosswalk)) {
-      stop(paste0("Column '", source_geoid, "' not found in crosswalk."))
+      cli::cli_abort("Column {.var {source_geoid}} not found in {.arg crosswalk}.")
     }
     if (!target_geoid %in% colnames(crosswalk)) {
-      stop(paste0("Column '", target_geoid, "' not found in crosswalk."))
+      cli::cli_abort("Column {.var {target_geoid}} not found in {.arg crosswalk}.")
     }
 
     xwalk_cols = c(source_geoid, target_geoid)
     if (!is.null(weight)) {
       if (!weight %in% colnames(crosswalk)) {
-        stop(paste0("Column '", weight, "' not found in crosswalk."))
+        cli::cli_abort("Column {.var {weight}} not found in {.arg crosswalk}.")
       }
       xwalk_cols = c(xwalk_cols, weight)
     }
@@ -457,36 +473,24 @@ interpolate_acs = function(
         by = source_geoid)
   } else {
     if (!target_geoid %in% colnames(.data)) {
-      stop(paste0("Column '", target_geoid, "' not found in .data. Provide a crosswalk or add the column."))
+      cli::cli_abort("Column {.var {target_geoid}} not found in {.arg .data}. Provide a crosswalk or add the column.")
     }
     if (!is.null(weight) && !weight %in% colnames(.data)) {
-      stop(paste0("Column '", weight, "' not found in .data. Provide a crosswalk or add the column."))
+      cli::cli_abort("Column {.var {weight}} not found in {.arg .data}. Provide a crosswalk or add the column.")
     }
   }
 
   ## Warn about NA values in target_geoid
   na_count = sum(is.na(.data[[target_geoid]]))
   if (na_count > 0) {
-    message(paste0(
-      "Warning: ", na_count, " rows have NA values in '", target_geoid,
-      "' and will be excluded from aggregation."))
+    cli::cli_warn("{na_count} row{?s} ha{?s/ve} NA values in {.var {target_geoid}} and will be excluded from aggregation.")
   }
 
   ## Filter out NA target_geoids
   data_filtered = .data %>%
     dplyr::filter(!is.na(!!rlang::sym(target_geoid)))
 
-  ####----Ensure codebook has aggregation_strategy column----####
-  if (!"aggregation_strategy" %in% colnames(codebook)) {
-    codebook = codebook %>%
-      dplyr::mutate(
-        aggregation_strategy = dplyr::case_when(
-          variable_type %in% c("Count", "Sum") ~ "sum",
-          variable_type == "Percent" ~ "recalculate_percent",
-          variable_type %in% c("Median ($)", "Median", "Average", "Quintile ($)", "Index") ~ "weighted_average",
-          variable_type == "Metadata" ~ "metadata",
-          TRUE ~ "unknown"))
-  }
+  codebook = ensure_aggregation_strategy(codebook)
 
   if (!is.null(weight)) {
     ####----Fractional Allocation Mode----####
@@ -494,10 +498,10 @@ interpolate_acs = function(
     ## Validate weight values
     weight_values = data_filtered[[weight]]
     if (!is.numeric(weight_values)) {
-      stop("Weight column must be numeric.")
+      cli::cli_abort("Weight column {.var {weight}} must be numeric.")
     }
     if (any(weight_values < 0, na.rm = TRUE)) {
-      stop("Weight column must contain non-negative values.")
+      cli::cli_abort("Weight column {.var {weight}} must contain non-negative values.")
     }
 
     ## Check if weights sum to ~1 per source geography and year
@@ -509,12 +513,9 @@ interpolate_acs = function(
     non_unity = weight_sums %>%
       dplyr::filter(abs(.weight_sum - 1) > tolerance)
     if (nrow(non_unity) > 0) {
-      warning(paste0(
-        nrow(non_unity), " source geographies have weights that do not sum to 1 ",
-        "(tolerance: ", tolerance, "). ",
-        "Range of weight sums: [",
-        round(min(non_unity$.weight_sum), 4), ", ",
-        round(max(non_unity$.weight_sum), 4), "]."))
+      cli::cli_warn(c(
+        "{nrow(non_unity)} source geograph{?y/ies} ha{?s/ve} weights that do not sum to 1 (tolerance: {tolerance}).",
+        "i" = "Range of weight sums: [{round(min(non_unity$.weight_sum), 4)}, {round(max(non_unity$.weight_sum), 4)}]."))
     }
 
     ####----Classify Variables for Pre-allocation----####
@@ -527,13 +528,15 @@ interpolate_acs = function(
     sum_moe_variables = paste0(sum_variables, "_M")
     sum_moe_variables = sum_moe_variables[sum_moe_variables %in% colnames(data_filtered)]
 
-    ## Area variables
-    area_variables = c("area_land_sq_kilometer", "area_water_sq_kilometer", "area_land_water_sq_kilometer")
-    area_variables = area_variables[area_variables %in% colnames(data_filtered)]
-
     ####----Pre-allocate: multiply extensive variables by crosswalk weight----####
     ## MOE(w * X) = w * MOE(X) when w is a constant (no sampling error in the
     ## crosswalk weight). This is the standard assumption for Census crosswalks.
+    ## Area variables are intentionally NOT apportioned by the crosswalk weight
+    ## here — the weight typically represents a population share, not an area
+    ## share, so scaling area by a population weight is meaningless. Area and
+    ## population density columns are set to NA in the aggregated result; users
+    ## should supply their own area measurements for target geographies if
+    ## density-dependent calculations are needed.
     data_allocated = data_filtered %>%
       dplyr::mutate(
         dplyr::across(
@@ -542,15 +545,6 @@ interpolate_acs = function(
         dplyr::across(
           dplyr::all_of(sum_moe_variables),
           ~ .x * !!rlang::sym(weight)))
-
-    ## Area variables: allocate proportionally
-    if (length(area_variables) > 0) {
-      data_allocated = data_allocated %>%
-        dplyr::mutate(
-          dplyr::across(
-            dplyr::all_of(area_variables),
-            ~ .x * !!rlang::sym(weight)))
-    }
 
     ## Weight variable and its MOE — only allocate if not already in sum_variables.
     ## total_population_universe is typically a sum variable, so it's already
@@ -584,6 +578,23 @@ interpolate_acs = function(
     codebook = codebook,
     resolved_tables = resolved_tables)
 
+  ####----Blank out area and density in fractional allocation mode----####
+  ## Source-geography areas do not aggregate meaningfully to target geographies
+  ## under fractional allocation (the weight is usually a population share, not
+  ## an area share). Population density, which depends on area, is likewise not
+  ## meaningful. Users should bring their own area measurements for target
+  ## geographies if needed.
+  if (!is.null(weight)) {
+    na_cols = c("area_land_sq_kilometer", "area_water_sq_kilometer",
+                "area_land_water_sq_kilometer",
+                "population_density_land_sq_kilometer")
+    na_cols = na_cols[na_cols %in% colnames(result)]
+    if (length(na_cols) > 0) {
+      result = result %>%
+        dplyr::mutate(dplyr::across(dplyr::all_of(na_cols), ~ NA_real_))
+    }
+  }
+
   ####----Rename target_geoid to GEOID for Consistency----####
   result = result %>%
     dplyr::rename(GEOID = !!rlang::sym(target_geoid))
@@ -601,9 +612,15 @@ interpolate_acs = function(
             paste0(definition, " [Aggregated via population-weighted average using ", weight_variable, ".]"),
           TRUE ~ definition))
   } else {
+    area_and_density_vars = c(
+      "area_land_sq_kilometer", "area_water_sq_kilometer",
+      "area_land_water_sq_kilometer",
+      "population_density_land_sq_kilometer")
     updated_codebook = codebook %>%
       dplyr::mutate(
         definition = dplyr::case_when(
+          calculated_variable %in% area_and_density_vars ~
+            paste0(definition, " [Interpolated: set to NA; source areas are not apportioned by the crosswalk weight. Supply your own area measurements for target geographies.]"),
           aggregation_strategy == "sum" ~
             paste0(definition, " [Interpolated: allocated by crosswalk weight, then summed.]"),
           aggregation_strategy == "recalculate_percent" ~
@@ -624,7 +641,7 @@ interpolate_acs = function(
 utils::globalVariables(c(
   ":=", "variable_type", "aggregation_strategy", "calculated_variable",
   "total_population_universe", "area_land_sq_kilometer",
-  "total_population_universe_M", "population_density_land_sq_kilometer",
+  "population_density_land_sq_kilometer",
   "data_source_year",
   "numerator_vars", "numerator_subtract_vars", "denominator_vars",
   "denominator_subtract_vars", ".weight_sum"))

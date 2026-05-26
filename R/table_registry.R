@@ -1,4 +1,5 @@
 #' @importFrom magrittr %>%
+#' @importFrom rlang .data
 
 ####----TABLE REGISTRY INFRASTRUCTURE----####
 
@@ -475,10 +476,9 @@ validate_definition_variables = function(definitions, available_columns) {
   all_referenced = purrr::map(definitions, extract_explicit_variables) %>% unlist() %>% unique()
   missing = setdiff(all_referenced, available_columns)
   if (length(missing) > 0) {
-    stop(paste0(
-      "User-supplied definitions reference variables not found in the data: ",
-      paste0("`", missing, "`", collapse = ", "),
-      ". Use `list_variables()` to see available variable names."))
+    cli::cli_abort(c(
+      "User-supplied definitions reference variables not found in the data: {.var {missing}}.",
+      "i" = "Use {.fun list_variables} to see available variable names."))
   }
   invisible(TRUE)
 }
@@ -516,11 +516,9 @@ check_multi_table_variables = function(definitions, resolved_tables, auto_table_
     tables_used = tables_used[!is.na(tables_used)]
     if (length(tables_used) > 1) {
       label = def[["output"]] %||% def[["input_regex"]] %||% "<unnamed>"
-      rlang::warn(paste0(
-        "Definition `", label, "` references variables from multiple ACS tables (",
-        paste0(tables_used, collapse = ", "),
-        "). MOE calculations assume variables come from the same table; ",
-        "the computed MOE for this variable may be approximate."))
+      cli::cli_warn(c(
+        "Definition {.val {label}} references variables from multiple ACS tables ({.val {tables_used}}).",
+        "i" = "MOE calculations assume variables come from the same table; the computed MOE may be approximate."))
     }
   })
   invisible(TRUE)
@@ -705,8 +703,9 @@ resolve_tables = function(tables = NULL) {
     })
     unknown = tables[is.na(mapped)]
     if (length(unknown) > 0) {
-      stop(paste0("Unknown table(s): ", paste0(unknown, collapse = ", "),
-                   ". Use list_tables() to see available tables."))
+      cli::cli_abort(c(
+        "Unknown table{?s}: {.val {unknown}}.",
+        "i" = "Use {.fun list_tables} to see available tables."))
     }
     resolved = union(resolved, mapped)
   }
@@ -872,7 +871,7 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
 
   format_variable = function(clean_name) {
     raw = crosswalk %>%
-      dplyr::filter(clean_name == !!clean_name) %>%
+      dplyr::filter(.data$clean_name == !!clean_name) %>%
       dplyr::pull(raw_name)
     if (length(raw) == 0 || is.na(raw[1])) {
       paste0(clean_name, " (calculated variable)")
