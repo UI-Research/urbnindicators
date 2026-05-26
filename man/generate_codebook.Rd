@@ -21,7 +21,8 @@ table registry. When NULL (default), all registered tables are used.}
 \code{build_auto_table_entry()}. Default is an empty list.}
 
 \item{user_definitions}{A list of user-supplied DSL definition objects
-(e.g., from \code{define_percent()}). Default is an empty list.}
+(e.g., from \code{define_percent()}, \code{define_sum()}). Default is an
+empty list.}
 }
 \value{
 A tibble containing the names and definitions of  variables returned from

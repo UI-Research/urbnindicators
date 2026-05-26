@@ -51,173 +51,230 @@ build_construct_map = function() {
 
 ####----DSL CONSTRUCTORS----####
 
-#' Define a percentage variable (simple or complex)
+#' Define a percentage variable
 #'
-#' Creates a definition object for a derived percentage variable. When both
-#' \code{numerator} and \code{denominator} are single strings and no other
-#' fields are set, a \code{simple_percent} definition is returned. Otherwise a
-#' \code{complex} definition is returned, allowing multi-variable numerators
-#' and denominators.
+#' Creates a definition for a derived percentage (proportion) variable. Handles
+#' both single-output and batch modes:
+#' \itemize{
+#'   \item \strong{Single output} (\code{each = FALSE}): computes one percentage
+#'     from the specified numerator and denominator columns.
+#'   \item \strong{Batch output} (\code{each = TRUE}): computes one percentage
+#'     per column matching the \code{numerator} pattern. Output columns are
+#'     named \code{{matched_column}_percent}.
+#' }
 #'
-#' @param output A string. The name of the output column to create.
-#' @param numerator A string. Single numerator column name (simple case).
-#' @param denominator A string. Single denominator column name (simple case).
-#' @param numerator_variables A character vector of column names to sum for the
-#'   numerator (complex case).
-#' @param numerator_regex A regex pattern to match numerator columns (complex case).
-#' @param numerator_exclude_regex A regex pattern to exclude from numerator matches.
-#' @param numerator_note An optional annotation (not used in computation).
-#' @param numerator_subtract_variables A character vector of column names to
-#'   subtract from the numerator sum.
-#' @param numerator_subtract_regex A regex pattern to match columns to subtract
-#'   from the numerator.
-#' @param denominator_variables A character vector of column names to sum for the
-#'   denominator (complex case).
-#' @param denominator_regex A regex pattern to match denominator columns (complex case).
-#' @param denominator_exclude_regex A regex pattern to exclude from denominator matches.
-#' @param subtract_variables A character vector of column names to subtract from
-#'   the denominator sum.
-#' @param subtract_regex A regex pattern to match columns to subtract from
-#'   the denominator.
-#' @returns A list with a \code{type} field (\code{"simple_percent"} or
-#'   \code{"complex"}) and the associated fields. Can be passed in the
-#'   \code{tables} parameter of \code{\link{compile_acs_data}}.
+#' @param numerator A column name (string), character vector of column names to
+#'   sum, or regex pattern (when \code{each = TRUE}). When a character vector
+#'   of length > 1, columns are summed. When a single string and
+#'   \code{each = FALSE}, treated as a column name if it contains no regex
+#'   metacharacters, otherwise as a regex whose matches are summed.
+#' @param denominator A column name (string) or character vector of column
+#'   names to sum. When a single string, treated as a column name if it
+#'   contains no regex metacharacters, otherwise as a regex whose matches are
+#'   summed. Not required when \code{denominator_replace} is provided.
+#' @param output A string. The output column name. Auto-inferred as
+#'   \code{paste0(numerator, "_percent")} when \code{numerator} is a single
+#'   non-regex string and \code{each = FALSE}. Required when \code{numerator}
+#'   is a vector or regex. Ignored when \code{each = TRUE} (outputs are named
+#'   \code{{matched_column}_percent}).
+#' @param each Logical. When \code{TRUE}, \code{numerator} is treated as a
+#'   regex pattern and one percentage is computed per matched column. Default
+#'   \code{FALSE}.
+#' @param denominator_replace A named character vector for deriving the
+#'   denominator column name from the matched numerator column name via string
+#'   replacement (e.g., \code{c("below" = "universe")}). Only used when
+#'   \code{each = TRUE}.
+#' @param subtract_from_numerator Column name(s) to subtract from the numerator
+#'   sum (string or character vector).
+#' @param subtract_from_denominator Column name(s) to subtract from the
+#'   denominator sum (string or character vector).
+#' @param exclude A regex pattern to exclude columns from pattern matching.
+#' @returns A list with a \code{type} field and associated fields, suitable for
+#'   passing in the \code{tables} parameter of \code{\link{compile_acs_data}}.
 #' @examples
-#' # Simple percentage
-#' define_percent("snap_received_percent",
-#'               numerator = "snap_received",
-#'               denominator = "snap_universe")
+#' # Simple percentage (output inferred as "snap_received_percent")
+#' define_percent("snap_received", "snap_universe")
 #'
-#' # Complex percentage with subtraction
-#' define_percent("snap_not_received_percent",
-#'               numerator_variables = c("snap_universe"),
-#'               numerator_subtract_variables = c("snap_received"),
-#'               denominator_variables = c("snap_universe"))
+#' # Sum of columns as numerator
+#' define_percent(c("age_under_5_years", "age_5_9_years"),
+#'               denominator = "sex_by_age_universe",
+#'               output = "age_under_10_percent")
+#'
+#' # Batch: one percent per matched column
+#' define_percent("^race_nonhispanic|^race_hispanic",
+#'               denominator = "race_universe",
+#'               each = TRUE)
 #' @export
-define_percent = function(output,
-                          numerator = NULL,
+define_percent = function(numerator,
                           denominator = NULL,
-                          numerator_variables = NULL,
-                          numerator_regex = NULL,
-                          numerator_exclude_regex = NULL,
-                          numerator_note = NULL,
-                          numerator_subtract_variables = NULL,
-                          numerator_subtract_regex = NULL,
-                          denominator_variables = NULL,
-                          denominator_regex = NULL,
-                          denominator_exclude_regex = NULL,
-                          subtract_variables = NULL,
-                          subtract_regex = NULL) {
-  ## simple case: single numerator and denominator strings
-  if (!is.null(numerator) && is.character(numerator) && length(numerator) == 1 &&
-      !is.null(denominator) && is.character(denominator) && length(denominator) == 1 &&
-      is.null(numerator_variables) && is.null(numerator_regex) &&
-      is.null(denominator_variables) && is.null(denominator_regex) &&
-      is.null(subtract_variables) && is.null(subtract_regex) &&
-      is.null(numerator_subtract_variables) && is.null(numerator_subtract_regex)) {
-    return(list(
-      type = "simple_percent",
-      output = output,
-      numerator = numerator,
-      denominator = denominator))
+                          output = NULL,
+                          each = FALSE,
+                          denominator_replace = NULL,
+                          subtract_from_numerator = NULL,
+                          subtract_from_denominator = NULL,
+                          exclude = NULL) {
+
+  if (isTRUE(each)) {
+    ## batch mode -> across_percent
+    result = list(
+      type = "across_percent",
+      input_regex = numerator,
+      output_suffix = "_percent")
+    if (!is.null(denominator)) result[["denominator"]] = denominator
+    if (!is.null(denominator_replace)) {
+      result[["denominator_function"]] = function(column) {
+        purrr::reduce2(names(denominator_replace), denominator_replace,
+                       function(col, pattern, replacement) {
+                         stringr::str_replace(col, pattern, replacement)
+                       }, .init = column)
+      }
+    }
+    if (!is.null(subtract_from_denominator)) result[["denominator_subtract"]] = subtract_from_denominator
+    if (!is.null(exclude)) result[["exclude_regex"]] = exclude
+    return(result)
   }
 
-  ## complex case
+  ## single-output mode
+  ## infer output name when numerator is a single plain string
+  if (is.null(output) && is.character(numerator) && length(numerator) == 1 &&
+      !.has_regex_metacharacters(numerator)) {
+    output = paste0(numerator, "_percent")
+  }
+
+  ## complex case — all single-output definitions use "complex" type
+  ## (numerator is always treated as regex at execution time)
   result = list(type = "complex", output = output)
-  if (!is.null(numerator_variables)) result[["numerator_variables"]] = numerator_variables
-  if (!is.null(numerator_regex)) result[["numerator_regex"]] = numerator_regex
-  if (!is.null(numerator_exclude_regex)) result[["numerator_exclude_regex"]] = numerator_exclude_regex
-  if (!is.null(numerator_note)) result[["numerator_note"]] = numerator_note
-  if (!is.null(numerator_subtract_variables)) result[["numerator_subtract_variables"]] = numerator_subtract_variables
-  if (!is.null(numerator_subtract_regex)) result[["numerator_subtract_regex"]] = numerator_subtract_regex
-  if (!is.null(denominator_variables)) result[["denominator_variables"]] = denominator_variables
-  if (!is.null(denominator_regex)) result[["denominator_regex"]] = denominator_regex
-  if (!is.null(denominator_exclude_regex)) result[["denominator_exclude_regex"]] = denominator_exclude_regex
-  if (!is.null(subtract_variables)) result[["subtract_variables"]] = subtract_variables
-  if (!is.null(subtract_regex)) result[["subtract_regex"]] = subtract_regex
+
+  ## numerator: vector -> numerator_variables; single string -> numerator_regex
+  if (length(numerator) > 1) {
+    result[["numerator_variables"]] = numerator
+  } else {
+    result[["numerator_regex"]] = numerator
+  }
+
+  ## denominator: vector -> denominator_variables; single string -> denominator_regex
+  if (!is.null(denominator)) {
+    if (length(denominator) > 1) {
+      result[["denominator_variables"]] = denominator
+    } else {
+      result[["denominator_regex"]] = denominator
+    }
+  }
+
+  ## subtraction — single strings always treated as regex
+  if (!is.null(subtract_from_numerator)) {
+    if (length(subtract_from_numerator) > 1) {
+      result[["numerator_subtract_variables"]] = subtract_from_numerator
+    } else {
+      result[["numerator_subtract_regex"]] = subtract_from_numerator
+    }
+  }
+  if (!is.null(subtract_from_denominator)) {
+    if (length(subtract_from_denominator) > 1) {
+      result[["subtract_variables"]] = subtract_from_denominator
+    } else {
+      result[["subtract_regex"]] = subtract_from_denominator
+    }
+  }
+
+  ## exclude
+  if (!is.null(exclude)) result[["numerator_exclude_regex"]] = exclude
+
   return(result)
 }
 
-#' Define an across-percent variable
+#' Define a sum variable
 #'
-#' Creates a definition that computes a percentage for every column matching a
-#' regex pattern. Each matched column becomes a numerator; the denominator is
-#' either a fixed column or computed by a function.
+#' Creates a definition for a derived sum variable. Handles both single-output
+#' and batch modes:
+#' \itemize{
+#'   \item \strong{Single output} (\code{each = FALSE}): sums the specified
+#'     columns into one output column.
+#'   \item \strong{Batch output} (\code{each = TRUE}): for each column matching
+#'     the \code{columns} pattern, adds a corresponding column (derived via
+#'     \code{add_replace}) and names the output via \code{output_replace}.
+#' }
 #'
-#' @param input_regex A regex pattern to match input columns.
-#' @param output_suffix A string appended to each matched column name to form
-#'   the output column name (e.g., \code{"_percent"}).
-#' @param denominator A string. A fixed denominator column name.
-#' @param denominator_function A function that takes a matched column name and
-#'   returns the denominator column name for that match.
-#' @param denominator_subtract A string. A column to subtract from the
-#'   denominator value.
-#' @param exclude_regex A regex pattern to exclude from matched columns.
-#' @returns A list with \code{type = "across_percent"} and the associated
-#'   fields. Can be passed in the \code{tables} parameter of
-#'   \code{\link{compile_acs_data}}.
+#' @param columns Column name(s) to sum (character vector), or a regex pattern
+#'   when \code{each = TRUE}.
+#' @param output A string. The output column name. Required when
+#'   \code{each = FALSE}.
+#' @param each Logical. When \code{TRUE}, \code{columns} is treated as a regex
+#'   pattern and one pairwise sum is computed per matched column. Default
+#'   \code{FALSE}.
+#' @param add_replace A named character vector for deriving the addend column
+#'   name from the matched column name via string replacement (e.g.,
+#'   \code{c("female" = "male")}). Only used when \code{each = TRUE}.
+#' @param output_replace A named character vector for deriving the output column
+#'   name from the matched column name via string replacement (e.g.,
+#'   \code{c("sex_by_age_female_" = "age_")}). Only used when
+#'   \code{each = TRUE}.
+#' @param exclude A regex pattern to exclude columns from pattern matching.
+#' @returns A list with \code{type} field and associated fields, suitable for
+#'   passing in the \code{tables} parameter of \code{\link{compile_acs_data}}.
+#' @examples
+#' # Simple sum
+#' define_sum(c("col_a", "col_b", "col_c"), output = "total_abc")
+#'
+#' # Batch: pairwise sum per matched column
+#' define_sum("sex_by_age_female_.*years($|_over$)",
+#'            each = TRUE,
+#'            add_replace = c("female" = "male"),
+#'            output_replace = c("sex_by_age_female_" = "age_"))
 #' @export
-define_across_percent = function(input_regex,
-                                 output_suffix,
-                                 denominator = NULL,
-                                 denominator_function = NULL,
-                                 denominator_subtract = NULL,
-                                 exclude_regex = NULL) {
-  result = list(
-    type = "across_percent",
-    input_regex = input_regex,
-    output_suffix = output_suffix)
-  if (!is.null(denominator)) result[["denominator"]] = denominator
-  if (!is.null(denominator_function)) result[["denominator_function"]] = denominator_function
-  if (!is.null(denominator_subtract)) result[["denominator_subtract"]] = denominator_subtract
-  if (!is.null(exclude_regex)) result[["exclude_regex"]] = exclude_regex
-  return(result)
+define_sum = function(columns,
+                      output = NULL,
+                      each = FALSE,
+                      add_replace = NULL,
+                      output_replace = NULL,
+                      exclude = NULL) {
+
+  if (isTRUE(each)) {
+    ## batch mode -> across_sum
+    addend_function = function(column) {
+      purrr::reduce2(names(add_replace), add_replace,
+                     function(col, pattern, replacement) {
+                       stringr::str_replace(col, pattern, replacement)
+                     }, .init = column)
+    }
+    output_naming_function = function(column) {
+      purrr::reduce2(names(output_replace), output_replace,
+                     function(col, pattern, replacement) {
+                       stringr::str_replace_all(col, pattern, replacement)
+                     }, .init = column)
+    }
+
+    result = list(
+      type = "across_sum",
+      input_regex = columns,
+      addend_function = addend_function,
+      output_naming_function = output_naming_function)
+    if (!is.null(exclude)) result[["exclude_regex"]] = exclude
+    return(result)
+  }
+
+  ## single-output sum
+  list(
+    type = "sum",
+    output = output,
+    columns = columns)
 }
 
-#' Define an across-sum variable
+#' Define a complement (1 - x) variable
 #'
-#' Creates a definition that sums each matched column with a corresponding
-#' addend column. The addend and output names are determined by user-supplied
-#' functions.
+#' Creates a definition that computes \code{1 - source}.
 #'
-#' @param input_regex A regex pattern to match input columns.
-#' @param addend_function A function that takes a matched column name and
-#'   returns the name of the column to add.
-#' @param output_naming_function A function that takes a matched column name
-#'   and returns the output column name.
-#' @param exclude_regex A regex pattern to exclude from matched columns.
-#' @returns A list with \code{type = "across_sum"} and the associated fields.
-#'   Can be passed in the \code{tables} parameter of
-#'   \code{\link{compile_acs_data}}.
-#' @export
-define_across_sum = function(input_regex,
-                             addend_function,
-                             output_naming_function,
-                             exclude_regex = NULL) {
-  result = list(
-    type = "across_sum",
-    input_regex = input_regex,
-    addend_function = addend_function,
-    output_naming_function = output_naming_function)
-  if (!is.null(exclude_regex)) result[["exclude_regex"]] = exclude_regex
-  return(result)
-}
-
-#' Define a one-minus (complement) variable
-#'
-#' Creates a definition that computes \code{1 - source_variable}.
-#'
+#' @param source A string. The column to subtract from 1.
 #' @param output A string. The name of the output column to create.
-#' @param source_variable A string. The column to subtract from 1.
 #' @returns A list with \code{type = "one_minus"} and the associated fields.
 #'   Can be passed in the \code{tables} parameter of
 #'   \code{\link{compile_acs_data}}.
 #' @export
-define_one_minus = function(output, source_variable) {
+define_complement = function(source, output) {
   list(
     type = "one_minus",
     output = output,
-    source_variable = source_variable)
+    source_variable = source)
 }
 
 #' Define a metadata variable
@@ -226,22 +283,27 @@ define_one_minus = function(output, source_variable) {
 #' codebook entry.
 #'
 #' @param output A string. The name of the metadata column.
-#' @param definition_text A string. Human-readable description for the codebook.
+#' @param definition A string. Human-readable description for the codebook.
 #' @returns A list with \code{type = "metadata"} and the associated fields.
 #'   Can be passed in the \code{tables} parameter of
 #'   \code{\link{compile_acs_data}}.
 #' @export
-define_metadata = function(output, definition_text) {
+define_metadata = function(output, definition) {
   list(
     type = "metadata",
     output = output,
-    definition_text = definition_text)
+    definition_text = definition)
+}
+
+## Detect regex metacharacters in a string
+.has_regex_metacharacters = function(x) {
+  grepl("[.*()|\\.\\[\\]^$+?\\\\]|\\{|\\}", x, perl = TRUE)
 }
 
 ####----DSL VALIDATION AND HELPERS----####
 
 .dsl_types = c("simple_percent", "complex", "across_percent", "across_sum",
-               "one_minus", "metadata")
+               "one_minus", "metadata", "sum")
 
 ## Check whether an object is a DSL definition
 is_dsl_definition = function(x) {
@@ -330,6 +392,11 @@ validate_definition = function(definition) {
   } else if (type == "metadata") {
     check_required_string(definition[["output"]], "output", label)
     check_required_string(definition[["definition_text"]], "definition_text", label)
+  } else if (type == "sum") {
+    check_required_string(definition[["output"]], "output", label)
+    if (is.null(definition[["columns"]]) || !is.character(definition[["columns"]]) || length(definition[["columns"]]) == 0) {
+      stop(paste0("Definition `", label, "`: sum type requires `columns` as a non-empty character vector."))
+    }
   }
 
   invisible(TRUE)
@@ -353,6 +420,9 @@ extract_explicit_variables = function(definition) {
     if (is.character(definition[["denominator_subtract"]])) vars = c(vars, definition[["denominator_subtract"]])
   } else if (type == "one_minus") {
     vars = c(vars, definition[["source_variable"]])
+  }
+  if (type == "sum") {
+    vars = c(vars, definition[["columns"]])
   }
   ## across_sum and metadata have no explicit variable refs to check
   unique(vars)
@@ -481,6 +551,11 @@ execute_definition = function(.data, definition) {
 
   if (type == "across_percent") {
     input_columns = resolve_regex_columns(.data, definition[["input_regex"]], definition[["exclude_regex"]])
+    if (length(input_columns) == 1) {
+      warning(paste0("`each = TRUE` matched only 1 column ('", input_columns,
+                     "'). This may indicate the pattern is too narrow ",
+                     "or `each = TRUE` is not needed."), call. = FALSE)
+    }
     .data = purrr::reduce(input_columns, function(.data, column) {
       output_column = paste0(column, definition[["output_suffix"]])
       ## determine denominator
@@ -563,6 +638,12 @@ execute_definition = function(.data, definition) {
   if (type == "one_minus") {
     output = definition[["output"]]
     .data[[output]] = 1 - .data[[definition[["source_variable"]]]]
+    return(.data)
+  }
+
+  if (type == "sum") {
+    output = definition[["output"]]
+    .data[[output]] = rowSums(dplyr::select(.data, dplyr::all_of(definition[["columns"]])))
     return(.data)
   }
 
@@ -734,7 +815,7 @@ list_variables = function(year = 2022) {
         available = state$available
         computed = state$computed
 
-        if (entry_type %in% c("simple_percent", "complex", "one_minus", "metadata")) {
+        if (entry_type %in% c("simple_percent", "complex", "one_minus", "metadata", "sum")) {
           out = entry[["output"]]
           if (is.character(out)) {
             computed = c(computed, out)
@@ -985,6 +1066,19 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       denominator_subtract_vars = list(character(0))))
   }
 
+  else if (type == "sum") {
+    columns = entry[["columns"]]
+    columns_formatted = purrr::map_chr(columns, format_variable) %>% paste0(collapse = ", ")
+    return(tibble::tibble(
+      calculated_variable = entry[["output"]],
+      variable_type = "Sum",
+      definition = paste0("Sum of: ", columns_formatted, "."),
+      numerator_vars = list(columns),
+      numerator_subtract_vars = list(character(0)),
+      denominator_vars = list(character(0)),
+      denominator_subtract_vars = list(character(0))))
+  }
+
   else if (type == "metadata") {
     return(tibble::tibble(
       calculated_variable = entry[["output"]],
@@ -1032,9 +1126,7 @@ register_table(list(
     public_assistance_universe_ = "B19058_001",
     public_assistance_received_ = "B19058_002"),
   definitions = list(
-    define_percent("public_assistance_received_percent",
-                   numerator = "public_assistance_received",
-                   denominator = "public_assistance_universe"))
+    define_percent("public_assistance_received", "public_assistance_universe"))
 ))
 
 register_table(list(
@@ -1047,9 +1139,7 @@ register_table(list(
     snap_universe_ = "B22003_001",
     snap_received_ = "B22003_002"),
   definitions = list(
-    define_percent("snap_received_percent",
-                   numerator = "snap_received",
-                   denominator = "snap_universe"))
+    define_percent("snap_received", "snap_universe"))
 ))
 
 register_table(list(
@@ -1137,11 +1227,10 @@ register_table(list(
     federal_poverty_limit_below_twoormore_ = "B17020G_002",
     federal_poverty_limit_below_white_alone_nonhispanic_ = "B17020H_002"),
   definitions = list(
-    define_across_percent(
-      input_regex = "federal_poverty_limit.*below",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator_function = function(column) { column %>% stringr::str_replace("below", "universe") }))
+    define_percent("federal_poverty_limit.*below",
+                   denominator_replace = c("below" = "universe"),
+                   each = TRUE,
+                   exclude = "percent"))
 ))
 
 ####----TABLE REGISTRATIONS: RACE AND ETHNICITY----####
@@ -1175,13 +1264,11 @@ register_table(list(
     race_hispanic_twoormore_includingotherrace_ = "B03002_020",
     race_hispanic_twoormore_excludingotherrace_ = "B03002_021"),
   definitions = list(
-    define_across_percent(
-      input_regex = "^race_nonhispanic|^race_hispanic",
-      exclude_regex = NULL,
-      output_suffix = "_percent",
-      denominator = "race_universe"),
-    define_one_minus("race_personofcolor_percent",
-                     source_variable = "race_nonhispanic_white_alone_percent"))
+    define_percent("^race_nonhispanic|^race_hispanic",
+                   denominator = "race_universe",
+                   each = TRUE),
+    define_complement("race_nonhispanic_white_alone_percent",
+                      output = "race_personofcolor_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: SEX AND AGE----####
@@ -1201,28 +1288,23 @@ register_table(list(
       list(pattern = "B01001_"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("sex_female_percent",
-                   numerator = "sex_by_age_female",
-                   denominator = "sex_by_age_universe"),
-    define_percent("sex_male_percent",
-                   numerator = "sex_by_age_male",
-                   denominator = "sex_by_age_universe"),
-    define_across_sum(
-      input_regex = "sex_by_age_female_.*years($|_over$)",
-      exclude_regex = NULL,
-      addend_function = function(column) { column %>% stringr::str_replace("female", "male") },
-      output_naming_function = function(column) { column %>% stringr::str_replace("sex_by_age_female_", "age_") }),
-    define_across_percent(
-      input_regex = "^age.*years($|_over$)",
-      exclude_regex = NULL,
-      output_suffix = "_percent",
-      denominator = "sex_by_age_universe"),
-    define_percent("age_under_18_percent",
-                   numerator_variables = c("age_under_5_years", "age_5_9_years", "age_10_14_years", "age_15_17_years"),
-                   denominator_variables = c("sex_by_age_universe")),
-    define_percent("age_over_64_percent",
-                   numerator_regex = "age_(6(5|7)|7|8).*_years($|_over$)",
-                   denominator_variables = c("sex_by_age_universe")))
+    define_percent("sex_by_age_female", "sex_by_age_universe",
+                   output = "sex_female_percent"),
+    define_percent("sex_by_age_male", "sex_by_age_universe",
+                   output = "sex_male_percent"),
+    define_sum("sex_by_age_female_.*years($|_over$)",
+               each = TRUE,
+               add_replace = c("female" = "male"),
+               output_replace = c("sex_by_age_female_" = "age_")),
+    define_percent("^age.*years($|_over$)",
+                   denominator = "sex_by_age_universe",
+                   each = TRUE),
+    define_percent(c("age_under_5_years", "age_5_9_years", "age_10_14_years", "age_15_17_years"),
+                   denominator = "sex_by_age_universe",
+                   output = "age_under_18_percent"),
+    define_percent("age_(6(5|7)|7|8).*_years($|_over$)",
+                   denominator = "sex_by_age_universe",
+                   output = "age_over_64_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: DISABILITY----####
@@ -1238,9 +1320,9 @@ register_table(list(
       list(pattern = "B18101_"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("disability_percent",
-                   numerator_regex = "with_a_disability",
-                   denominator_variables = c("sex_by_age_by_disability_status_universe")))
+    define_percent("with_a_disability",
+                   denominator = "sex_by_age_by_disability_status_universe",
+                   output = "disability_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: HOUSING----####
@@ -1256,26 +1338,23 @@ register_table(list(
       list(pattern = "B25003"))),
   raw_variables = NULL,
   definitions = list(
-    define_across_percent(
-      input_regex = "^tenure_renter_occupied|^tenure_owner_occupied",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator = "tenure_universe"),
-    define_across_sum(
-      input_regex = "tenure_.*_householder_renter_occupied",
-      exclude_regex = "percent",
-      addend_function = function(column) { column %>% stringr::str_replace("renter", "owner") },
-      output_naming_function = function(column) { column %>% stringr::str_replace_all("renter_occupied", "renter_owner_occupied") }),
-    define_across_percent(
-      input_regex = "tenure.*householder_renter_occupied",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator_function = function(column) { column %>% stringr::str_replace("renter", "renter_owner") }),
-    define_across_percent(
-      input_regex = "tenure.*householder_owner_occupied",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator_function = function(column) { column %>% stringr::str_replace("owner", "renter_owner") }))
+    define_percent("^tenure_renter_occupied|^tenure_owner_occupied",
+                   denominator = "tenure_universe",
+                   each = TRUE,
+                   exclude = "percent"),
+    define_sum("tenure_.*_householder_renter_occupied",
+               each = TRUE,
+               add_replace = c("renter" = "owner"),
+               output_replace = c("renter_occupied" = "renter_owner_occupied"),
+               exclude = "percent"),
+    define_percent("tenure.*householder_renter_occupied",
+                   denominator_replace = c("renter" = "renter_owner"),
+                   each = TRUE,
+                   exclude = "percent"),
+    define_percent("tenure.*householder_owner_occupied",
+                   denominator_replace = c("owner" = "renter_owner"),
+                   each = TRUE,
+                   exclude = "percent"))
 ))
 
 register_table(list(
@@ -1289,12 +1368,12 @@ register_table(list(
       list(pattern = "B25014"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("overcrowding_morethan1_ppr_alltenures_percent",
-                   numerator_regex = "tenure_by_occupants_per_room.*(1_01|1_51|2_01)",
-                   denominator_variables = c("tenure_by_occupants_per_room_universe")),
-    define_percent("overcrowding_morethan1_ppr_renteroccupied_percent",
-                   numerator_regex = "tenure_by_occupants_per_room_renter.*(1_01|1_51|2_01)",
-                   denominator_variables = c("tenure_by_occupants_per_room_renter_occupied")))
+    define_percent("tenure_by_occupants_per_room.*(1_01|1_51|2_01)",
+                   denominator = "tenure_by_occupants_per_room_universe",
+                   output = "overcrowding_morethan1_ppr_alltenures_percent"),
+    define_percent("tenure_by_occupants_per_room_renter.*(1_01|1_51|2_01)",
+                   denominator = "tenure_by_occupants_per_room_renter_occupied",
+                   output = "overcrowding_morethan1_ppr_renteroccupied_percent"))
 ))
 
 register_table(list(
@@ -1308,11 +1387,10 @@ register_table(list(
       list(pattern = "B25024"))),
   raw_variables = NULL,
   definitions = list(
-    define_across_percent(
-      input_regex = "^units_in_structure",
-      exclude_regex = "universe|householder|percent",
-      output_suffix = "_percent",
-      denominator = "units_in_structure_universe"))
+    define_percent("^units_in_structure",
+                   denominator = "units_in_structure_universe",
+                   each = TRUE,
+                   exclude = "universe|householder|percent"))
 ))
 
 register_table(list(
@@ -1326,26 +1404,23 @@ register_table(list(
       list(pattern = "B25032"))),
   raw_variables = NULL,
   definitions = list(
-    define_across_sum(
-      input_regex = "tenure_by_units.*renter_occupied_housing_units",
-      exclude_regex = "owner|percent",
-      addend_function = function(column) { column %>% stringr::str_replace("renter", "owner") },
-      output_naming_function = function(column) { column %>% stringr::str_replace_all("renter_occupied_housing_units", "renter_owner_occupied_housing_units") }),
-    define_across_percent(
-      input_regex = "tenure_by_units_in_structure_renter_owner_occupied_housing_units_",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator = "tenure_by_units_in_structure_renter_owner_occupied_housing_units"),
-    define_across_percent(
-      input_regex = "tenure_by_units_in_structure_renter_occupied_housing_units_",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator = "tenure_by_units_in_structure_renter_occupied_housing_units"),
-    define_across_percent(
-      input_regex = "tenure_by_units_in_structure_owner_occupied_housing_units_",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator = "tenure_by_units_in_structure_owner_occupied_housing_units"))
+    define_sum("tenure_by_units.*renter_occupied_housing_units",
+               each = TRUE,
+               add_replace = c("renter" = "owner"),
+               output_replace = c("renter_occupied_housing_units" = "renter_owner_occupied_housing_units"),
+               exclude = "owner|percent"),
+    define_percent("tenure_by_units_in_structure_renter_owner_occupied_housing_units_",
+                   denominator = "tenure_by_units_in_structure_renter_owner_occupied_housing_units",
+                   each = TRUE,
+                   exclude = "percent"),
+    define_percent("tenure_by_units_in_structure_renter_occupied_housing_units_",
+                   denominator = "tenure_by_units_in_structure_renter_occupied_housing_units",
+                   each = TRUE,
+                   exclude = "percent"),
+    define_percent("tenure_by_units_in_structure_owner_occupied_housing_units_",
+                   denominator = "tenure_by_units_in_structure_owner_occupied_housing_units",
+                   each = TRUE,
+                   exclude = "percent"))
 ))
 
 register_table(list(
@@ -1359,49 +1434,48 @@ register_table(list(
       list(pattern = "B25034"))),
   raw_variables = NULL,
   definitions = list(
-    define_across_percent(
-      input_regex = "year_structure_built_built_[0-9]",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator_function = function(column) { column %>% stringr::str_replace("[0-9].*", "universe") %>% stringr::str_replace("built_", "") }),
-    define_percent("year_structure_built_built_since_1940_percent",
-                   numerator_regex = "year_structure_built_built_(19[4-9]|2)",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_percent("year_structure_built_built_since_1950_percent",
-                   numerator_regex = "year_structure_built_built_(19[5-9]|2)",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_percent("year_structure_built_built_since_1960_percent",
-                   numerator_regex = "year_structure_built_built_(19[6-9]|2)",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_percent("year_structure_built_built_since_1970_percent",
-                   numerator_regex = "year_structure_built_built_(19[7-9]|2)",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_percent("year_structure_built_built_since_1980_percent",
-                   numerator_regex = "year_structure_built_built_(19[8-9]|2)",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_percent("year_structure_built_built_since_1990_percent",
-                   numerator_regex = "year_structure_built_built_(19[9]|2)",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_percent("year_structure_built_built_since_2000_percent",
-                   numerator_regex = "year_structure_built_built_(200|201|202)",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_percent("year_structure_built_built_since_2010_percent",
-                   numerator_regex = "year_structure_built_built_(201|202)",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_percent("year_structure_built_built_since_2020_percent",
-                   numerator_regex = "year_structure_built_built_202",
-                   numerator_exclude_regex = "percent",
-                   denominator_variables = c("year_structure_built_universe")),
-    define_one_minus("year_structure_built_built_before_1960_percent",
-                     source_variable = "year_structure_built_built_since_1960_percent"))
+    define_percent("year_structure_built_built_[0-9]",
+                   denominator_replace = c("[0-9].*" = "universe", "built_" = ""),
+                   each = TRUE,
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_(19[4-9]|2)",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_1940_percent",
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_(19[5-9]|2)",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_1950_percent",
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_(19[6-9]|2)",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_1960_percent",
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_(19[7-9]|2)",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_1970_percent",
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_(19[8-9]|2)",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_1980_percent",
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_(19[9]|2)",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_1990_percent",
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_(200|201|202)",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_2000_percent",
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_(201|202)",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_2010_percent",
+                   exclude = "percent"),
+    define_percent("year_structure_built_built_202",
+                   denominator = "year_structure_built_universe",
+                   output = "year_structure_built_built_since_2020_percent",
+                   exclude = "percent"),
+    define_complement("year_structure_built_built_since_1960_percent",
+                      output = "year_structure_built_built_before_1960_percent"))
 ))
 
 register_table(list(
@@ -1415,30 +1489,30 @@ register_table(list(
       list(pattern = "B25074"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("cost_burdened_30percentormore_allincomes_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(pct)",
-                   denominator_regex = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
-                   subtract_regex = "household_income.*not_computed"),
-    define_percent("cost_burdened_50percentormore_allincomes_percent",
-                   numerator_regex = "household_income_by_gross_rent.*50_0.*pct",
-                   denominator_regex = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
-                   subtract_regex = "household_income.*not_computed"),
-    define_percent("cost_burdened_30percentormore_incomeslessthan35000_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(pct)",
-                   denominator_regex = "household_income_by_gross_rent.*(10000|19999|34999)$",
-                   subtract_regex = "household_income.*(10000_|19999|34999).*not_computed"),
-    define_percent("cost_burdened_50percentormore_incomeslessthan35000_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(pct)",
-                   denominator_regex = "household_income_by_gross_rent.*(10000|19999|34999)$",
-                   subtract_regex = "household_income.*(10000_|19999|34999).*not_computed"),
-    define_percent("cost_burdened_30percentormore_incomeslessthan50000_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(pct)",
-                   denominator_regex = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
-                   subtract_regex = "household_income.*(10000_|19999|34999|49999).*not_computed"),
-    define_percent("cost_burdened_50percentormore_incomeslessthan50000_percent",
-                   numerator_regex = "household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*pct",
-                   denominator_regex = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
-                   subtract_regex = "household_income.*(10000_|19999|34999|49999).*not_computed"))
+    define_percent("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(pct)",
+                   denominator = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
+                   output = "cost_burdened_30percentormore_allincomes_percent",
+                   subtract_from_denominator = "household_income.*not_computed"),
+    define_percent("household_income_by_gross_rent.*50_0.*pct",
+                   denominator = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
+                   output = "cost_burdened_50percentormore_allincomes_percent",
+                   subtract_from_denominator = "household_income.*not_computed"),
+    define_percent("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(pct)",
+                   denominator = "household_income_by_gross_rent.*(10000|19999|34999)$",
+                   output = "cost_burdened_30percentormore_incomeslessthan35000_percent",
+                   subtract_from_denominator = "household_income.*(10000_|19999|34999).*not_computed"),
+    define_percent("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(pct)",
+                   denominator = "household_income_by_gross_rent.*(10000|19999|34999)$",
+                   output = "cost_burdened_50percentormore_incomeslessthan35000_percent",
+                   subtract_from_denominator = "household_income.*(10000_|19999|34999).*not_computed"),
+    define_percent("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(pct)",
+                   denominator = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
+                   output = "cost_burdened_30percentormore_incomeslessthan50000_percent",
+                   subtract_from_denominator = "household_income.*(10000_|19999|34999|49999).*not_computed"),
+    define_percent("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*pct",
+                   denominator = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
+                   output = "cost_burdened_50percentormore_incomeslessthan50000_percent",
+                   subtract_from_denominator = "household_income.*(10000_|19999|34999|49999).*not_computed"))
 ))
 
 register_table(list(
@@ -1502,23 +1576,20 @@ register_table(list(
       list(pattern = "B08301_"))),
   raw_variables = NULL,
   definitions = list(
-    define_across_percent(
-      input_regex = "means_transportation",
-      exclude_regex = "universe|worked_from_home|percent",
-      output_suffix = "_percent",
-      denominator = "means_transportation_work_universe",
-      denominator_subtract = "means_transportation_work_worked_from_home"),
-    define_percent("means_transportation_work_worked_from_home_percent",
-                   numerator = "means_transportation_work_worked_from_home",
-                   denominator = "means_transportation_work_universe"),
-    define_percent("means_transportation_work_bicycle_walked_percent",
-                   numerator_regex = "means_transportation_work_(bicycle|walked)$",
-                   denominator_variables = c("means_transportation_work_universe"),
-                   subtract_variables = c("means_transportation_work_worked_from_home")),
-    define_percent("means_transportation_work_motor_vehicle_percent",
-                   numerator_regex = "means_transportation_work_(car_truck_van|taxicab|motorcycle)$",
-                   denominator_variables = c("means_transportation_work_universe"),
-                   subtract_variables = c("means_transportation_work_worked_from_home")))
+    define_percent("means_transportation",
+                   denominator = "means_transportation_work_universe",
+                   each = TRUE,
+                   subtract_from_denominator = "means_transportation_work_worked_from_home",
+                   exclude = "universe|worked_from_home|percent"),
+    define_percent("means_transportation_work_worked_from_home", "means_transportation_work_universe"),
+    define_percent("means_transportation_work_(bicycle|walked)$",
+                   denominator = "means_transportation_work_universe",
+                   output = "means_transportation_work_bicycle_walked_percent",
+                   subtract_from_denominator = "means_transportation_work_worked_from_home"),
+    define_percent("means_transportation_work_(car_truck_van|taxicab|motorcycle)$",
+                   denominator = "means_transportation_work_universe",
+                   output = "means_transportation_work_motor_vehicle_percent",
+                   subtract_from_denominator = "means_transportation_work_worked_from_home"))
 ))
 
 register_table(list(
@@ -1532,11 +1603,10 @@ register_table(list(
       list(pattern = "B08303_"))),
   raw_variables = NULL,
   definitions = list(
-    define_across_percent(
-      input_regex = "travel_time_work",
-      exclude_regex = "universe|percent",
-      output_suffix = "_percent",
-      denominator = "travel_time_work_universe"))
+    define_percent("travel_time_work",
+                   denominator = "travel_time_work_universe",
+                   each = TRUE,
+                   exclude = "universe|percent"))
 ))
 
 register_table(list(
@@ -1565,30 +1635,30 @@ register_table(list(
       list(pattern = "B15003"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("educational_attainment_highschool_none_percent",
-                   numerator_regex = "educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade|1st_grade|2nd_grade|3rd_grade)",
-                   denominator_variables = c("educational_attainment_population_25_years_over_universe")),
-    define_percent("educational_attainment_highschool_nodiploma_percent",
-                   numerator_regex = "educational_attainment.*(9th|10th|11th|12th)",
-                   denominator_variables = c("educational_attainment_population_25_years_over_universe")),
-    define_percent("educational_attainment_ged_percent",
-                   numerator = "educational_attainment_population_25_years_over_ged_alternative_credential",
-                   denominator = "educational_attainment_population_25_years_over_universe"),
-    define_percent("educational_attainment_highschool_diploma_percent",
-                   numerator = "educational_attainment_population_25_years_over_regular_high_school_diploma",
-                   denominator = "educational_attainment_population_25_years_over_universe"),
-    define_percent("educational_attainment_college_some_percent",
-                   numerator_regex = "educational_attainment.*some_college",
-                   denominator_variables = c("educational_attainment_population_25_years_over_universe")),
-    define_percent("educational_attainment_degree_associate_percent",
-                   numerator = "educational_attainment_population_25_years_over_associates_degree",
-                   denominator = "educational_attainment_population_25_years_over_universe"),
-    define_percent("educational_attainment_degree_bachelors_percent",
-                   numerator = "educational_attainment_population_25_years_over_bachelors_degree",
-                   denominator = "educational_attainment_population_25_years_over_universe"),
-    define_percent("educational_attainment_degree_morethanbachelors_percent",
-                   numerator_regex = "educational_attainment.*(masters|professional|doctorate)",
-                   denominator_variables = c("educational_attainment_population_25_years_over_universe")))
+    define_percent("educational_attainment.*(no_schooling|nursery|kindergarten|_[0-8]th_grade|1st_grade|2nd_grade|3rd_grade)",
+                   denominator = "educational_attainment_population_25_years_over_universe",
+                   output = "educational_attainment_highschool_none_percent"),
+    define_percent("educational_attainment.*(9th|10th|11th|12th)",
+                   denominator = "educational_attainment_population_25_years_over_universe",
+                   output = "educational_attainment_highschool_nodiploma_percent"),
+    define_percent("educational_attainment_population_25_years_over_ged_alternative_credential",
+                   "educational_attainment_population_25_years_over_universe",
+                   output = "educational_attainment_ged_percent"),
+    define_percent("educational_attainment_population_25_years_over_regular_high_school_diploma",
+                   "educational_attainment_population_25_years_over_universe",
+                   output = "educational_attainment_highschool_diploma_percent"),
+    define_percent("educational_attainment.*some_college",
+                   denominator = "educational_attainment_population_25_years_over_universe",
+                   output = "educational_attainment_college_some_percent"),
+    define_percent("educational_attainment_population_25_years_over_associates_degree",
+                   "educational_attainment_population_25_years_over_universe",
+                   output = "educational_attainment_degree_associate_percent"),
+    define_percent("educational_attainment_population_25_years_over_bachelors_degree",
+                   "educational_attainment_population_25_years_over_universe",
+                   output = "educational_attainment_degree_bachelors_percent"),
+    define_percent("educational_attainment.*(masters|professional|doctorate)",
+                   denominator = "educational_attainment_population_25_years_over_universe",
+                   output = "educational_attainment_degree_morethanbachelors_percent"))
 ))
 
 register_table(list(
@@ -1605,16 +1675,14 @@ register_table(list(
     school_enrollment_graduate_ = "B14007_018",
     school_enrollment_notenrolled_ = "B14007_019"),
   definitions = list(
-    define_percent("educational_enrollment_grades_1thru12_percent",
-                   numerator_variables = c("school_enrollment_universe"),
-                   numerator_note = "universe minus non-1-12 enrollment categories",
-                   denominator_variables = c("school_enrollment_universe"),
-                   numerator_subtract_regex = "school_enrollment.*[^(_universe)]"),
-    define_across_percent(
-      input_regex = "school_enrollment.*[^(_universe)]",
-      exclude_regex = "percent",
-      output_suffix = "_percent",
-      denominator = "school_enrollment_universe"))
+    define_percent(c("school_enrollment_universe"),
+                   denominator = "school_enrollment_universe",
+                   output = "educational_enrollment_grades_1thru12_percent",
+                   subtract_from_numerator = "school_enrollment.*[^(_universe)]"),
+    define_percent("school_enrollment.*[^(_universe)]",
+                   denominator = "school_enrollment_universe",
+                   each = TRUE,
+                   exclude = "percent"))
 ))
 
 ####----TABLE REGISTRATIONS: NATIVITY AND LANGUAGE----####
@@ -1637,17 +1705,17 @@ register_table(list(
              match_type = "positive")))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("nativity_native_born_percent",
-                   numerator = "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native",
-                   denominator = "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe"),
-    define_percent("nativity_foreign_born_percent",
-                   numerator = "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born",
-                   denominator = "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe"),
-    define_percent("ability_speak_english_very_well_better_percent",
-                   numerator_regex = "nativity.*(only_english|english_very_well)",
-                   denominator_variables = c("nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe")),
-    define_one_minus("ability_speak_english_less_than_very_well_percent",
-                     source_variable = "ability_speak_english_very_well_better_percent"))
+    define_percent("nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native",
+                   "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
+                   output = "nativity_native_born_percent"),
+    define_percent("nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born",
+                   "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
+                   output = "nativity_foreign_born_percent"),
+    define_percent("nativity.*(only_english|english_very_well)",
+                   denominator = "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
+                   output = "ability_speak_english_very_well_better_percent"),
+    define_complement("ability_speak_english_very_well_better_percent",
+                      output = "ability_speak_english_less_than_very_well_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: EMPLOYMENT----####
@@ -1662,9 +1730,8 @@ register_table(list(
     employment_civilian_labor_force_universe_ = "B23025_003",
     employment_civilian_labor_force_employed_ = "B23025_004"),
   definitions = list(
-    define_percent("employment_civilian_labor_force_percent",
-                   numerator = "employment_civilian_labor_force_employed",
-                   denominator = "employment_civilian_labor_force_universe"))
+    define_percent("employment_civilian_labor_force_employed", "employment_civilian_labor_force_universe",
+                   output = "employment_civilian_labor_force_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: HOUSEHOLD COMPOSITION----####
@@ -1695,17 +1762,17 @@ register_table(list(
       list(pattern = "B27011"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("health_insurance_coverage_status_covered_percent",
-                   numerator_regex = "health_insurance_coverage_status_type_by_employment_status.*with_health_insurance_coverage$",
-                   denominator_variables = c("health_insurance_coverage_status_type_by_employment_status_universe")),
-    define_one_minus("health_insurance_coverage_status_notcovered_percent",
-                     source_variable = "health_insurance_coverage_status_covered_percent"),
-    define_percent("health_insurance_coverage_status_covered_employed_percent",
-                   numerator_regex = "health_insurance_coverage_status_type_by_employment_status.*_employed.*with_health_insurance_coverage$",
-                   denominator_variables = c("health_insurance_coverage_status_type_by_employment_status_in_labor_force")),
-    define_percent("health_insurance_coverage_status_covered_unemployed_percent",
-                   numerator_regex = "health_insurance_coverage_status_type_by_employment_status.*_unemployed.*with_health_insurance_coverage$",
-                   denominator_variables = c("health_insurance_coverage_status_type_by_employment_status_in_labor_force")))
+    define_percent("health_insurance_coverage_status_type_by_employment_status.*with_health_insurance_coverage$",
+                   denominator = "health_insurance_coverage_status_type_by_employment_status_universe",
+                   output = "health_insurance_coverage_status_covered_percent"),
+    define_complement("health_insurance_coverage_status_covered_percent",
+                      output = "health_insurance_coverage_status_notcovered_percent"),
+    define_percent("health_insurance_coverage_status_type_by_employment_status.*_employed.*with_health_insurance_coverage$",
+                   denominator = "health_insurance_coverage_status_type_by_employment_status_in_labor_force",
+                   output = "health_insurance_coverage_status_covered_employed_percent"),
+    define_percent("health_insurance_coverage_status_type_by_employment_status.*_unemployed.*with_health_insurance_coverage$",
+                   denominator = "health_insurance_coverage_status_type_by_employment_status_in_labor_force",
+                   output = "health_insurance_coverage_status_covered_unemployed_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: DIGITAL INFRASTRUCTURE----####
@@ -1748,7 +1815,7 @@ register_table(list(
   raw_variables = NULL,
   definitions = list(
     define_metadata("population_density_land_sq_kilometer",
-                    definition_text = "Rate. Numerator: total_population_universe (B01003_001). Denominator: area_land_sq_kilometer."))
+                    definition = "Rate. Numerator: total_population_universe (B01003_001). Denominator: area_land_sq_kilometer."))
 ))
 
 ####----GLOBAL VARIABLES----####

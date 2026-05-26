@@ -30,12 +30,12 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #'        Use the \code{denominator} parameter to control how percentages are
 #'        calculated for these tables.
 #'      \item \strong{DSL definition objects} created with \code{\link{define_percent}},
-#'        \code{\link{define_across_percent}}, \code{\link{define_across_sum}},
-#'        \code{\link{define_one_minus}}, or \code{\link{define_metadata}}.
-#'        These let you compute custom derived variables from the columns
-#'        produced by the tables you request. User definitions are executed
-#'        after all registered and auto-table definitions, and their results
-#'        appear in the codebook and have MOEs computed automatically.
+#'        \code{\link{define_sum}}, \code{\link{define_complement}}, or
+#'        \code{\link{define_metadata}}. These let you compute custom derived
+#'        variables from the columns produced by the tables you request. User
+#'        definitions are executed after all registered and auto-table
+#'        definitions, and their results appear in the codebook and have MOEs
+#'        computed automatically.
 #'    }
 #'    When mixing strings and definitions, wrap everything in \code{list()}
 #'    (e.g., \code{list("snap", define_percent(...))}).
@@ -92,10 +92,9 @@ safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
 #' df = compile_acs_data(
 #'   tables = list(
 #'     "snap",
-#'     define_percent("snap_not_received_percent",
-#'                    numerator_variables = c("snap_universe", "snap_received"),
-#'                    numerator_subtract_variables = c("snap_received"),
-#'                    denominator_variables = c("snap_universe"))),
+#'     define_percent("snap_universe", "snap_universe",
+#'                    subtract_from_numerator = "snap_received",
+#'                    output = "snap_not_received_percent")),
 #'   years = 2022, geography = "county", states = "DC")
 #'   }
 #' @export

@@ -117,24 +117,24 @@ To add a new ACS table to the package:
 
 1. **Add a `register_table()` call in `R/table_registry.R`** with:
    - `raw_variables` (manual) or `raw_variable_source` (select_variables) for raw ACS variables
-   - `compute_fn` that calculates derived indicators using `safe_divide()` and `dplyr::across()`
-   - `codebook_entries` with structured entries (types: `simple_percent`, `across_percent`, `across_sum`, `complex`, `one_minus`, `metadata`)
+   - `definitions` using the DSL functions: `define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`
 2. **Add any new global variables** to the `utils::globalVariables()` call at the bottom of `R/table_registry.R`
 3. **Verify**: `devtools::load_all()` then `list_tables()` shows your table
-4. **Verify codebook**: the codebook auto-generates from `codebook_entries` -- no changes to `R/generate_codebook.R` needed
+4. **Verify codebook**: the codebook auto-generates from `definitions` -- no changes to `R/generate_codebook.R` needed
 5. **Verify MOEs**: `R/calculate_cvs.R` parses codebook definition strings -- no changes needed if definitions follow standard patterns
 6. **Update pretty names** if needed (`R/make_pretty_names.R` -- rarely needed)
 
-### Codebook entry types
+### DSL functions for definitions
 
-| Type | Use case | Key fields |
+| Function | Use case | Key params |
 |---|---|---|
-| `simple_percent` | Single numerator / denominator | `output`, `numerator`, `denominator` |
-| `across_percent` | `dplyr::across()` percentages | `input_regex`, `exclude_regex`, `output_suffix`, `denominator` or `denominator_fn` |
-| `across_sum` | `dplyr::across()` sums (e.g., male + female) | `input_regex`, `addend_fn`, `output_naming_fn` |
-| `complex` | Multi-variable numerator/denominator | `output`, `numerator_regex` or `numerator_variables`, `denominator_variables`, optional `subtract_*` (denominator) or `numerator_subtract_*` (numerator) |
-| `one_minus` | Complement (1 - x) | `output`, `source_variable` |
-| `metadata` | Non-computed variables | `output`, `definition_text` |
+| `define_percent(numerator, denominator)` | Single percentage | `numerator`, `denominator`, `output` (inferred) |
+| `define_percent(..., each = TRUE)` | Batch percentages | `numerator` (regex), `denominator` or `denominator_replace`, `exclude` |
+| `define_percent(numerator, denominator, subtract_from_*)` | Complex percentage | `subtract_from_numerator`, `subtract_from_denominator`, `exclude` |
+| `define_sum(columns, output)` | Sum columns | `columns` (character vector) |
+| `define_sum(..., each = TRUE)` | Batch pairwise sums | `columns` (regex), `add_replace`, `output_replace` |
+| `define_complement(source, output)` | Complement (1 - x) | `source`, `output` |
+| `define_metadata(output, definition)` | Non-computed variables | `output`, `definition` |
 
 ### Quality checks for new variables
 
