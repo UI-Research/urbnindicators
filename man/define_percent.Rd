@@ -2,81 +2,80 @@
 % Please edit documentation in R/table_registry.R
 \name{define_percent}
 \alias{define_percent}
-\title{Define a percentage variable (simple or complex)}
+\title{Define a percentage variable}
 \usage{
 define_percent(
-  output,
-  numerator = NULL,
+  numerator,
   denominator = NULL,
-  numerator_variables = NULL,
-  numerator_regex = NULL,
-  numerator_exclude_regex = NULL,
-  numerator_note = NULL,
-  numerator_subtract_variables = NULL,
-  numerator_subtract_regex = NULL,
-  denominator_variables = NULL,
-  denominator_regex = NULL,
-  denominator_exclude_regex = NULL,
-  subtract_variables = NULL,
-  subtract_regex = NULL
+  output = NULL,
+  each = FALSE,
+  denominator_replace = NULL,
+  subtract_from_numerator = NULL,
+  subtract_from_denominator = NULL,
+  exclude = NULL
 )
 }
 \arguments{
-\item{output}{A string. The name of the output column to create.}
+\item{numerator}{A column name (string), character vector of column names to
+sum, or regex pattern (when \code{each = TRUE}). When a character vector
+of length > 1, columns are summed. When a single string and
+\code{each = FALSE}, treated as a column name if it contains no regex
+metacharacters, otherwise as a regex whose matches are summed.}
 
-\item{numerator}{A string. Single numerator column name (simple case).}
+\item{denominator}{A column name (string) or character vector of column
+names to sum. When a single string, treated as a column name if it
+contains no regex metacharacters, otherwise as a regex whose matches are
+summed. Not required when \code{denominator_replace} is provided.}
 
-\item{denominator}{A string. Single denominator column name (simple case).}
+\item{output}{A string. The output column name. Auto-inferred as
+\code{paste0(numerator, "_percent")} when \code{numerator} is a single
+non-regex string and \code{each = FALSE}. Required when \code{numerator}
+is a vector or regex. Ignored when \code{each = TRUE} (outputs are named
+\code{{matched_column}_percent}).}
 
-\item{numerator_variables}{A character vector of column names to sum for the
-numerator (complex case).}
+\item{each}{Logical. When \code{TRUE}, \code{numerator} is treated as a
+regex pattern and one percentage is computed per matched column. Default
+\code{FALSE}.}
 
-\item{numerator_regex}{A regex pattern to match numerator columns (complex case).}
+\item{denominator_replace}{A named character vector for deriving the
+denominator column name from the matched numerator column name via string
+replacement (e.g., \code{c("below" = "universe")}). Only used when
+\code{each = TRUE}.}
 
-\item{numerator_exclude_regex}{A regex pattern to exclude from numerator matches.}
+\item{subtract_from_numerator}{Column name(s) to subtract from the numerator
+sum (string or character vector).}
 
-\item{numerator_note}{An optional annotation (not used in computation).}
+\item{subtract_from_denominator}{Column name(s) to subtract from the
+denominator sum (string or character vector).}
 
-\item{numerator_subtract_variables}{A character vector of column names to
-subtract from the numerator sum.}
-
-\item{numerator_subtract_regex}{A regex pattern to match columns to subtract
-from the numerator.}
-
-\item{denominator_variables}{A character vector of column names to sum for the
-denominator (complex case).}
-
-\item{denominator_regex}{A regex pattern to match denominator columns (complex case).}
-
-\item{denominator_exclude_regex}{A regex pattern to exclude from denominator matches.}
-
-\item{subtract_variables}{A character vector of column names to subtract from
-the denominator sum.}
-
-\item{subtract_regex}{A regex pattern to match columns to subtract from
-the denominator.}
+\item{exclude}{A regex pattern to exclude columns from pattern matching.}
 }
 \value{
-A list with a \code{type} field (\code{"simple_percent"} or
-\code{"complex"}) and the associated fields. Can be passed in the
-\code{tables} parameter of \code{\link{compile_acs_data}}.
+A list with a \code{type} field and associated fields, suitable for
+passing in the \code{tables} parameter of \code{\link{compile_acs_data}}.
 }
 \description{
-Creates a definition object for a derived percentage variable. When both
-\code{numerator} and \code{denominator} are single strings and no other
-fields are set, a \code{simple_percent} definition is returned. Otherwise a
-\code{complex} definition is returned, allowing multi-variable numerators
-and denominators.
+Creates a definition for a derived percentage (proportion) variable. Handles
+both single-output and batch modes:
+\itemize{
+\item \strong{Single output} (\code{each = FALSE}): computes one percentage
+from the specified numerator and denominator columns.
+\item \strong{Batch output} (\code{each = TRUE}): computes one percentage
+per column matching the \code{numerator} pattern. Output columns are
+named \code{{matched_column}_percent}.
+}
 }
 \examples{
-# Simple percentage
-define_percent("snap_received_percent",
-              numerator = "snap_received",
-              denominator = "snap_universe")
+# Simple percentage (output inferred as "snap_received_percent")
+define_percent("snap_received", "snap_universe")
 
-# Complex percentage with subtraction
-define_percent("snap_not_received_percent",
-              numerator_variables = c("snap_universe"),
-              numerator_subtract_variables = c("snap_received"),
-              denominator_variables = c("snap_universe"))
+# Sum of columns as numerator
+define_percent(c("age_under_5_years", "age_5_9_years"),
+              denominator = "sex_by_age_universe",
+              output = "age_under_10_percent")
+
+# Batch: one percent per matched column
+define_percent("^race_nonhispanic|^race_hispanic",
+              denominator = "race_universe",
+              each = TRUE)
 }

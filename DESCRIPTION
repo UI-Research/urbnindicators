@@ -16,7 +16,9 @@ LazyData: true
 Imports:
     cli,
     dplyr,
+    httr,
     janitor,
+    jsonlite,
     lifecycle,
     magrittr,
     purrr,

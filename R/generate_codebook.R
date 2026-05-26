@@ -9,7 +9,8 @@
 #' @param auto_table_entries A list of auto-generated table entries from
 #'   \code{build_auto_table_entry()}. Default is an empty list.
 #' @param user_definitions A list of user-supplied DSL definition objects
-#'   (e.g., from \code{define_percent()}). Default is an empty list.
+#'   (e.g., from \code{define_percent()}, \code{define_sum()}). Default is an
+#'   empty list.
 #' @returns A tibble containing the names and definitions of  variables returned from
 #' \code{urbnindicators::compile_acs_data()}.
 #' @examples
@@ -52,7 +53,7 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
   ## Also build crosswalk for select_variables()-sourced variables using
   ## the census codebook
   suppressMessages({suppressWarnings({
-    census_variables = tidycensus::load_variables(year = year, dataset = "acs5")
+    census_variables = load_acs_variables(year = 2022, dataset = "acs5")
   })})
 
   ## Collect all ACS table codes from the registry
