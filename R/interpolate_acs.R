@@ -72,31 +72,35 @@
       dplyr::across(dplyr::all_of(sum_variables), ~ sum(.x)),
       .groups = "drop")
 
-  ## Calculate MOEs for summed variables using se_sum()
+  ## Calculate MOEs for summed variables using se_sum().
+  ## Split once into per-target groups; compute all sum MOE columns inside
+  ## each group function so we don't re-split the data per variable.
   sum_vars_with_moe = sum_variables[paste0(sum_variables, "_M") %in% colnames(data_no_geom)]
 
-  aggregated_sum_moes = purrr::reduce(sum_vars_with_moe, function(acc, var) {
-    moe_var = paste0(var, "_M")
-
-    var_moes = data_no_geom %>%
+  if (length(sum_vars_with_moe) > 0) {
+    aggregated_sum_moes = data_no_geom %>%
       dplyr::group_by(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))) %>%
       dplyr::group_split() %>%
       purrr::map(function(group_df) {
         group_keys = group_df %>%
           dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year"))))
 
-        se = se_sum(as.list(group_df[[moe_var]]), as.list(group_df[[var]]))
+        moe_columns = purrr::map(sum_vars_with_moe, function(var) {
+          moe_var = paste0(var, "_M")
+          se = se_sum(as.list(group_df[[moe_var]]), as.list(group_df[[var]]))
+          tibble::tibble(!!moe_var := se * 1.645)
+        }) %>% dplyr::bind_cols()
 
-        group_keys %>%
-          dplyr::mutate(!!moe_var := se * 1.645)
+        dplyr::bind_cols(group_keys, moe_columns)
       }) %>% purrr::list_rbind()
-
-    acc %>%
-      dplyr::left_join(var_moes, by = c(target_col, "data_source_year"))
-  }, .init = data_no_geom %>%
-    dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))))
+  } else {
+    aggregated_sum_moes = data_no_geom %>%
+      dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year"))))
+  }
 
   ####----Aggregate Weighted Average Variables----####
+  weighted_se_failures = list()
+
   if (length(weighted_avg_variables) > 0) {
     weight_moe_variable = paste0(weight_variable, "_M")
     has_weight_moe = weight_moe_variable %in% colnames(data_no_geom)
@@ -113,38 +117,47 @@
           ~ sum(.x * .data[[weight_variable]]) / sum(.data[[weight_variable]])),
         .groups = "drop")
 
-    ## Calculate SEs for weighted averages
+    ## Calculate SEs for weighted averages — split once, compute all SEs per group.
     if (has_weight_moe) {
       weighted_vars_with_moe = weighted_avg_variables[
         paste0(weighted_avg_variables, "_M") %in% colnames(data_no_geom)]
 
-      aggregated_weighted_ses = purrr::reduce(weighted_vars_with_moe, function(acc, var) {
-        moe_var = paste0(var, "_M")
-        se_col_name = paste0(var, "_SE")
+      weighted_failures_env = new.env(parent = emptyenv())
+      weighted_failures_env$log = list()
 
-        var_ses = data_no_geom %>%
+      if (length(weighted_vars_with_moe) > 0) {
+        aggregated_weighted_ses = data_no_geom %>%
           dplyr::group_by(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))) %>%
           dplyr::group_split() %>%
           purrr::map(function(group_df) {
             group_keys = group_df %>%
               dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year"))))
 
-            se_result = tryCatch({
-              se_weighted_mean(
-                values = group_df[[var]],
-                weights = group_df[[weight_variable]],
-                moe_values = group_df[[moe_var]],
-                moe_weights = group_df[[weight_moe_variable]])
-            }, error = function(e) NA_real_)
+            se_columns = purrr::map(weighted_vars_with_moe, function(var) {
+              moe_var = paste0(var, "_M")
+              se_col_name = paste0(var, "_SE")
+              se_result = tryCatch({
+                se_weighted_mean(
+                  values = group_df[[var]],
+                  weights = group_df[[weight_variable]],
+                  moe_values = group_df[[moe_var]],
+                  moe_weights = group_df[[weight_moe_variable]])
+              }, error = function(e) {
+                weighted_failures_env$log[[length(weighted_failures_env$log) + 1]] = list(
+                  variable = var, reason = conditionMessage(e))
+                NA_real_
+              })
+              tibble::tibble(!!se_col_name := se_result)
+            }) %>% dplyr::bind_cols()
 
-            group_keys %>%
-              dplyr::mutate(!!se_col_name := se_result)
+            dplyr::bind_cols(group_keys, se_columns)
           }) %>% purrr::list_rbind()
+      } else {
+        aggregated_weighted_ses = data_no_geom %>%
+          dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year"))))
+      }
 
-        acc %>%
-          dplyr::left_join(var_ses, by = c(target_col, "data_source_year"))
-      }, .init = data_no_geom %>%
-        dplyr::distinct(dplyr::across(dplyr::all_of(c(target_col, "data_source_year")))))
+      weighted_se_failures = weighted_failures_env$log
 
       ## Convert SEs to MOEs
       se_col_names = paste0(weighted_avg_variables, "_SE")
@@ -244,6 +257,14 @@
         denominator_add = denominator_vars,
         denominator_subtract = denominator_subtract_vars)
 
+    percent_failures_env = new.env(parent = emptyenv())
+    percent_failures_env$log = list()
+
+    log_failure = function(var, step, e) {
+      percent_failures_env$log[[length(percent_failures_env$log) + 1]] = list(
+        variable = var, step = step, reason = conditionMessage(e))
+    }
+
     ## Helper to calculate SE/MOE for a single percent variable
     calculate_percent_se = function(df, component_row) {
       if (nrow(df) == 0) return(df)
@@ -284,20 +305,16 @@
       }
 
       num_se = tryCatch({
-        if (length(num_est_cols) > 0) {
-          se_sum(
-            purrr::map(num_moe_cols, ~ df[[.x]]),
-            purrr::map(num_est_cols, ~ df[[.x]]))
-        } else { rep(0, nrow(df)) }
-      }, error = function(e) rep(NA_real_, nrow(df)))
+        se_sum(
+          purrr::map(num_moe_cols, ~ df[[.x]]),
+          purrr::map(num_est_cols, ~ df[[.x]]))
+      }, error = function(e) { log_failure(var_name, "numerator_se", e); rep(NA_real_, nrow(df)) })
 
       denom_se = tryCatch({
-        if (length(denom_est_cols) > 0) {
-          se_sum(
-            purrr::map(denom_moe_cols, ~ df[[.x]]),
-            purrr::map(denom_est_cols, ~ df[[.x]]))
-        } else { rep(0, nrow(df)) }
-      }, error = function(e) rep(NA_real_, nrow(df)))
+        se_sum(
+          purrr::map(denom_moe_cols, ~ df[[.x]]),
+          purrr::map(denom_est_cols, ~ df[[.x]]))
+      }, error = function(e) { log_failure(var_name, "denominator_se", e); rep(NA_real_, nrow(df)) })
 
       if (all(is.na(num_se)) || all(is.na(denom_se))) return(df)
 
@@ -307,7 +324,7 @@
           estimate_denominator = denom_est,
           se_numerator = num_se,
           se_denominator = denom_se)
-      }, error = function(e) rep(NA_real_, nrow(df)))
+      }, error = function(e) { log_failure(var_name, "proportion_se", e); rep(NA_real_, nrow(df)) })
 
       df %>%
         dplyr::mutate(
@@ -318,6 +335,21 @@
       seq_len(nrow(percent_components)),
       function(df, i) calculate_percent_se(df, percent_components[i, ]),
       .init = result)
+
+    percent_se_failures = percent_failures_env$log
+  } else {
+    percent_se_failures = list()
+  }
+
+  all_se_failures = c(weighted_se_failures, percent_se_failures)
+  if (length(all_se_failures) > 0) {
+    fail_lines = purrr::map_chr(all_se_failures, function(f) {
+      step = f$step %||% "se_calculation"
+      paste0(f$variable, " (", step, "): ", f$reason)
+    })
+    cli::cli_warn(c(
+      "SE calculation failed for {length(all_se_failures)} variable computation{?s}; MOE set to NA for those rows.",
+      stats::setNames(fail_lines, rep("*", length(fail_lines)))))
   }
 
   return(result)
@@ -359,7 +391,7 @@
 #'    different behavior is desired.
 #' @param .data A dataframe returned from \code{compile_acs_data()}.
 #'    Must have a codebook attribute attached.
-#' @param target_geoid Character. Column name for target geography identifiers.
+#' @param target_geoid_column Character. Column name for target geography identifiers.
 #'    Must exist in \code{.data} or in \code{crosswalk}. The result renames
 #'    this column to \code{GEOID}.
 #' @param weight Character or \code{NULL}. When \code{NULL} (default), assumes
@@ -370,7 +402,7 @@
 #' @param crosswalk A data frame containing the crosswalk mapping. Optional in
 #'    both modes. When provided, joined to \code{.data} via \code{source_geoid}
 #'    before processing. Must include columns for \code{source_geoid} and
-#'    \code{target_geoid} (and \code{weight} if fractional allocation is used).
+#'    \code{target_geoid_column} (and \code{weight} if fractional allocation is used).
 #' @param source_geoid Character. Column name for source geography identifiers.
 #'    Must exist in \code{.data} (and in \code{crosswalk} if provided).
 #'    Default is \code{"GEOID"}.
@@ -394,7 +426,7 @@
 #' tract_data$neighborhood = c("Downtown", "Downtown", "Uptown", ...)
 #' neighborhood_data = interpolate_acs(
 #'   .data = tract_data,
-#'   target_geoid = "neighborhood"
+#'   target_geoid_column = "neighborhood"
 #' )
 #'
 #' # Fractional allocation with a crosswalk
@@ -406,7 +438,7 @@
 #'
 #' neighborhood_data = interpolate_acs(
 #'   .data = tract_data,
-#'   target_geoid = "neighborhood",
+#'   target_geoid_column = "neighborhood",
 #'   weight = "alloc_weight",
 #'   crosswalk = crosswalk
 #' )
@@ -416,7 +448,7 @@
 #' @importFrom rlang .data
 interpolate_acs = function(
     .data,
-    target_geoid,
+    target_geoid_column,
     weight = NULL,
     crosswalk = NULL,
     source_geoid = "GEOID",
@@ -455,11 +487,11 @@ interpolate_acs = function(
     if (!source_geoid %in% colnames(crosswalk)) {
       cli::cli_abort("Column {.var {source_geoid}} not found in {.arg crosswalk}.")
     }
-    if (!target_geoid %in% colnames(crosswalk)) {
-      cli::cli_abort("Column {.var {target_geoid}} not found in {.arg crosswalk}.")
+    if (!target_geoid_column %in% colnames(crosswalk)) {
+      cli::cli_abort("Column {.var {target_geoid_column}} not found in {.arg crosswalk}.")
     }
 
-    xwalk_cols = c(source_geoid, target_geoid)
+    xwalk_cols = c(source_geoid, target_geoid_column)
     if (!is.null(weight)) {
       if (!weight %in% colnames(crosswalk)) {
         cli::cli_abort("Column {.var {weight}} not found in {.arg crosswalk}.")
@@ -472,23 +504,23 @@ interpolate_acs = function(
         crosswalk %>% dplyr::select(dplyr::all_of(xwalk_cols)),
         by = source_geoid)
   } else {
-    if (!target_geoid %in% colnames(.data)) {
-      cli::cli_abort("Column {.var {target_geoid}} not found in {.arg .data}. Provide a crosswalk or add the column.")
+    if (!target_geoid_column %in% colnames(.data)) {
+      cli::cli_abort("Column {.var {target_geoid_column}} not found in {.arg .data}. Provide a crosswalk or add the column.")
     }
     if (!is.null(weight) && !weight %in% colnames(.data)) {
       cli::cli_abort("Column {.var {weight}} not found in {.arg .data}. Provide a crosswalk or add the column.")
     }
   }
 
-  ## Warn about NA values in target_geoid
-  na_count = sum(is.na(.data[[target_geoid]]))
+  ## Warn about NA values in target_geoid_column
+  na_count = sum(is.na(.data[[target_geoid_column]]))
   if (na_count > 0) {
-    cli::cli_warn("{na_count} row{?s} ha{?s/ve} NA values in {.var {target_geoid}} and will be excluded from aggregation.")
+    cli::cli_warn("{na_count} row{?s} ha{?s/ve} NA values in {.var {target_geoid_column}} and will be excluded from aggregation.")
   }
 
-  ## Filter out NA target_geoids
+  ## Filter out NA target_geoid_columns
   data_filtered = .data %>%
-    dplyr::filter(!is.na(!!rlang::sym(target_geoid)))
+    dplyr::filter(!is.na(!!rlang::sym(target_geoid_column)))
 
   codebook = ensure_aggregation_strategy(codebook)
 
@@ -573,7 +605,7 @@ interpolate_acs = function(
   ####----Aggregate via shared workhorse----####
   result = .aggregate_to_target(
     data_no_geom = data_for_agg,
-    target_col = target_geoid,
+    target_col = target_geoid_column,
     weight_variable = weight_variable,
     codebook = codebook,
     resolved_tables = resolved_tables)
@@ -595,9 +627,9 @@ interpolate_acs = function(
     }
   }
 
-  ####----Rename target_geoid to GEOID for Consistency----####
+  ####----Rename target_geoid_column to GEOID for Consistency----####
   result = result %>%
-    dplyr::rename(GEOID = !!rlang::sym(target_geoid))
+    dplyr::rename(GEOID = !!rlang::sym(target_geoid_column))
 
   ####----Update Codebook----####
   if (codebook_tag == "aggregated") {

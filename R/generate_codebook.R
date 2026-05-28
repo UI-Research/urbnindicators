@@ -116,7 +116,8 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
                               numerator_vars = list(),
                               numerator_subtract_vars = list(),
                               denominator_vars = list(),
-                              denominator_subtract_vars = list()))
+                              denominator_subtract_vars = list(),
+                              se_calculation_type = character(0)))
       }
       purrr::map(
         table_entry[["definitions"]],
@@ -133,7 +134,8 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
                               numerator_vars = list(),
                               numerator_subtract_vars = list(),
                               denominator_vars = list(),
-                              denominator_subtract_vars = list()))
+                              denominator_subtract_vars = list(),
+                              se_calculation_type = character(0)))
       }
       purrr::map(
         auto_entry[["definitions"]],
@@ -203,25 +205,18 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
         is.na(variable_type) ~ "Count",
         .default = variable_type))
 
-  ####----Add SE Calculation Type and Aggregation Strategy----####
+  ####----SE Calculation Type and Aggregation Strategy----####
+  ## se_calculation_type is set directly by expand_codebook_entry() for each
+  ## structured entry. Here we only fill in the rows generate_codebook adds
+  ## itself (raw + metadata) and override weighted-average variable types.
   result1 = result1 %>%
     dplyr::mutate(
-      numerator_count = purrr::map_int(numerator_vars, length) +
-        purrr::map_int(numerator_subtract_vars, length),
-      denominator_count = purrr::map_int(denominator_vars, length) +
-        purrr::map_int(denominator_subtract_vars, length),
       se_calculation_type = dplyr::case_when(
-        definition == "This is a raw ACS estimate." ~ "raw",
-        variable_type == "Metadata" ~ "metadata",
         variable_type %in% c("Median ($)", "Median", "Average", "Quintile ($)", "Index") ~ "weighted_average",
-        stringr::str_detect(definition, "^One minus") ~ "one_minus",
-        variable_type == "Sum" ~ "sum",
-        numerator_count == 1 & denominator_count == 1 ~ "simple_percent",
-        numerator_count > 1 & denominator_count == 1 ~ "complex_numerator",
-        numerator_count == 1 & denominator_count > 1 ~ "complex_denominator",
-        numerator_count > 1 & denominator_count > 1 ~ "complex_both",
+        calculated_variable %in% raw_variable_names ~ "raw",
+        variable_type == "Metadata" ~ "metadata",
+        !is.na(se_calculation_type) ~ se_calculation_type,
         TRUE ~ "unknown")) %>%
-    dplyr::select(-numerator_count, -denominator_count) %>%
     ensure_aggregation_strategy()
 
   return(result1)
@@ -242,10 +237,7 @@ ensure_aggregation_strategy = function(codebook) {
 }
 
 utils::globalVariables(c(
-  "variable_name", "domain", "variable_type", "definition", "x", "y", "clean_variable_name",
-  "raw_variable_name", "raw_name", "clean_name", "variable_definition_year", "value",
-  "calculated_variable", "replacement", "denominators", "inputs", "denominators1",
-  "denominators2", "inputs_formatted", "denominators_formatted", "variable_crosswalk",
-  "inputs_raw", "denominators_raw", "outputs", "count",
-  "numerator_vars", "numerator_subtract_vars", "denominator_vars", "denominator_subtract_vars",
-  "numerator_count", "denominator_count", "se_calculation_type", "aggregation_strategy"))
+  "calculated_variable", "clean_name", "definition", "variable_type",
+  "numerator_vars", "numerator_subtract_vars",
+  "denominator_vars", "denominator_subtract_vars",
+  "se_calculation_type", "aggregation_strategy"))

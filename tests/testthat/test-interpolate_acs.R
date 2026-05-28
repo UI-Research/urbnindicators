@@ -38,13 +38,13 @@ testthat::test_that(
     )
 
     testthat::expect_error(
-      interpolate_acs(fake_data, target_geoid = "target", weight = "w"),
-      "codebook attribute"
+      interpolate_acs(fake_data, target_geoid_column = "target", weight = "w"),
+      "codebook.*attribute"
     )
 
     testthat::expect_error(
-      interpolate_acs(fake_data, target_geoid = "target"),
-      "codebook attribute"
+      interpolate_acs(fake_data, target_geoid_column = "target"),
+      "codebook.*attribute"
     )
   }
 )
@@ -57,25 +57,25 @@ testthat::test_that(
 
     testthat::expect_error(
       interpolate_acs(df, source_geoid = "nonexistent",
-                      target_geoid = "tgt", weight = "w"),
+                      target_geoid_column = "tgt", weight = "w"),
       "not found in .data"
     )
   }
 )
 
 testthat::test_that(
-  "Input validation: requires target_geoid column when no crosswalk",
+  "Input validation: requires target_geoid_column column when no crosswalk",
   {
     testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     df = readRDS(test_data_path)
 
     testthat::expect_error(
-      interpolate_acs(df, target_geoid = "nonexistent", weight = "w"),
+      interpolate_acs(df, target_geoid_column = "nonexistent", weight = "w"),
       "not found in .data"
     )
 
     testthat::expect_error(
-      interpolate_acs(df, target_geoid = "nonexistent"),
+      interpolate_acs(df, target_geoid_column = "nonexistent"),
       "not found in .data"
     )
   }
@@ -89,7 +89,7 @@ testthat::test_that(
     df$target = "A"
 
     testthat::expect_error(
-      interpolate_acs(df, target_geoid = "target", weight = "nonexistent"),
+      interpolate_acs(df, target_geoid_column = "target", weight = "nonexistent"),
       "not found in .data"
     )
   }
@@ -103,7 +103,7 @@ testthat::test_that(
 
     testthat::expect_error(
       interpolate_acs(df, crosswalk = "not_a_df",
-                      target_geoid = "tgt", weight = "w"),
+                      target_geoid_column = "tgt", weight = "w"),
       "must be a data frame"
     )
   }
@@ -119,7 +119,7 @@ testthat::test_that(
 
     testthat::expect_error(
       interpolate_acs(df, crosswalk = bad_xwalk,
-                      target_geoid = "tgt", weight = "w"),
+                      target_geoid_column = "tgt", weight = "w"),
       "not found in crosswalk"
     )
   }
@@ -134,7 +134,7 @@ testthat::test_that(
     df$w = c(-0.5, 0.5, 1.0)
 
     testthat::expect_error(
-      interpolate_acs(df, target_geoid = "target", weight = "w"),
+      interpolate_acs(df, target_geoid_column = "target", weight = "w"),
       "non-negative"
     )
   }
@@ -155,7 +155,7 @@ testthat::test_that(
 
     testthat::expect_warning(
       interpolate_acs(df, crosswalk = xwalk,
-                      target_geoid = "target", weight = "w"),
+                      target_geoid_column = "target", weight = "w"),
       "do not sum to 1"
     )
   }
@@ -177,7 +177,7 @@ testthat::test_that(
     )
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "target", weight = "w")
+                             target_geoid_column = "target", weight = "w")
 
     ## Count variables should match original values
     testthat::expect_equal(
@@ -204,7 +204,7 @@ testthat::test_that(
     )
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "target", weight = "w")
+                             target_geoid_column = "target", weight = "w")
 
     testthat::expect_equal(
       result$snap_received_M,
@@ -228,7 +228,7 @@ testthat::test_that(
     )
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "target", weight = "w")
+                             target_geoid_column = "target", weight = "w")
 
     ## Each target should get half the population
     testthat::expect_equal(
@@ -255,7 +255,7 @@ testthat::test_that(
     )
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "target", weight = "w")
+                             target_geoid_column = "target", weight = "w")
 
     ## With a single source, MOE(w*X) = w * MOE(X), and se_sum of a single
     ## element just returns that element's SE * 1.645
@@ -287,7 +287,7 @@ testthat::test_that(
     )
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "target", weight = "w")
+                             target_geoid_column = "target", weight = "w")
 
     ## Manual calculation for group "A"
     var_name = "snap_received"
@@ -321,7 +321,7 @@ testthat::test_that(
 
     result = suppressWarnings(
       interpolate_acs(df, crosswalk = xwalk,
-                      target_geoid = "target", weight = "w"))
+                      target_geoid_column = "target", weight = "w"))
 
     ## Manual: allocated MOEs are w * original MOE, then se_sum
     var_name = "snap_received"
@@ -359,7 +359,7 @@ testthat::test_that(
     }) %>% purrr::list_rbind()
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "target", weight = "w")
+                             target_geoid_column = "target", weight = "w")
 
     pct_vars = result %>%
       dplyr::select(dplyr::matches("_percent$")) %>%
@@ -394,7 +394,7 @@ testthat::test_that(
     )
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "target", weight = "w")
+                             target_geoid_column = "target", weight = "w")
 
     ## Test snap_received_percent
     num_var = "snap_received"
@@ -438,13 +438,13 @@ testthat::test_that(
 
     ## Method 1: separate crosswalk
     result1 = interpolate_acs(df, crosswalk = xwalk,
-                              target_geoid = "target", weight = "w")
+                              target_geoid_column = "target", weight = "w")
 
     ## Method 2: columns in .data
     df_with_xwalk = df %>%
       dplyr::left_join(xwalk, by = "GEOID")
     result2 = interpolate_acs(df_with_xwalk,
-                              target_geoid = "target", weight = "w")
+                              target_geoid_column = "target", weight = "w")
 
     testthat::expect_equal(result1$total_population_universe,
                            result2$total_population_universe)
@@ -454,7 +454,7 @@ testthat::test_that(
 )
 
 testthat::test_that(
-  "GEOID column is populated from target_geoid (fractional mode)",
+  "GEOID column is populated from target_geoid_column (fractional mode)",
   {
     testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     df = readRDS(test_data_path) %>% dplyr::slice(1:5) %>% slim_for_test()
@@ -466,7 +466,7 @@ testthat::test_that(
     )
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "neighborhood", weight = "alloc")
+                             target_geoid_column = "neighborhood", weight = "alloc")
 
     testthat::expect_true("GEOID" %in% colnames(result))
     testthat::expect_setequal(result$GEOID, c("Downtown", "Uptown"))
@@ -486,7 +486,7 @@ testthat::test_that(
     )
 
     result = interpolate_acs(df, crosswalk = xwalk,
-                             target_geoid = "target", weight = "w")
+                             target_geoid_column = "target", weight = "w")
 
     codebook = attr(result, "codebook")
     testthat::expect_false(is.null(codebook))
@@ -497,7 +497,7 @@ testthat::test_that(
 )
 
 testthat::test_that(
-  "NA values in target_geoid are excluded with message",
+  "NA values in target_geoid_column are excluded with message",
   {
     testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     df = readRDS(test_data_path) %>% dplyr::slice(1:5) %>% slim_for_test()
@@ -514,7 +514,7 @@ testthat::test_that(
     testthat::expect_message(
       suppressWarnings(
         interpolate_acs(df_with_xwalk,
-                        target_geoid = "target", weight = "w")),
+                        target_geoid_column = "target", weight = "w")),
       "NA values"
     )
   }
@@ -532,7 +532,7 @@ testthat::test_that(
 
     expected_snap = sum(df$snap_received, na.rm = TRUE)
 
-    result = interpolate_acs(df, target_geoid = "custom_group")
+    result = interpolate_acs(df, target_geoid_column = "custom_group")
 
     testthat::expect_equal(result$snap_received, expected_snap)
   }
@@ -546,7 +546,7 @@ testthat::test_that(
 
     df$custom_group = df$GEOID
 
-    result = interpolate_acs(df, target_geoid = "custom_group")
+    result = interpolate_acs(df, target_geoid_column = "custom_group")
 
     testthat::expect_equal(result$snap_received, df$snap_received)
     testthat::expect_equal(result$total_population_universe, df$total_population_universe)
@@ -554,14 +554,14 @@ testthat::test_that(
 )
 
 testthat::test_that(
-  "weight = NULL: GEOID column is populated from target_geoid",
+  "weight = NULL: GEOID column is populated from target_geoid_column",
   {
     testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     df = readRDS(test_data_path) %>% dplyr::slice(1:5) %>% slim_for_test()
 
     df$neighborhood_id = "Neighborhood_A"
 
-    result = interpolate_acs(df, target_geoid = "neighborhood_id")
+    result = interpolate_acs(df, target_geoid_column = "neighborhood_id")
 
     testthat::expect_true("GEOID" %in% colnames(result))
     testthat::expect_equal(result$GEOID, "Neighborhood_A")
@@ -576,7 +576,7 @@ testthat::test_that(
 
     df$custom_group = "A"
 
-    result = interpolate_acs(df, target_geoid = "custom_group")
+    result = interpolate_acs(df, target_geoid_column = "custom_group")
 
     codebook = attr(result, "codebook")
     testthat::expect_false(is.null(codebook))
@@ -594,7 +594,7 @@ testthat::test_that(
 
     df$custom_group = "A"
 
-    result = interpolate_acs(df, target_geoid = "custom_group")
+    result = interpolate_acs(df, target_geoid_column = "custom_group")
 
     testthat::expect_true("snap_received_M" %in% colnames(result))
     testthat::expect_true(result$snap_received_M > 0)
@@ -609,7 +609,7 @@ testthat::test_that(
 
     df$custom_group = rep(c("A", "B"), each = 5)
 
-    result = interpolate_acs(df, target_geoid = "custom_group")
+    result = interpolate_acs(df, target_geoid_column = "custom_group")
 
     pct_vars = result %>%
       dplyr::select(dplyr::matches("_percent$")) %>%
@@ -626,7 +626,7 @@ testthat::test_that(
 )
 
 testthat::test_that(
-  "weight = NULL: NA values in target_geoid excluded with message",
+  "weight = NULL: NA values in target_geoid_column excluded with message",
   {
     testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
     df = readRDS(test_data_path) %>% dplyr::slice(1:5) %>% slim_for_test()
@@ -634,7 +634,7 @@ testthat::test_that(
     df$custom_group = c("A", "A", NA, "B", "B")
 
     testthat::expect_message(
-      interpolate_acs(df, target_geoid = "custom_group"),
+      interpolate_acs(df, target_geoid_column = "custom_group"),
       "NA values"
     )
   }
@@ -649,7 +649,7 @@ testthat::test_that(
 
     df$group_id = rep(c("A", "B"), each = 5)
 
-    result = interpolate_acs(df, target_geoid = "group_id")
+    result = interpolate_acs(df, target_geoid_column = "group_id")
 
     var_name = "snap_received"
     moe_name = paste0(var_name, "_M")
@@ -680,7 +680,7 @@ testthat::test_that(
 
     df$group_id = rep(c("A", "B"), each = 5)
 
-    result = interpolate_acs(df, target_geoid = "group_id")
+    result = interpolate_acs(df, target_geoid_column = "group_id")
 
     pct_var = "snap_received_percent"
     num_var = "snap_received"
@@ -722,7 +722,7 @@ testthat::test_that(
       target = c("A", "A", "B", "B", "B")
     )
 
-    result = interpolate_acs(df, crosswalk = xwalk, target_geoid = "target")
+    result = interpolate_acs(df, crosswalk = xwalk, target_geoid_column = "target")
 
     testthat::expect_true("GEOID" %in% colnames(result))
     testthat::expect_setequal(result$GEOID, c("A", "B"))
@@ -742,7 +742,7 @@ testthat::test_that(
     ## weight = NULL: direct grouping
     df_grouped = df
     df_grouped$custom_group = rep(c("A", "B"), each = 5)
-    result_null = interpolate_acs(df_grouped, target_geoid = "custom_group")
+    result_null = interpolate_acs(df_grouped, target_geoid_column = "custom_group")
 
     ## weight = "w" with w = 1: fractional mode with identity weights
     xwalk = data.frame(
@@ -751,7 +751,7 @@ testthat::test_that(
       w = 1.0
     )
     result_weighted = interpolate_acs(df, crosswalk = xwalk,
-                                       target_geoid = "target", weight = "w")
+                                       target_geoid_column = "target", weight = "w")
 
     testthat::expect_equal(
       result_null$total_population_universe,

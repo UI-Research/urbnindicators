@@ -4,7 +4,7 @@
 
 ## Detect whether a string looks like a raw ACS table code (e.g., "B25070", "C15002B", "B01001APR")
 is_raw_acs_code = function(x) {
-  grepl("^[BC][0-9]{5}[A-I]?(?:PR)?$", x, perl = TRUE)
+  stringr::str_detect(x, "^[BC][0-9]{5}[A-I]?(PR)?$")
 }
 
 ## Resolve a user-supplied string to an ACS table code.
@@ -35,10 +35,20 @@ resolve_to_acs_table = function(x, year, census_variables = NULL) {
 
   if (length(match_idx) == 0) return(NULL)
 
-  ## extract the ACS table code from the variable name (e.g., "B25070_001" -> "B25070")
-  acs_name = cleaned$name[match_idx[1]]
-  table_code = stringr::str_extract(acs_name, "^[BC][0-9]{5}[A-I]?(?:PR)?")
-  return(table_code)
+  ## extract candidate table codes; allow same-table ambiguity but reject
+  ## a prefix that resolves to more than one ACS table
+  candidate_table_codes = cleaned$name[match_idx] %>%
+    stringr::str_extract("^[BC][0-9]{5}[A-I]?(PR)?") %>%
+    unique()
+
+  if (length(candidate_table_codes) > 1) {
+    cli::cli_abort(c(
+      "{.val {x}} is ambiguous: matches variables across multiple ACS tables.",
+      "i" = "Candidate tables: {.val {candidate_table_codes}}.",
+      "i" = "Pass an exact clean variable name, or a specific ACS table code."))
+  }
+
+  return(candidate_table_codes[1])
 }
 
 ## Build a label tree for a single ACS table.
@@ -109,8 +119,8 @@ classify_acs_table = function(nodes) {
     "margin of error")
 
   has_skip_pattern = purrr::some(skip_patterns, function(pattern) {
-    grepl(pattern, concept_lower, fixed = TRUE) ||
-      grepl(pattern, label_lower, fixed = TRUE)
+    stringr::str_detect(concept_lower, stringr::fixed(pattern)) ||
+      stringr::str_detect(label_lower, stringr::fixed(pattern))
   })
   if (has_skip_pattern) return("skip")
 
@@ -119,7 +129,8 @@ classify_acs_table = function(nodes) {
 
   ## tables where the total is not a count (e.g., median income tables may have
   ## a numeric label rather than "Estimate!!Total:")
-  if (!grepl(":", total_label) && !grepl("^Estimate!!Total$", total_label)) {
+  if (!stringr::str_detect(total_label, ":") &&
+      !stringr::str_detect(total_label, "^Estimate!!Total$")) {
     return("skip")
   }
 
@@ -171,8 +182,8 @@ generate_auto_definitions = function(nodes, denominator_mode = "parent",
 
     ## raw variables ending in _pct (renamed from _percent by clean_acs_names):
     ## replace _pct with _percent so the computed column gets the standard suffix
-    if (grepl("_pct$", numerator)) {
-      output = sub("_pct$", "_percent", numerator)
+    if (stringr::str_detect(numerator, "_pct$")) {
+      output = stringr::str_replace(numerator, "_pct$", "_percent")
     } else {
       output = paste0(numerator, "_percent")
     }

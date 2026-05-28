@@ -62,11 +62,11 @@ test_that("validate_definition rejects non-list", {
 })
 
 test_that("validate_definition rejects missing type", {
-  expect_error(validate_definition(list(output = "x")), "invalid or missing `type`")
+  expect_error(validate_definition(list(output = "x")), "invalid or missing type")
 })
 
 test_that("validate_definition rejects invalid type", {
-  expect_error(validate_definition(list(type = "bogus")), "invalid or missing `type`")
+  expect_error(validate_definition(list(type = "bogus")), "invalid or missing type")
 })
 
 test_that("validate_definition rejects simple_percent missing fields", {
@@ -83,16 +83,16 @@ test_that("validate_definition rejects simple_percent missing fields", {
 test_that("validate_definition rejects complex missing numerator/denominator spec", {
   expect_error(
     validate_definition(list(type = "complex", output = "x", denominator_variables = c("d"))),
-    "requires `numerator_variables` or `numerator_regex`")
+    "requires numerator_variables or numerator_regex")
   expect_error(
     validate_definition(list(type = "complex", output = "x", numerator_variables = c("n"))),
-    "requires `denominator_variables` or `denominator_regex`")
+    "requires denominator_variables or denominator_regex")
 })
 
 test_that("validate_definition rejects across_percent missing denominator", {
   expect_error(
     validate_definition(list(type = "across_percent", input_regex = "^x", output_suffix = "_p")),
-    "requires `denominator` or `denominator_function`")
+    "requires denominator or denominator_function")
 })
 
 test_that("validate_definition rejects across_percent with non-function denominator_function", {
@@ -135,7 +135,7 @@ test_that("validate_definition rejects metadata missing definition_text", {
 test_that("validate_definition rejects sum missing columns", {
   expect_error(
     validate_definition(list(type = "sum", output = "x")),
-    "requires `columns`")
+    "requires columns")
 })
 
 ####----define_percent() constructor tests----####

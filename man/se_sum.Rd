@@ -4,10 +4,17 @@
 \alias{se_sum}
 \title{Calculate a pooled standard error for a summed or subtracted estimate}
 \usage{
-se_sum(...)
+se_sum(errors, estimates, from = "moe")
 }
 \arguments{
-\item{...}{The unquoted names of the margin of error and corresponding estimate variables to be added or subtracted}
+\item{errors}{A list of vectors. Either MOEs or SEs for each component
+(controlled by \code{from}).}
+
+\item{estimates}{A list of vectors. The corresponding estimates for each
+component. Used for the Census Bureau zero-estimate rule.}
+
+\item{from}{Either \code{"moe"} (default) or \code{"se"}. Tells \code{se_sum}
+whether \code{errors} contains MOEs or SEs.}
 }
 \value{
 A pooled 90\% standard error
@@ -16,5 +23,9 @@ A pooled 90\% standard error
 Calculate a pooled standard error for a summed or subtracted estimate
 }
 \details{
-For an estimate derived by adding or subtracting multiple estimates, calculate the pooled standard error
+For an estimate derived by adding or subtracting multiple estimates,
+calculate the pooled standard error. Inputs can be supplied as 90\% margins
+of error (\code{from = "moe"}, the default) or as standard errors
+(\code{from = "se"}).
 }
+\keyword{internal}

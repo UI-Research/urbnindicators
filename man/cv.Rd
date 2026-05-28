@@ -20,3 +20,4 @@ Calculate a coefficient of variation
 \details{
 Return a coefficient of variation reflecting the ration of the SE to the estimate
 }
+\keyword{internal}

@@ -8,7 +8,8 @@ generate_codebook(
   .data,
   resolved_tables = NULL,
   auto_table_entries = list(),
-  user_definitions = list()
+  user_definitions = list(),
+  year = 2024
 )
 }
 \arguments{

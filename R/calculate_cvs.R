@@ -4,32 +4,56 @@
 #' @details Create a standard error at the 90% level from a 90% margin of error
 #' @param moe A margin of error, or a vector thereof
 #' @returns A 90% standard error
+#' @keywords internal
 se_simple = function(moe) {
   moe / 1.645
 }
 
 #' @title Calculate a pooled standard error for a summed or subtracted estimate
-#' @details For an estimate derived by adding or subtracting multiple estimates, calculate the pooled standard error
-#' @param ... The unquoted names of the margin of error and corresponding estimate variables to be added or subtracted
+#' @details For an estimate derived by adding or subtracting multiple estimates,
+#'    calculate the pooled standard error. Inputs can be supplied as 90% margins
+#'    of error (\code{from = "moe"}, the default) or as standard errors
+#'    (\code{from = "se"}).
+#' @param errors A list of vectors. Either MOEs or SEs for each component
+#'    (controlled by \code{from}).
+#' @param estimates A list of vectors. The corresponding estimates for each
+#'    component. Used for the Census Bureau zero-estimate rule.
+#' @param from Either \code{"moe"} (default) or \code{"se"}. Tells \code{se_sum}
+#'    whether \code{errors} contains MOEs or SEs.
 #' @returns A pooled 90% standard error
-se_sum = function(...) {
-  dots = list(...)
+#' @keywords internal
+se_sum = function(errors, estimates, from = "moe") {
+  if (!from %in% c("moe", "se")) {
+    cli::cli_abort('{.arg from} must be {.val moe} or {.val se}.')
+  }
 
-  moe_mat = do.call(cbind, dots[[1]])
-  est_mat = do.call(cbind, dots[[2]])
+  err_mat = do.call(cbind, errors)
+  est_mat = do.call(cbind, estimates)
 
-  se_mat = moe_mat / 1.645
+  se_mat = if (from == "moe") err_mat / 1.645 else err_mat
 
   ## Census zero-estimate rule: among components with estimate == 0 in a row,
-  ## keep only the one with the largest MOE; zero out the rest
+  ## keep only the one with the largest SE; zero out the rest.
   is_zero = (est_mat == 0)
   if (any(is_zero, na.rm = TRUE)) {
-    for (i in seq_len(nrow(moe_mat))) {
-      zero_cols = which(is_zero[i, ])
-      if (length(zero_cols) > 1) {
-        max_col = zero_cols[which.max(moe_mat[i, zero_cols])]
-        se_mat[i, setdiff(zero_cols, max_col)] = 0
-      }
+    n_zeros_per_row = rowSums(is_zero, na.rm = TRUE)
+    rows_apply = n_zeros_per_row > 1
+    if (any(rows_apply, na.rm = TRUE)) {
+      ## Mask: only zero-estimate cells are candidates for the argmax.
+      masked = se_mat
+      masked[!is_zero] = -Inf
+      masked[is.na(masked)] = -Inf
+      argmax_col = max.col(masked, ties.method = "first")
+
+      n_rows = nrow(se_mat)
+      n_cols = ncol(se_mat)
+      argmax_mat = matrix(FALSE, n_rows, n_cols)
+      argmax_mat[cbind(seq_len(n_rows), argmax_col)] = TRUE
+      rows_mask = matrix(rows_apply, n_rows, n_cols)
+
+      zero_out = is_zero & rows_mask & !argmax_mat
+      zero_out[is.na(zero_out)] = FALSE
+      se_mat[zero_out] = 0
     }
   }
 
@@ -46,6 +70,7 @@ se_sum = function(...) {
 #' @param se_denominator The standard error of the denominator
 #' @param type The type of estimate being calculated, either "proportion" or "ratio"
 #' @returns A pooled 90% standard error
+#' @keywords internal
 se_proportion_ratio = function(
     estimate_numerator,
     estimate_denominator,
@@ -56,35 +81,36 @@ se_proportion_ratio = function(
     type = "proportion") {
 
   if (all(is.null(moe_numerator), is.null(se_numerator)) | all(is.null(moe_denominator), is.null(se_denominator))) {
-    stop("A margin of error or standard error must be provided for both the numerator and the denominator.")
+    cli::cli_abort("A margin of error or standard error must be provided for both the numerator and the denominator.")
   }
 
   if( ((!is.null(moe_numerator) & !is.null(se_numerator))) | (!is.null(moe_denominator) & !is.null(se_denominator))) {
-    stop("Only one of a margin of error or a standard error can be provided for the numerator and denominator.")
+    cli::cli_abort("Only one of a margin of error or a standard error can be provided for the numerator and denominator.")
   }
 
   if (!is.null(moe_numerator)) { se_numerator = se_simple(moe_numerator) }
   if (!is.null(moe_denominator)) { se_denominator = se_simple(moe_denominator) }
 
+  ## Avoid producing Inf/NaN intermediates when the denominator is 0; mask such
+  ## rows to NA up front so the math runs only on well-defined inputs.
+  denom_safe = dplyr::if_else(estimate_denominator == 0, NA_real_, estimate_denominator)
+
   ## squared standard error of the numerator
-  radical_term_one = se_numerator %>% `^`(2)
+  radical_term_one = se_numerator^2
 
   ## squared numerator over the squared denominator times the squared standard error of the denominator
-  radical_term_two = ( (estimate_numerator ^ 2) / (estimate_denominator ^ 2) ) *
-    (se_denominator %>% `^`(2))
+  radical_term_two = (estimate_numerator^2 / denom_safe^2) * se_denominator^2
 
   ## If the value under the radical is negative, or the numerator exceeds the
   ## denominator (p > 1, so the "proportion" is degenerate), use the formula
-  ## for ratio standard errors — i.e., add the radical terms, rather than
+  ## for ratio standard errors -- i.e., add the radical terms, rather than
   ## subtract them. Census Bureau guidance: the proportion SE formula should
   ## not be applied when p > 1.
   se = dplyr::if_else(
     radical_term_one < radical_term_two | type == "ratio" |
       abs(estimate_numerator) > abs(estimate_denominator),
-    ((1 / estimate_denominator) * sqrt( radical_term_one + radical_term_two )),
-    ((1 / estimate_denominator) * sqrt( radical_term_one - radical_term_two )))
-
-  se = dplyr::if_else(estimate_denominator == 0, NA_real_, se)
+    (1 / denom_safe) * sqrt(radical_term_one + radical_term_two),
+    (1 / denom_safe) * sqrt(radical_term_one - radical_term_two))
 
   return(se)
 }
@@ -111,10 +137,10 @@ se_product = function(
     moe_y = NULL) {
 
   if (is.null(se_x) && is.null(moe_x)) {
-    stop("Either se_x or moe_x must be provided for estimate X.")
+    cli::cli_abort("Either {.arg se_x} or {.arg moe_x} must be provided for estimate X.")
   }
   if (is.null(se_y) && is.null(moe_y)) {
-    stop("Either se_y or moe_y must be provided for estimate Y.")
+    cli::cli_abort("Either {.arg se_y} or {.arg moe_y} must be provided for estimate Y.")
   }
 
   if (!is.null(moe_x) && is.null(se_x)) {
@@ -125,8 +151,8 @@ se_product = function(
   }
 
   se = sqrt(
-    ((estimate_x)^2 * (se_y)^2) +
-    ((estimate_y)^2 * (se_x)^2))
+    (estimate_x^2 * se_y^2) +
+    (estimate_y^2 * se_x^2))
 
   return(se)
 }
@@ -156,10 +182,10 @@ se_weighted_mean = function(
     moe_weights = NULL) {
 
   if (is.null(se_values) && is.null(moe_values)) {
-    stop("Either se_values or moe_values must be provided.")
+    cli::cli_abort("Either {.arg se_values} or {.arg moe_values} must be provided.")
   }
   if (is.null(se_weights) && is.null(moe_weights)) {
-    stop("Either se_weights or moe_weights must be provided.")
+    cli::cli_abort("Either {.arg se_weights} or {.arg moe_weights} must be provided.")
   }
 
   if (!is.null(moe_values) && is.null(se_values)) {
@@ -191,14 +217,16 @@ se_weighted_mean = function(
   ## Step 2: SE for the sum of products (numerator)
   numerator_estimate = sum(product_estimates)
   numerator_se = se_sum(
-    as.list(product_ses * 1.645),
-    as.list(product_estimates))
+    as.list(product_ses),
+    as.list(product_estimates),
+    from = "se")
 
   ## Step 3: SE for the sum of weights (denominator)
   denominator_estimate = sum(weights)
   denominator_se = se_sum(
-    as.list(se_weights * 1.645),
-    as.list(weights))
+    as.list(se_weights),
+    as.list(weights),
+    from = "se")
 
   ## Step 4: SE for the ratio (numerator / denominator)
   se = se_proportion_ratio(
@@ -216,6 +244,7 @@ se_weighted_mean = function(
 #' @param estimate The estimate
 #' @param se The standard error (SE)
 #' @returns A coefficient of variation
+#' @keywords internal
 cv = function(estimate, se) {
   cv = se / estimate * 100
 
@@ -276,157 +305,136 @@ calculate_moes = function(.df) {
     purrr::map(~ .x %>% dplyr::pull(calculated_variable)) %>%
     stats::setNames(se_type_names)
 
-  ## Step 1: calculate MOEs for derived sum variables
-  df_with_sum_moes = .df %>%
-    sf::st_drop_geometry() %>%
-    dplyr::mutate(
-      dplyr::across(
-        .cols = dplyr::any_of(se_types$sum),
-        .fns = function(x) {
-          current_column = dplyr::cur_column()
+  ## Helper: pull a row from codebook1 for a given calculated variable.
+  codebook_row_for = function(var_name) {
+    codebook1 %>% dplyr::filter(calculated_variable == var_name)
+  }
 
-          ## Get pre-parsed numerator variables from codebook
-          numerator_estimate_variables = codebook1 %>%
-            dplyr::filter(calculated_variable == current_column) %>%
-            dplyr::pull(numerator_vars) %>%
-            unlist()
+  ## Helper: extract a list-column value as a character vector.
+  unlist_listcol = function(row, col_name) {
+    if (nrow(row) == 0) return(character(0))
+    val = row[[col_name]]
+    if (is.list(val)) val = val[[1]]
+    if (is.null(val)) return(character(0))
+    as.character(val)
+  }
 
-          numerator_moe_variables = numerator_estimate_variables %>%
-            paste0("_M")
+  ## Step 1: calculate MOEs for derived sum variables. Uses purrr::reduce to
+  ## mutate one column at a time so each iteration has direct access to the
+  ## current data frame (no get() / no bare-dot magic).
+  df_with_sum_moes = .df %>% sf::st_drop_geometry()
 
-          se = se_sum(
-            purrr::map(numerator_moe_variables, ~ .df %>% dplyr::pull(.x)),
-            purrr::map(numerator_estimate_variables, ~ .df %>% dplyr::pull(.x)))
+  df_with_sum_moes = purrr::reduce(se_types$sum %||% character(0), function(df, current_column) {
+    row = codebook_row_for(current_column)
+    numerator_estimate_variables = unlist_listcol(row, "numerator_vars")
+    numerator_moe_variables = paste0(numerator_estimate_variables, "_M")
 
-          moe = se * 1.645
+    if (!all(c(numerator_estimate_variables, numerator_moe_variables) %in% colnames(df))) {
+      return(df)
+    }
 
-          return(moe)},
-        .names = "{.col}_M"))
+    se = se_sum(
+      purrr::map(numerator_moe_variables, ~ df[[.x]]),
+      purrr::map(numerator_estimate_variables, ~ df[[.x]]))
 
-  ## Step 2: calculate SEs for all variables (using df_with_sum_moes which has derived MOEs)
-  df_with_ses = df_with_sum_moes %>%
-    dplyr::mutate(
-      dplyr::across(
-        .cols = dplyr::any_of(cv_variables),
-        .fns = function(x) {
+    df[[paste0(current_column, "_M")]] = se * 1.645
+    df
+  }, .init = df_with_sum_moes)
 
-          current_column = dplyr::cur_column()
-          original_column = current_column
+  ## Step 2: calculate SEs for each variable in cv_variables. Iterate
+  ## explicitly so each column lookup happens in normal R scope.
+  df_with_ses = purrr::reduce(cv_variables, function(df, original_column) {
+    current_column = original_column
 
-          ## for "one minus" variables, use the underlying variable for error calculation
-          if (current_column %in% se_types[["one_minus"]]) {
-            current_column = codebook1 %>%
-              dplyr::filter(calculated_variable == current_column) %>%
-              dplyr::pull(numerator_vars) %>%
-              unlist()}
+    ## for "one minus" variables, use the underlying variable for error calculation
+    if (current_column %in% (se_types[["one_minus"]] %||% character(0))) {
+      current_column = unlist_listcol(codebook_row_for(current_column), "numerator_vars")
+    }
 
-          ## Get pre-parsed variables from codebook
-          codebook_row = codebook1 %>%
-            dplyr::filter(calculated_variable == current_column)
+    row = codebook_row_for(current_column)
+    numerator_estimate_variables = unlist_listcol(row, "numerator_vars")
+    numerator_moe_variables = paste0(numerator_estimate_variables, "_M")
+    denominator_estimate_variables = unlist_listcol(row, "denominator_vars")
+    denominator_moe_variables = paste0(denominator_estimate_variables, "_M")
 
-          numerator_estimate_variables = codebook_row %>%
-            dplyr::pull(numerator_vars) %>%
-            unlist()
-          numerator_moe_variables = numerator_estimate_variables %>%
-            stringr::str_c("_M")
-          denominator_estimate_variables = codebook_row %>%
-            dplyr::pull(denominator_vars) %>%
-            unlist()
-          denominator_moe_variables = denominator_estimate_variables %>%
-            stringr::str_c("_M")
+    numerator_subtract_estimate_variables = unlist_listcol(row, "numerator_subtract_vars")
+    numerator_subtract_moe_variables = paste0(numerator_subtract_estimate_variables, "_M")
+    denominator_subtract_estimate_variables = unlist_listcol(row, "denominator_subtract_vars")
+    denominator_subtract_moe_variables = paste0(denominator_subtract_estimate_variables, "_M")
 
-          ## Get pre-parsed subtract variables from codebook
-          ## SE of a difference uses the same formula as SE of a sum:
-          ## SE(A - B) = sqrt(SE_A^2 + SE_B^2)
-          numerator_subtract_estimate_variables = codebook_row %>%
-            dplyr::pull(numerator_subtract_vars) %>%
-            unlist()
-          numerator_subtract_moe_variables = numerator_subtract_estimate_variables %>%
-            stringr::str_c("_M")
-          denominator_subtract_estimate_variables = codebook_row %>%
-            dplyr::pull(denominator_subtract_vars) %>%
-            unlist()
-          denominator_subtract_moe_variables = denominator_subtract_estimate_variables %>%
-            stringr::str_c("_M")
+    all_numerator_estimate_variables = c(numerator_estimate_variables, numerator_subtract_estimate_variables)
+    all_numerator_moe_variables = c(numerator_moe_variables, numerator_subtract_moe_variables)
+    all_denominator_estimate_variables = c(denominator_estimate_variables, denominator_subtract_estimate_variables)
+    all_denominator_moe_variables = c(denominator_moe_variables, denominator_subtract_moe_variables)
 
-          ## combine additive and subtractive variables for SE calculations
-          all_numerator_estimate_variables = c(numerator_estimate_variables, numerator_subtract_estimate_variables)
-          all_numerator_moe_variables = c(numerator_moe_variables, numerator_subtract_moe_variables)
-          all_denominator_estimate_variables = c(denominator_estimate_variables, denominator_subtract_estimate_variables)
-          all_denominator_moe_variables = c(denominator_moe_variables, denominator_subtract_moe_variables)
+    se = NULL
 
-          ## for variables where we already have an MOE, this is simple
-          if (current_column %in% c(se_types$raw, se_types$sum)) {
-            SE = se_simple(get(current_column %>% paste0("_M")))
+    if (current_column %in% c(se_types$raw %||% character(0), se_types$sum %||% character(0))) {
+      moe_col = paste0(current_column, "_M")
+      if (moe_col %in% colnames(df)) {
+        se = se_simple(df[[moe_col]])
+      }
+    } else if (current_column %in% (se_types[["simple_percent"]] %||% character(0))) {
+      se = se_proportion_ratio(
+        estimate_numerator = df[[numerator_estimate_variables]],
+        estimate_denominator = df[[denominator_estimate_variables]],
+        moe_numerator = df[[numerator_moe_variables]],
+        moe_denominator = df[[denominator_moe_variables]])
+    } else if (current_column %in% (se_types[["complex_numerator"]] %||% character(0))) {
+      numerator_estimate = rowSums(df[, numerator_estimate_variables, drop = FALSE])
+      if (length(numerator_subtract_estimate_variables) > 0) {
+        numerator_estimate = numerator_estimate -
+          rowSums(df[, numerator_subtract_estimate_variables, drop = FALSE])
+      }
+      se = se_proportion_ratio(
+        estimate_numerator = numerator_estimate,
+        estimate_denominator = df[[denominator_estimate_variables]],
+        se_numerator = se_sum(
+          purrr::map(all_numerator_moe_variables, ~ df[[.x]]),
+          purrr::map(all_numerator_estimate_variables, ~ df[[.x]])),
+        se_denominator = se_simple(df[[denominator_moe_variables]]))
+    } else if (current_column %in% (se_types[["complex_denominator"]] %||% character(0))) {
+      denominator_estimate = rowSums(df[, denominator_estimate_variables, drop = FALSE])
+      if (length(denominator_subtract_estimate_variables) > 0) {
+        denominator_estimate = denominator_estimate -
+          rowSums(df[, denominator_subtract_estimate_variables, drop = FALSE])
+      }
+      se = se_proportion_ratio(
+        estimate_numerator = df[[numerator_estimate_variables]],
+        estimate_denominator = denominator_estimate,
+        se_numerator = se_simple(df[[numerator_moe_variables]]),
+        se_denominator = se_sum(
+          purrr::map(all_denominator_moe_variables, ~ df[[.x]]),
+          purrr::map(all_denominator_estimate_variables, ~ df[[.x]])))
+    } else if (current_column %in% (se_types[["complex_both"]] %||% character(0))) {
+      numerator_estimate = rowSums(df[, numerator_estimate_variables, drop = FALSE])
+      if (length(numerator_subtract_estimate_variables) > 0) {
+        numerator_estimate = numerator_estimate -
+          rowSums(df[, numerator_subtract_estimate_variables, drop = FALSE])
+      }
+      denominator_estimate = rowSums(df[, denominator_estimate_variables, drop = FALSE])
+      if (length(denominator_subtract_estimate_variables) > 0) {
+        denominator_estimate = denominator_estimate -
+          rowSums(df[, denominator_subtract_estimate_variables, drop = FALSE])
+      }
+      se = se_proportion_ratio(
+        estimate_numerator = numerator_estimate,
+        estimate_denominator = denominator_estimate,
+        se_numerator = se_sum(
+          purrr::map(all_numerator_moe_variables, ~ df[[.x]]),
+          purrr::map(all_numerator_estimate_variables, ~ df[[.x]])),
+        se_denominator = se_sum(
+          purrr::map(all_denominator_moe_variables, ~ df[[.x]]),
+          purrr::map(all_denominator_estimate_variables, ~ df[[.x]])))
+    } else {
+      cli::cli_abort("Unhandled SE calculation type for variable: {.val {original_column}}")
+    }
 
-          ## for simple percent variables with one numerator, one denominator
-          } else if (current_column %in% se_types[["simple_percent"]]) {
-            SE = se_proportion_ratio(
-              estimate_numerator = get(numerator_estimate_variables),
-              estimate_denominator = get(denominator_estimate_variables),
-              moe_numerator = get(numerator_moe_variables),
-              moe_denominator = get(denominator_moe_variables))
-
-          ## for percents with summed/subtracted numerators, one denominator
-          } else if (current_column %in% se_types[["complex_numerator"]]) {
-            numerator_estimate = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables)))
-            if (length(numerator_subtract_estimate_variables) > 0) {
-              numerator_estimate = numerator_estimate -
-                rowSums(dplyr::select(., dplyr::all_of(numerator_subtract_estimate_variables)))
-            }
-            SE = se_proportion_ratio(
-              estimate_numerator = numerator_estimate,
-              estimate_denominator = get(denominator_estimate_variables),
-              se_numerator = se_sum(
-                purrr::map(all_numerator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)),
-                purrr::map(all_numerator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))),
-              se_denominator = se_simple(
-                purrr::map(denominator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)) %>% unlist()))
-
-          ## for percents with one numerator, summed/subtracted denominators
-          } else if (current_column %in% se_types[["complex_denominator"]]) {
-            denominator_estimate = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables)))
-            if (length(denominator_subtract_estimate_variables) > 0) {
-              denominator_estimate = denominator_estimate -
-                rowSums(dplyr::select(., dplyr::all_of(denominator_subtract_estimate_variables)))
-            }
-            SE = se_proportion_ratio(
-              estimate_numerator = get(numerator_estimate_variables),
-              estimate_denominator = denominator_estimate,
-              se_numerator = se_simple(
-                purrr::map(numerator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)) %>% unlist()),
-              se_denominator = se_sum(
-                purrr::map(all_denominator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)),
-                purrr::map(all_denominator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))))
-
-          ## for percents with summed numerators and summed denominators
-          } else if (current_column %in% se_types[["complex_both"]]) {
-            numerator_estimate = rowSums(dplyr::select(., dplyr::all_of(numerator_estimate_variables)))
-            if (length(numerator_subtract_estimate_variables) > 0) {
-              numerator_estimate = numerator_estimate -
-                rowSums(dplyr::select(., dplyr::all_of(numerator_subtract_estimate_variables)))
-            }
-            denominator_estimate = rowSums(dplyr::select(., dplyr::all_of(denominator_estimate_variables)))
-            if (length(denominator_subtract_estimate_variables) > 0) {
-              denominator_estimate = denominator_estimate -
-                rowSums(dplyr::select(., dplyr::all_of(denominator_subtract_estimate_variables)))
-            }
-            SE = se_proportion_ratio(
-              estimate_numerator = numerator_estimate,
-              estimate_denominator = denominator_estimate,
-              se_numerator = se_sum(
-                purrr::map(all_numerator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)),
-                purrr::map(all_numerator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))),
-              se_denominator = se_sum(
-                purrr::map(all_denominator_moe_variables, ~ df_with_sum_moes %>% dplyr::pull(.x)),
-                purrr::map(all_denominator_estimate_variables, ~ df_with_sum_moes %>% dplyr::pull(.x))))
-
-          } else {
-            stop(paste0("Unhandled SE calculation type for variable: ", original_column))
-          }
-
-          return(SE)},
-        .names = "{.col}_SE"))
+    if (!is.null(se)) {
+      df[[paste0(original_column, "_SE")]] = se
+    }
+    df
+  }, .init = df_with_sum_moes)
 
   moe_variables = df_with_ses %>%
     dplyr::select(dplyr::matches("_M$")) %>%
@@ -454,7 +462,9 @@ calculate_moes = function(.df) {
   return(df_moes)
 }
 
+`%||%` = function(a, b) if (is.null(a)) b else a
+
 utils::globalVariables(c(
-  "calculated_variable", "observation", "type", "estimate", "moe",
+  "calculated_variable",
   "se_calculation_type", "numerator_vars", "numerator_subtract_vars",
   "denominator_vars", "denominator_subtract_vars"))

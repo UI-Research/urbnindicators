@@ -1,17 +1,7 @@
-#' @title Easily rename ACS variables
-#' @description Given the name of an ACS variable (or a string that matches one or more such variables),
-#' generate a named character vector of original variable names and more meaningful names.
-#' @param variable_name A named vector (intended for use with named ACS variables).
-#' @param census_codebook An object returned from \code{tidycensus::load_variables()}.
-#' @returns A named character vector containing the variables that matched
-#'    \code{variable_name} from the \code{census_codebook}, with semantically-meaningful names
-#'    derived from metadata fields contained in \code{census_codebook}.
-#' @examples
-#' \dontrun{
-#' codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
-#' select_variables_by_name("B16005_", census_codebook = codebook)
-#' }
-#' @export
+## Internal: filter an ACS codebook to variables matching a pattern, and return
+## a named vector mapping cleaned snake_case names to raw ACS codes. Used by
+## the registry's `raw_variable_source = "select_variables"` path.
+#' @keywords internal
 #' @importFrom magrittr %>%
 select_variables_by_name = function(variable_name, census_codebook) {
 
@@ -25,24 +15,9 @@ select_variables_by_name = function(variable_name, census_codebook) {
   return(selected_variables)
 }
 
-#' @title Easily filter ACS variables
-#' @description Filter the the results of \code{select_variables_by_name()} based on their `match_type` relative
-#' to `match_string`.
-#' @param variable_vector A named vector (intended for use with named ACS variables).
-#' @param match_string A string on which to filter (or not filter) elements in `variable_vector`.
-#' @param match_type Whether to include (`match_type = "positive"`) or exclude
-#'    (`match_type = "negative"`) matching elements.
-#' @returns The elements from `variable_vector` that do/don't match `match_string`.
-#' @examples
-#' \dontrun{
-#' codebook = tidycensus::load_variables(dataset = "acs5", year = 2022)
-#' selected_variables = select_variables_by_name("B16005_", census_codebook = codebook)
-#' filter_variables(
-#'   variable_vector = selected_variables,
-#'   match_string = "universe_$|native_$|foreign_born_$|only|very_well",
-#'   match_type = "positive")
-#' }
-#' @export
+## Internal: positive/negative-match filter over a named vector of ACS variables.
+## Used by the registry's "select_variables" raw_variable_source.
+#' @keywords internal
 filter_variables = function(variable_vector, match_string, match_type = "positive") {
   if (match_type == "positive") {
     variable_vector[stringr::str_detect(names(variable_vector), match_string)] }

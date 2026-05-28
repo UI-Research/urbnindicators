@@ -2,27 +2,36 @@
 % Please edit documentation in R/compile_acs_data.R
 \name{safe_divide}
 \alias{safe_divide}
-\title{Division without NAs}
+\title{Division without NaNs}
 \usage{
 safe_divide(x, y)
 }
 \arguments{
-\item{x}{A numeric scalar.}
+\item{x}{A numeric vector or scalar.}
 
-\item{y}{A numeric scalar.}
+\item{y}{A numeric vector or scalar.}
 }
 \value{
-The traditional dividend in all cases except where \code{y == 0}, in which
-case it returns 0.
+A numeric vector. See \code{Details} for the behavior at
+\code{y == 0}.
 }
 \description{
-Return 0 when the divisor is 0.
+A division operation that distinguishes structurally-zero ratios
+from undefined ones.
 }
 \details{
-A modified division operation that returns zero when the divisor is zero
-rather than returning NA. Otherwise returns the quotient.
+Returns the quotient \code{x / y} except in two cases:
+\itemize{
+\item When both \code{x} and \code{y} are \code{0}, returns \code{0}
+(treating \code{0 / 0} as a structurally-zero ratio rather than NaN).
+\item When \code{y} is \code{0} and \code{x} is non-zero (positive or
+negative), returns \code{NA_real_} (the ratio is undefined).
+}
+When \code{x} or \code{y} is \code{NA}, the result is \code{NA}.
 }
 \examples{
-safe_divide(1, 2)
-safe_divide(3, 0)
+safe_divide(1, 2)   # 0.5
+safe_divide(0, 0)   # 0
+safe_divide(3, 0)   # NA
+safe_divide(3, NA)  # NA
 }

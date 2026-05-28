@@ -12,6 +12,12 @@
 ## `tidycensus::load_variables(year, "acs5")`. Cached in-memory for the
 ## duration of the R session, keyed by (dataset, year).
 load_acs_variables = function(year, dataset = "acs5") {
+  if (!identical(dataset, "acs5")) {
+    cli::cli_abort(c(
+      "Only {.val acs5} is supported for {.arg dataset}.",
+      "i" = "Got {.val {dataset}}."))
+  }
+
   cache_key = paste(dataset, year, sep = "_")
   if (!is.null(.variables_cache[[cache_key]])) {
     return(.variables_cache[[cache_key]])
@@ -19,47 +25,51 @@ load_acs_variables = function(year, dataset = "acs5") {
 
   api_key = Sys.getenv("CENSUS_API_KEY")
   if (!nzchar(api_key)) {
-    stop(
-      "A Census Bureau API key is required to fetch ACS variables metadata. ",
-      "Set it with `tidycensus::census_api_key(\"YOUR_KEY\", install = TRUE)` ",
-      "or `Sys.setenv(CENSUS_API_KEY = \"YOUR_KEY\")` before calling this ",
-      "function. Request a free key at https://api.census.gov/data/key_signup.html.",
-      call. = FALSE)
+    cli::cli_abort(c(
+      "A Census Bureau API key is required to fetch ACS variables metadata.",
+      "i" = "Set it with {.code tidycensus::census_api_key(\"YOUR_KEY\", install = TRUE)}",
+      "i" = "or {.code Sys.setenv(CENSUS_API_KEY = \"YOUR_KEY\")} before calling this function.",
+      "i" = "Request a free key at {.url https://api.census.gov/data/key_signup.html}."))
   }
 
-  ## map "acs5" -> "acs/acs5" path segment used by the Census API
-  dataset_path = if (dataset == "acs5") "acs/acs5" else dataset
-  url = paste0("https://api.census.gov/data/", year, "/", dataset_path, "/variables.json")
+  url = paste0("https://api.census.gov/data/", year, "/acs/acs5/variables.json")
 
   response = httr::GET(url, query = list(key = api_key))
   if (httr::status_code(response) == 404L) {
-    stop("Census API endpoint not found. Does this dataset exist for the ",
-         "specified year? See https://api.census.gov/data.html.",
-         call. = FALSE)
+    cli::cli_abort(c(
+      "Census API endpoint not found.",
+      "i" = "Does the dataset exist for the specified year? See {.url https://api.census.gov/data.html}."))
   }
   if (httr::http_status(response)$category != "Success") {
-    stop("Census API request failed: ", httr::http_status(response)$message,
-         call. = FALSE)
+    cli::cli_abort("Census API request failed: {httr::http_status(response)$message}")
   }
 
-  ## mirror tidycensus::load_variables()'s post-processing so output is a
-  ## drop-in replacement
-  variables_df = httr::content(response, as = "text", encoding = "UTF-8") %>%
-    jsonlite::fromJSON() %>%
-    purrr::modify_depth(2, function(x) { x$validValues = NULL; x }) %>%
-    purrr::flatten_df(.id = "name") %>%
-    dplyr::arrange(name)
+  ## Extract name/label/concept explicitly. Entries in `variables` are
+  ## heterogeneous: data variables carry fields like `label`, `concept`,
+  ## `predicateType`, `group`, `attributes`, and `predicateOnly`, while
+  ## predicate-only entries (`for`, `in`, `SUMLEVEL`, `GEOCOMP`, `STATE`, etc.)
+  ## omit several of these. Coercing the nested list with `tibble::as_tibble`
+  ## therefore fails with a `recycle_columns()` size mismatch.
+  parsed = httr::content(response, as = "text", encoding = "UTF-8") %>%
+    jsonlite::fromJSON(simplifyVector = FALSE)
 
-  variables_filtered = variables_df[, 1:3]
-  names(variables_filtered) = tolower(names(variables_filtered))
-  variables_filtered = variables_filtered %>%
+  variables_filtered = purrr::imap(parsed$variables, function(meta, name) {
+    tibble::tibble(
+      name = name,
+      label = if (is.null(meta$label)) NA_character_ else meta$label,
+      concept = if (is.null(meta$concept)) NA_character_ else meta$concept)
+  }) %>%
+    purrr::list_rbind() %>%
+    dplyr::arrange(name) %>%
     dplyr::filter(stringr::str_detect(
       name,
       "^B[0-9]|^C[0-9]|^DP[0-9]|^S[0-9]|^P.*[0-9]|^H.*[0-9]|^K[0-9]|^CP[0-9]|^T[0-9]")) %>%
-    dplyr::mutate(name = stringr::str_replace(name, "E$|M$", "")) %>%
+    ## Only strip the trailing E/M when it follows the standard "_NNN" suffix
+    ## shape, so table codes that legitimately end in E or M aren't corrupted.
+    dplyr::mutate(name = stringr::str_replace(name, "(_[0-9]{3})(E|M)$", "\\1")) %>%
     dplyr::filter(!stringr::str_detect(label, "Margin Of Error|Margin of Error"))
 
-  if (dataset == "acs5" && year > 2010) {
+  if (year > 2010) {
     geography_lookup = tidycensus::acs5_geography %>%
       dplyr::filter(year == !!year)
     variables_filtered = variables_filtered %>%

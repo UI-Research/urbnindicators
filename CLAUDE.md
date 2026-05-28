@@ -27,7 +27,7 @@ devtools::check()
 devtools::document()
 ```
 
-Tests use pre-saved `.rds` files in `inst/test-data/` for reproducibility and speed. The test framework is testthat edition 3.
+Tests use pre-saved `.rds` fixtures (compiled output + codebook) in `tests/testthat/test-data/` for reproducibility and speed. The test framework is testthat edition 3. Many integration tests `skip_if_not(file.exists(...))` and reference a dated fixture path (e.g., `tests/testthat/fixtures/test_data_<DATE>.rds`); if the date in those paths doesn't match a file in `test-data/`, those tests silently skip.
 
 CI runs on GitHub Actions: `test-coverage.yaml` (push/PR to main) and `pkgdown.yaml` (site deployment).
 
@@ -54,12 +54,11 @@ The table registry is the central data structure that defines all ACS tables the
 - `acs_tables` - ACS table codes (e.g., `"B22003"`)
 - `depends_on` - other tables this table requires (e.g., `population_density` depends on `total_population`)
 - `constructs` - (optional) list of construct definitions for multi-construct tables; each has `name` and `variable_pattern`
-- `raw_variable_source` - how raw variables are obtained: `"manual"` (listed explicitly) or `"select_variables"` (resolved at runtime via `select_variables_by_name()`)
+- `raw_variable_source` - how raw variables are obtained: `list(type = "manual")` (listed explicitly) or `list(type = "select_variables", calls = list(...))` (resolved at runtime by pattern). All currently-registered tables use the manual form.
 - `raw_variables` - named vector of ACS variable codes (for manual sources)
-- `compute_fn` - function that takes `.data` and returns `.data` with derived columns added
-- `codebook_entries` - structured metadata for codebook generation
+- `definitions` - list of DSL objects (`define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`) describing derived variables. Codebook entries and MOE-propagation strategy are derived from each object's `type`.
 
-There are 30+ registered internal tables.
+There are 33 registered internal tables.
 
 ### Table selection API
 
@@ -81,60 +80,76 @@ get_acs_codebook()     # browse ACS variables with clean names and table codes
 
 Both construct names and internal names are accepted by `compile_acs_data(tables = ...)` and `resolve_tables()`.
 
+`tables` can contain three kinds of elements (mix freely inside a `list()`):
+- **Registered table names** (e.g., `"race"`, `"snap"`) — use `list_tables()` to see them all.
+- **Raw ACS table codes** (e.g., `"B25070"`, `"C15002B"`) — any valid Detailed/Collapsed code is auto-processed at runtime: raw variables are fetched, the label hierarchy is parsed, and percentages are computed automatically. The `denominator` parameter controls the percentage denominator (`"parent"` for nearest subtotal, `"total"` for `_001`, or a specific code like `"B25070_001"`). If a raw code is already covered by a registered table, the registered version is used.
+- **DSL definition objects** from `define_percent()`/`define_sum()`/`define_complement()`/`define_metadata()` — let users layer custom derived variables on top of the requested tables; results land in the returned data frame and the codebook with MOEs computed automatically.
+
 When `tables` are specified:
-1. `resolve_tables()` determines which tables are needed (always includes `total_population`)
-2. `collect_raw_variables()` builds the named ACS variable vector for those tables
-3. Only those tables' `compute_fn` functions are called
-4. Codebook and CVs are generated only for returned variables
-5. Tigris geometry is fetched only when `spatial = TRUE` or `"population_density"` is in the resolved tables
+1. `resolve_tables()` determines which registered tables are needed (always includes `total_population`).
+2. `collect_raw_variables()` builds the named ACS variable vector for those tables.
+3. `build_auto_table_entry()` synthesizes registry-like entries for any raw ACS codes.
+4. `execute_definitions()` runs each table's `definitions` list (registered, then auto, then user) against the fetched data.
+5. Codebook and MOEs are generated only for returned variables.
+6. Tigris geometry is fetched only when `spatial = TRUE` or `"population_density"` is in the resolved tables.
 
 ### Key source files
 
-1. **`R/table_registry.R`** - Central registry: table definitions, `list_tables()`, `resolve_tables()`, `collect_raw_variables()`, `expand_codebook_entry()`, and all `register_table()` calls.
-2. **`R/list_acs_variables.R`** - `list_acs_variables()` (supports optional `tables` param), `select_variables_by_name()`, `filter_variables()`, `get_acs_codebook()`.
-3. **`R/compile_acs_data.R`** - `compile_acs_data()` (with `tables`, deprecated `variables`), `internal_compute_acs_variables()` (legacy), `safe_divide()`.
-4. **`R/generate_codebook.R`** - `generate_codebook()` (registry-based) and `generate_codebook_legacy()` (AST-based, for deprecated `variables` path).
-5. **`R/calculate_cvs.R`** - Computes margins of error for derived variables (uses standard errors as intermediates internally). Parses codebook definition text strings. No changes needed when adding tables.
-6. **`R/make_pretty_names.R`** - Converts variable names to publication-ready labels.
-7. **`R/utils-pipe.R`** - Re-exports `%>%`.
+1. **`R/table_registry.R`** - Central registry, DSL constructors (`define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`), `validate_definition()`, `execute_definitions()`, `resolve_tables()`, `collect_raw_variables()`, `expand_codebook_entry()`, `list_tables()`, and all `register_table()` calls.
+2. **`R/compile_acs_data.R`** - `compile_acs_data()` (entry point), `fetch_acs()` (per-year/per-state tidycensus calls + ZCTA-style "super-state" geographies), `safe_divide()`.
+3. **`R/auto_percent.R`** - Auto-table support for raw ACS table codes: `is_raw_acs_code()`, `resolve_to_acs_table()`, `build_auto_table_entry()`, `generate_auto_definitions()`.
+4. **`R/interpolate_acs.R`** - `interpolate_acs()` plus internal aggregation helpers; uses codebook attributes to dispatch per-variable aggregation strategy.
+5. **`R/list_acs_variables.R`** - `list_acs_variables()` (exported), and internal helpers `select_variables_by_name()` and `filter_variables()` used by the registry's `"select_variables"` path.
+6. **`R/load_acs_variables.R`** - Session-cached fetch of the Census `variables.json` metadata. Workaround for the API now requiring a key on the variables endpoint, which `tidycensus::load_variables()` doesn't send. Requires `CENSUS_API_KEY`.
+7. **`R/generate_codebook.R`** - `generate_codebook()` builds the codebook tibble from registered + auto + user definitions.
+8. **`R/calculate_cvs.R`** - Computes margins of error for derived variables (standard errors used internally). Drives off the codebook's `se_calculation_type` column; no per-table changes needed when adding new tables.
+9. **`R/make_pretty_names.R`** - Converts variable names to publication-ready labels.
+10. **`R/utils-clean-names.R`**, **`R/utils-pipe.R`** - Shared helpers; the latter re-exports `%>%`.
 
 ### Exported functions
 
-- `compile_acs_data(tables, ...)` - Pull and compute ACS data
-- `interpolate_acs(.data, target_geoid, weight, ...)` - Aggregate or interpolate ACS data to custom geographies. `weight = NULL` for complete nesting (direct aggregation); `weight = "col"` for fractional allocation via crosswalk.
-- `list_tables()` - Available table names for the `tables` parameter (construct-level names)
-- `get_acs_codebook(year, table)` - Browse ACS variables with clean names and table codes
-- `list_variables(year)` - Tibble mapping all variables (raw + computed) to their table name
-- `list_acs_variables(year, tables)` - Named vector of ACS variable codes
-- `select_variables_by_name(variable_name, census_codebook)` - Filter variables by pattern
-- `filter_variables(variable_vector, match_string, match_type)` - Further filter variables
-- `make_pretty_names(.data, .case)` - Publication-ready variable names
-- `safe_divide(x, y)` - Safe division (0 instead of NaN)
+- `compile_acs_data(tables, years, geography, states, counties, spatial, denominator, ...)` - Pull and compute ACS data.
+- `interpolate_acs(.data, target_geoid_column, weight = NULL, crosswalk = NULL, source_geoid = "GEOID", weight_variable = "total_population_universe")` - Aggregate or interpolate ACS data to custom geographies. `weight = NULL` for complete nesting (direct aggregation); pass a weight column name for fractional allocation via crosswalk.
+- `define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()` - DSL constructors for derived variables. Use inside `register_table(definitions = list(...))` or pass directly to `compile_acs_data(tables = list(...))`.
+- `list_tables()` - Available registered table names for the `tables` parameter (construct-level names).
+- `list_variables(year)` - Tibble mapping all variables (raw + computed) to their table name.
+- `list_acs_variables(year, tables)` - Named vector of ACS variable codes for the given tables.
+- `get_acs_codebook(year, table)` - Browse ACS variables with clean names and table codes.
+- `make_pretty_names(.data, .case)` - Publication-ready variable names.
+- `safe_divide(x, y)` - Safe division (0 instead of NaN; NA when denominator is 0 and numerator is non-zero).
+
+`select_variables_by_name()` and `filter_variables()` exist in `R/list_acs_variables.R` but are internal helpers used by the registry's `"select_variables"` source type; they are not exported.
 
 ## Contributing: adding new tables
+
+Tables are defined in `R/table_registry.R`. Each table is registered via a `register_table(list(...))` call describing its raw ACS variables and the derived computations it should produce. Derived computations are expressed via the DSL functions `define_percent()`, `define_sum()`, `define_complement()`, and `define_metadata()` (see the next section). Most of the codebook, MOE propagation, and aggregation behavior is driven by these structured definitions, so adding a new table usually means: write the registry entry, run `devtools::load_all()`, confirm `list_tables()` shows it, and confirm `compile_acs_data(tables = "your_table")` returns the expected columns.
 
 To add a new ACS table to the package:
 
 1. **Add a `register_table()` call in `R/table_registry.R`** with:
-   - `raw_variables` (manual) or `raw_variable_source` (select_variables) for raw ACS variables
-   - `definitions` using the DSL functions: `define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`
-2. **Add any new global variables** to the `utils::globalVariables()` call at the bottom of `R/table_registry.R`
-3. **Verify**: `devtools::load_all()` then `list_tables()` shows your table
-4. **Verify codebook**: the codebook auto-generates from `definitions` -- no changes to `R/generate_codebook.R` needed
-5. **Verify MOEs**: `R/calculate_cvs.R` parses codebook definition strings -- no changes needed if definitions follow standard patterns
-6. **Update pretty names** if needed (`R/make_pretty_names.R` -- rarely needed)
+   - `name` — table identifier (e.g., `"snap"`)
+   - `description` — human-readable description
+   - `acs_tables` — ACS table codes (e.g., `"B22003"`)
+   - `depends_on` — other registered tables this one needs (often `character(0)`)
+   - `raw_variable_source` — `list(type = "manual")` for an explicit list of variables, or `list(type = "select_variables", calls = list(list(pattern = "B22003_", filter = ...)))` for pattern-based selection
+   - `raw_variables` — named character vector mapping `clean_name_` → `"BNNNNN_NNN"` (when source is manual)
+   - `definitions` — a `list()` of DSL objects produced by `define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`
+2. **Verify**: `devtools::load_all()`, then check `list_tables()` and `list_variables(year = ...) |> dplyr::filter(table == "<your_table>")`.
+3. **Codebook and MOEs are automatic.** `expand_codebook_entry()` (in `R/table_registry.R`) sets `se_calculation_type` directly from each DSL object's `type`, so `calculate_moes()` and `interpolate_acs()` need no per-table changes when definitions follow the DSL.
+4. **Pretty names**: update `R/make_pretty_names.R` only if your variable names need new title-case fixups.
 
 ### DSL functions for definitions
 
 | Function | Use case | Key params |
 |---|---|---|
-| `define_percent(numerator, denominator)` | Single percentage | `numerator`, `denominator`, `output` (inferred) |
-| `define_percent(..., each = TRUE)` | Batch percentages | `numerator` (regex), `denominator` or `denominator_replace`, `exclude` |
-| `define_percent(numerator, denominator, subtract_from_*)` | Complex percentage | `subtract_from_numerator`, `subtract_from_denominator`, `exclude` |
-| `define_sum(columns, output)` | Sum columns | `columns` (character vector) |
-| `define_sum(..., each = TRUE)` | Batch pairwise sums | `columns` (regex), `add_replace`, `output_replace` |
+| `define_percent(numerator, denominator)` | Single percentage; `output` is inferred as `<numerator>_percent` when `numerator` is a plain (non-regex) string | `numerator`, `denominator`, `output`, `subtract_from_numerator`, `subtract_from_denominator`, `exclude` |
+| `define_percent(numerator, denominator, each = TRUE)` | Batch percentages — one output per column matching `numerator` regex; `output` is ignored (a warning is emitted if set) | `numerator` (regex), `denominator` or `denominator_replace`, `exclude` |
+| `define_sum(columns, output)` | Sum columns into a single output | `columns` (character vector), `output` |
+| `define_sum(columns, each = TRUE, add_replace, output_replace)` | Batch pairwise sums (e.g., female+male) | `columns` (regex), `add_replace`, `output_replace`, `exclude` |
 | `define_complement(source, output)` | Complement (1 - x) | `source`, `output` |
-| `define_metadata(output, definition)` | Non-computed variables | `output`, `definition` |
+| `define_metadata(output, definition)` | Non-computed variables (placeholder codebook entry only) | `output`, `definition` |
+
+Each DSL function returns a list with a `type` field. `compile_acs_data()` accepts these objects directly in the `tables` argument (mixed with strings) so users can also define custom derived variables on top of the registered set.
 
 ### Quality checks for new variables
 
@@ -146,7 +161,7 @@ To add a new ACS table to the package:
 
 ## Legacy path
 
-The `variables` parameter on `compile_acs_data()` is deprecated (with `lifecycle::deprecate_warn()`). When used, it triggers the legacy code path: `internal_compute_acs_variables()` for computation and `generate_codebook_legacy()` for AST-based codebook generation. Both are preserved for backward compatibility.
+The `variables` parameter on `compile_acs_data()` is deprecated (with `lifecycle::deprecate_warn()`). Passing it now emits a deprecation warning and the value is ignored; use `tables` instead.
 
 ## Search strategy
 

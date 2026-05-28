@@ -1,70 +1,74 @@
-#' @title Division without NAs
-#' @description Return 0 when the divisor is 0.
-#' @details A modified division operation that returns zero when the divisor is zero
-#'    rather than returning NaN. Otherwise returns the quotient. Note that when
-#'    \code{y} is \code{NA}, the result is \code{NA} (NA divisors are not coerced
-#'    to 0); when \code{x} is \code{NA} and \code{y} is nonzero, the result is
-#'    also \code{NA}.
-#' @param x A numeric scalar.
-#' @param y A numeric scalar.
-#' @returns The traditional dividend in all cases except where \code{y == 0}, in which
-#'    case it returns 0. Returns \code{NA} when either \code{x} or \code{y} is
-#'    \code{NA} (for \code{y}, except when also \code{0}, which is not possible
-#'    since \code{NA} is not equal to \code{0}).
+#' @title Division without NaNs
+#' @description A division operation that distinguishes structurally-zero ratios
+#'    from undefined ones.
+#' @details Returns the quotient \code{x / y} except in two cases:
+#'    \itemize{
+#'      \item When both \code{x} and \code{y} are \code{0}, returns \code{0}
+#'        (treating \code{0 / 0} as a structurally-zero ratio rather than NaN).
+#'      \item When \code{y} is \code{0} and \code{x} is non-zero (positive or
+#'        negative), returns \code{NA_real_} (the ratio is undefined).
+#'    }
+#'    When \code{x} or \code{y} is \code{NA}, the result is \code{NA}.
+#' @param x A numeric vector or scalar.
+#' @param y A numeric vector or scalar.
+#' @returns A numeric vector. See \code{Details} for the behavior at
+#'    \code{y == 0}.
 #' @examples
-#' safe_divide(1, 2)
-#' safe_divide(3, 0)
-#' safe_divide(3, NA)  # returns NA
+#' safe_divide(1, 2)   # 0.5
+#' safe_divide(0, 0)   # 0
+#' safe_divide(3, 0)   # NA
+#' safe_divide(3, NA)  # NA
 #' @export
-safe_divide = function(x, y) { dplyr::if_else(y == 0, 0, x / y) }
+safe_divide = function(x, y) {
+  dplyr::if_else(
+    y == 0,
+    dplyr::if_else(x == 0, 0, NA_real_),
+    x / y)
+}
+
+## Best-guess of the most recent ACS 5-year vintage that should be available.
+## The Census Bureau releases the (Y-4)..(Y) 5-year ACS in December of year
+## Y+1, so as of mid-year X the most recent published vintage is roughly X-2.
+latest_acs_year = function() {
+  as.numeric(format(Sys.Date(), "%Y")) - 2
+}
 
 ## Internal helper: fetch raw ACS estimates across years, states, and counties.
-## Handles three query modes (national, state-level, county-level) so the
-## main function doesn't duplicate the iteration logic.
+## One tidycensus call per (state, year), with vector `county =` when the user
+## supplied a counties subset and the geography supports county filtering.
 fetch_acs = function(geography, variables, years, states, counties,
                      county_codes, super_state_geographies) {
   if (geography %in% super_state_geographies) {
-    purrr::map(years, function(year) {
-      tidycensus::get_acs(
-        geography = geography, variables = variables,
-        year = as.numeric(year), survey = "acs5", output = "wide") %>%
-        dplyr::mutate(data_source_year = year)
-    }) %>% purrr::list_rbind()
-
-  } else if (length(counties) == 0) {
-    purrr::map(states, function(state) {
+    return(
       purrr::map(years, function(year) {
         tidycensus::get_acs(
           geography = geography, variables = variables,
-          year = as.numeric(year), state = state,
-          survey = "acs5", output = "wide") %>%
+          year = as.numeric(year), survey = "acs5", output = "wide") %>%
           dplyr::mutate(data_source_year = year)
-      }) %>% purrr::list_rbind()
-    }) %>% purrr::list_rbind()
-
-  } else {
-    purrr::map(states, function(state) {
-      purrr::map(years, function(year) {
-        if (geography %in% c("tract", "county")) {
-          purrr::map(
-            county_codes %>% dplyr::filter(state == !!state) %>% dplyr::pull(county),
-            function(cty) {
-              tidycensus::get_acs(
-                geography = geography, variables = variables,
-                year = as.numeric(year), state = state, county = cty,
-                survey = "acs5", output = "wide")
-            }) %>% purrr::list_rbind() %>%
-            dplyr::mutate(data_source_year = year)
-        } else {
-          tidycensus::get_acs(
-            geography = geography, variables = variables,
-            year = as.numeric(year), state = state,
-            survey = "acs5", output = "wide") %>%
-            dplyr::mutate(data_source_year = year)
-        }
-      }) %>% purrr::list_rbind()
-    }) %>% purrr::list_rbind()
+      }) %>% purrr::list_rbind())
   }
+
+  county_filterable = geography %in% c("tract", "county", "county subdivision")
+  user_supplied_counties = length(counties) > 0
+
+  purrr::map(states, function(state) {
+    purrr::map(years, function(year) {
+      args = list(
+        geography = geography, variables = variables,
+        year = as.numeric(year), state = state,
+        survey = "acs5", output = "wide")
+
+      if (user_supplied_counties && county_filterable) {
+        county_vec = county_codes %>%
+          dplyr::filter(state == !!state) %>%
+          dplyr::pull(county)
+        if (length(county_vec) > 0) args$county = county_vec
+      }
+
+      do.call(tidycensus::get_acs, args) %>%
+        dplyr::mutate(data_source_year = year)
+    }) %>% purrr::list_rbind()
+  }) %>% purrr::list_rbind()
 }
 
 #' @title Analysis-ready social science measures
@@ -120,8 +124,30 @@ fetch_acs = function(geography, variables, years, states, counties,
 #' @seealso \code{tidycensus::get_acs()}, which this function wraps.
 #' @returns A dataframe containing the requested variables, their MOEs,
 #'    a series of derived variables, such as percentages, and the year of the data.
-#'    Returned data are formatted wide. A codebook generated with \code{generate_codebook()}
-#'    is attached and can be accessed via \code{compile_acs_data() %>% attr("codebook")}.
+#'    Returned data are formatted wide. A codebook is attached as an attribute
+#'    and can be accessed via \code{compile_acs_data() \%>\% attr("codebook")}.
+#'    The codebook is a tibble with these columns (treated as a stable interface):
+#'    \itemize{
+#'      \item \code{calculated_variable} - the column name in the returned data
+#'      \item \code{variable_type} - one of \code{"Count"}, \code{"Percent"},
+#'        \code{"Sum"}, \code{"Median"}, \code{"Median ($)"}, \code{"Average"},
+#'        \code{"Quintile ($)"}, \code{"Index"}, \code{"Metadata"}
+#'      \item \code{definition} - human-readable description of the variable
+#'      \item \code{numerator_vars}, \code{numerator_subtract_vars},
+#'        \code{denominator_vars}, \code{denominator_subtract_vars} - list-columns
+#'        of clean column names used in the numerator/denominator (positive and
+#'        subtractive terms) of a derived variable
+#'      \item \code{se_calculation_type} - one of \code{"raw"}, \code{"sum"},
+#'        \code{"simple_percent"}, \code{"complex_numerator"},
+#'        \code{"complex_denominator"}, \code{"complex_both"}, \code{"one_minus"},
+#'        \code{"weighted_average"}, \code{"metadata"}, \code{"unknown"};
+#'        indicates which MOE-propagation formula is appropriate
+#'      \item \code{aggregation_strategy} - one of \code{"sum"},
+#'        \code{"recalculate_percent"}, \code{"weighted_average"},
+#'        \code{"metadata"}, \code{"unknown"}; used by \code{interpolate_acs()}
+#'    }
+#'    The resolved tables are also attached as a \code{"resolved_tables"}
+#'    attribute (used by \code{interpolate_acs()}).
 #' @examples
 #' \dontrun{
 #' ## Pull all tables (default, backward-compatible)
@@ -157,7 +183,7 @@ fetch_acs = function(geography, variables, years, states, counties,
 
 compile_acs_data = function(
     tables = NULL,
-    years = c(2024),
+    years = latest_acs_year(),
     geography = "county",
     states = NULL,
     counties = NULL,
@@ -199,7 +225,7 @@ compile_acs_data = function(
 
   ## validate denominator parameter
   valid_denominator = denominator %in% c("parent", "total") ||
-    grepl("^[BC][0-9]{5}[A-I]?(_[0-9]{3})?$", denominator, perl = TRUE)
+    stringr::str_detect(denominator, "^[BC][0-9]{5}[A-I]?(_[0-9]{3})?$")
   if (!valid_denominator) {
     cli::cli_abort("{.arg denominator} must be {.val parent}, {.val total}, or a valid ACS variable code (e.g., {.val B25070_001}). Got: {.val {denominator}}.")
   }
@@ -229,7 +255,7 @@ compile_acs_data = function(
 
     ## load census variables once for resolve_to_acs_table lookups
     suppressMessages({suppressWarnings({
-      census_variables_for_resolve = load_acs_variables(year = years[1], dataset = "acs5")
+      census_variables_for_resolve = load_acs_variables(year = max(years), dataset = "acs5")
     })})
 
     ## collect all acs_tables from registered tables to detect overlap
@@ -261,7 +287,7 @@ compile_acs_data = function(
         return(list(type = "auto", value = tbl))
       }
       ## try resolving as a cleaned variable name
-      resolved_code = resolve_to_acs_table(tbl, year = years[1],
+      resolved_code = resolve_to_acs_table(tbl, year = max(years),
                                            census_variables = census_variables_for_resolve)
       if (!is.null(resolved_code)) {
         if (resolved_code %in% registered_acs_codes) {
@@ -311,7 +337,7 @@ compile_acs_data = function(
       auto_table_entries = purrr::map(raw_acs_codes, function(code) {
         build_auto_table_entry(
           table_code = code,
-          year = years[1],
+          year = max(years),
           denominator_mode = denominator_mode,
           custom_denominator = custom_denominator,
           census_variables = census_variables_for_resolve)
@@ -322,7 +348,7 @@ compile_acs_data = function(
 
   ## collect raw ACS variables from the registry
   suppressWarnings({suppressMessages({
-    variables = collect_raw_variables(resolved_tables = resolved_tables, year = years[1])
+    variables = collect_raw_variables(resolved_tables = resolved_tables, year = max(years))
   })})
 
   ## append auto-table raw variables
@@ -335,6 +361,23 @@ compile_acs_data = function(
   ## resolve ACS codes in user definitions to clean column names
   if (length(user_definitions) > 0) {
     user_definitions = resolve_definition_variables(user_definitions, variables)
+  }
+
+  super_state_geographies = c(
+    "us", "region", "division", "metropolitan/micropolitan statistical area",
+    "metropolitan statistical area/micropolitan statistical area",
+    "cbsa", "urban area", "zip code tabulation area", "zcta")
+
+  ## tracts and larger are supported
+  if (geography %in% c("block", "block group")) {
+    cli::cli_abort("Block and block group geographies are not supported.")
+  }
+
+  ## warn when `counties` is supplied with a geography that doesn't honor it
+  if (length(counties) > 0 && geography %in% super_state_geographies) {
+    cli::cli_warn(c(
+      "{.arg counties} is ignored when {.arg geography} is {.val {geography}}.",
+      "i" = "The {.arg counties} filter only applies to county/tract/county-subdivision queries."))
   }
 
   ## default values for the states argument
@@ -351,10 +394,6 @@ compile_acs_data = function(
       "i" = "It is not valid to compare tract-level statistics across the 2020 boundary.",
       "i" = "Crosswalks are available from NHGIS, or via {.pkg crosswalk} ({.code renv::install('UI-Research/crosswalk')}).")) }
 
-  ## tracts and larger are supported
-  if (geography %in% c("block", "block group")) {
-    cli::cli_abort("Block and block group geographies are not supported.") }
-
   ## warn user -- county-by-county queries are slow and should be used if only
   ## one or a few counties are desired
   if (length(counties) > 5) {
@@ -363,10 +402,32 @@ compile_acs_data = function(
       "County-level queries can be slow for more than a few counties.",
       "i" = "Omit the {.arg counties} parameter and filter after the function returns."))}
 
-  super_state_geographies = c(
-    "us", "region", "division", "metropolitan/micropolitan statistical area",
-    "metropolitan statistical area/micropolitan statistical area",
-    "cbsa", "urban area", "zip code tabulation area", "zcta")
+  ## warn that pulling tracts across many states is a large, slow query
+  if (geography == "tract" && length(counties) == 0 && length(states) > 5) {
+    cli::cli_warn(
+      "Pulling tract-level data across {length(states)} state{?s} can be a slow query.")
+  }
+
+  ## resolve county_codes and the state vector used for downstream fetches
+  if (geography %in% c("county", "county subdivision", "tract") & length(counties) > 0) {
+    county_codes = tidycensus::fips_codes %>%
+      dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
+      dplyr::filter(county_fips %in% counties)
+
+    if (nrow(county_codes) == 0) {
+      cli::cli_abort("No valid county FIPS codes were found in {.arg counties}.") }
+
+    if (nrow(county_codes) != length(counties)) {
+      invalid_county_count = length(counties) - nrow(county_codes)
+      cli::cli_warn("{invalid_county_count} invalid county code{?s} found; no results are returned for {?this county/these counties}.") }
+  } else {
+    county_codes = tidycensus::fips_codes %>%
+      dplyr::filter(state %in% states | state_code %in% states | state_name %in% states)
+  }
+
+  ## states_for_fetch is the canonicalized 2-letter codes derived from county_codes.
+  ## The user's `states` argument is preserved unchanged for downstream messaging.
+  states_for_fetch = county_codes$state %>% unique()
 
   ## download corresponding geometries from tigris (conditionally)
   if (needs_tigris) {
@@ -384,10 +445,20 @@ compile_acs_data = function(
             "region" = tigris::regions(year = year),
             "division" = tigris::divisions(year = year),
             "state" = tigris::states(year = year, cb = TRUE),
-            "county" = purrr::map(states, ~ tigris::counties(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
-            "county subdivision" = purrr::map(states, ~ tigris::county_subdivisions(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
-            "tract" = purrr::map(states, ~ tigris::tracts(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
-            "place" = purrr::map(states, ~ tigris::places(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
+            "county" = purrr::map(states_for_fetch, ~ tigris::counties(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
+            "county subdivision" = purrr::map(states_for_fetch, function(s) {
+              county_vec = if (length(counties) > 0) {
+                county_codes %>% dplyr::filter(state == s) %>% dplyr::pull(county_code)
+              } else NULL
+              tigris::county_subdivisions(state = s, county = county_vec, cb = TRUE, year = year, progress_bar = FALSE)
+            }) %>% dplyr::bind_rows(),
+            "tract" = purrr::map(states_for_fetch, function(s) {
+              county_vec = if (length(counties) > 0) {
+                county_codes %>% dplyr::filter(state == s) %>% dplyr::pull(county_code)
+              } else NULL
+              tigris::tracts(state = s, county = county_vec, cb = TRUE, year = year, progress_bar = FALSE)
+            }) %>% dplyr::bind_rows(),
+            "place" = purrr::map(states_for_fetch, ~ tigris::places(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
             "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
             "american indian area/alaska native area/hawaiian home land" = tigris::native_areas(cb = TRUE, year = year),
             "american indian area/alaska native area (reservation of statistical entity only)" = tigris::native_areas(cb = TRUE, year = year),
@@ -397,6 +468,12 @@ compile_acs_data = function(
             "cbsa" = tigris::core_based_statistical_areas(cb = TRUE, year = year),
             "combined statistical area" = tigris::combined_statistical_areas(cb = TRUE, year = year),
             "new england city and town area" = tigris::new_england(cb = TRUE, year = year, type = "NECTA"),
+            "zcta" = ,
+            "zip code tabulation area" = tigris::zctas(cb = TRUE, year = year, progress_bar = FALSE) %>%
+              ## tigris returns year-suffixed columns for ZCTAs (e.g., GEOID20, ALAND20).
+              ## Strip the suffix so the downstream transmute can use the unsuffixed names.
+              dplyr::rename_with(~ stringr::str_remove(.x, "(10|20)$"),
+                                 dplyr::matches("^(GEOID|ALAND|AWATER)(10|20)$")),
             cli::cli_abort("Unsupported geography: {.val {geography}}. See {.help compile_acs_data} for supported geographies.")) %>%
             dplyr::transmute(
               area_land_sq_kilometer = ALAND / 1000000,
@@ -407,31 +484,12 @@ compile_acs_data = function(
     })})
   }
 
-  ## configuring to subset call to specified counties, if applicable
-  if (geography %in% c("county", "county subdivision", "tract") & length(counties) > 0) {
-    county_codes = tidycensus::fips_codes %>%
-      dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
-      dplyr::filter(county_fips %in% counties)
-
-    if (nrow(county_codes) == 0) {
-      cli::cli_abort("No valid county FIPS codes were found in {.arg counties}.") }
-
-    if (nrow(county_codes) != length(counties)) {
-      invalid_county_count = length(counties) - nrow(county_codes)
-      cli::cli_warn("{invalid_county_count} invalid county code{?s} found; no results are returned for {?this county/these counties}.") }
-  } else {
-    county_codes = tidycensus::fips_codes %>%
-      dplyr::filter(state %in% states | state_code %in% states | state_name %in% states)
-  }
-
-  states = county_codes$state %>% unique
-
   suppressMessages({ suppressWarnings({
     df_raw_estimates = fetch_acs(
       geography = geography,
       variables = variables,
       years = years,
-      states = states,
+      states = states_for_fetch,
       counties = counties,
       county_codes = county_codes,
       super_state_geographies = super_state_geographies)
@@ -476,7 +534,7 @@ compile_acs_data = function(
                                resolved_tables = resolved_tables,
                                auto_table_entries = auto_table_entries,
                                user_definitions = user_definitions,
-                               year = years[1])
+                               year = max(years))
 
   df_calculated_estimates = df_calculated_estimates %>%
     ## ensure the vintage of the data and the GEOID for each observation are the first columns
@@ -490,8 +548,12 @@ compile_acs_data = function(
     geometries = geometries %>%
       dplyr::filter(GEOID %in% df_calculated_estimates$GEOID)
 
+    ## Use many-to-one rather than one-to-one: geographies whose definitions change
+    ## across years (CBSAs, ZCTAs, pre/post-2020 tracts) may not preserve a strict
+    ## 1:1 mapping between an estimate row and a geometry row over the requested
+    ## span. many-to-one accepts those cases without dropping or erroring.
     df_calculated_estimates = df_calculated_estimates %>%
-      dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "one-to-one") %>%
+      dplyr::right_join(geometries, by = c("GEOID", "data_source_year"), relationship = "many-to-one") %>%
       {if (spatial == FALSE) sf::st_drop_geometry(.) else sf::st_as_sf(.) } %>%
       dplyr::mutate(population_density_land_sq_kilometer = safe_divide(total_population_universe, area_land_sq_kilometer))
   }
@@ -507,7 +569,7 @@ compile_acs_data = function(
 
   suppressMessages({suppressWarnings({
     df_moes = calculate_moes(df_calculated_estimates) %>%
-      {if (!needs_tigris || spatial == FALSE) . else dplyr::right_join(., geometries %>% dplyr::select(GEOID, data_source_year), by = c("GEOID", "data_source_year"), relationship = "one-to-one")}
+      {if (!needs_tigris || spatial == FALSE) . else dplyr::right_join(., geometries %>% dplyr::select(GEOID, data_source_year), by = c("GEOID", "data_source_year"), relationship = "many-to-one")}
   })})
 
   ## attach the codebook and resolved tables as attributes to the returned dataset

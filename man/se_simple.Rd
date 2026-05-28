@@ -18,3 +18,4 @@ Calculate a simple standard error
 \details{
 Create a standard error at the 90\% level from a 90\% margin of error
 }
+\keyword{internal}

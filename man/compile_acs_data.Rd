@@ -6,7 +6,7 @@
 \usage{
 compile_acs_data(
   tables = NULL,
-  years = c(2024),
+  years = latest_acs_year(),
   geography = "county",
   states = NULL,
   counties = NULL,
@@ -73,8 +73,30 @@ warning is issued and the value is ignored.}
 \value{
 A dataframe containing the requested variables, their MOEs,
 a series of derived variables, such as percentages, and the year of the data.
-Returned data are formatted wide. A codebook generated with \code{generate_codebook()}
-is attached and can be accessed via \code{compile_acs_data() \%>\% attr("codebook")}.
+Returned data are formatted wide. A codebook is attached as an attribute
+and can be accessed via \code{compile_acs_data() \%>\% attr("codebook")}.
+The codebook is a tibble with these columns (treated as a stable interface):
+\itemize{
+\item \code{calculated_variable} - the column name in the returned data
+\item \code{variable_type} - one of \code{"Count"}, \code{"Percent"},
+\code{"Sum"}, \code{"Median"}, \code{"Median ($)"}, \code{"Average"},
+\code{"Quintile ($)"}, \code{"Index"}, \code{"Metadata"}
+\item \code{definition} - human-readable description of the variable
+\item \code{numerator_vars}, \code{numerator_subtract_vars},
+\code{denominator_vars}, \code{denominator_subtract_vars} - list-columns
+of clean column names used in the numerator/denominator (positive and
+subtractive terms) of a derived variable
+\item \code{se_calculation_type} - one of \code{"raw"}, \code{"sum"},
+\code{"simple_percent"}, \code{"complex_numerator"},
+\code{"complex_denominator"}, \code{"complex_both"}, \code{"one_minus"},
+\code{"weighted_average"}, \code{"metadata"}, \code{"unknown"};
+indicates which MOE-propagation formula is appropriate
+\item \code{aggregation_strategy} - one of \code{"sum"},
+\code{"recalculate_percent"}, \code{"weighted_average"},
+\code{"metadata"}, \code{"unknown"}; used by \code{interpolate_acs()}
+}
+The resolved tables are also attached as a \code{"resolved_tables"}
+attribute (used by \code{interpolate_acs()}).
 }
 \description{
 Construct measures frequently used in social sciences

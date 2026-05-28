@@ -35,7 +35,7 @@ The codebook is stored as an attribute of the dataframe and can be
 retrieved with `attr()`:
 
 ```{r}
-df = compile_acs_data(year = 2024, geography = "us")
+df = compile_acs_data(years = 2024, geography = "us")
 codebook = attr(df, "codebook")
 ```
 

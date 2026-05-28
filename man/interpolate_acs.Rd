@@ -6,7 +6,7 @@
 \usage{
 interpolate_acs(
   .data,
-  target_geoid,
+  target_geoid_column,
   weight = NULL,
   crosswalk = NULL,
   source_geoid = "GEOID",
@@ -17,7 +17,7 @@ interpolate_acs(
 \item{.data}{A dataframe returned from \code{compile_acs_data()}.
 Must have a codebook attribute attached.}
 
-\item{target_geoid}{Character. Column name for target geography identifiers.
+\item{target_geoid_column}{Character. Column name for target geography identifiers.
 Must exist in \code{.data} or in \code{crosswalk}. The result renames
 this column to \code{GEOID}.}
 
@@ -30,7 +30,7 @@ geography.}
 \item{crosswalk}{A data frame containing the crosswalk mapping. Optional in
 both modes. When provided, joined to \code{.data} via \code{source_geoid}
 before processing. Must include columns for \code{source_geoid} and
-\code{target_geoid} (and \code{weight} if fractional allocation is used).}
+\code{target_geoid_column} (and \code{weight} if fractional allocation is used).}
 
 \item{source_geoid}{Character. Column name for source geography identifiers.
 Must exist in \code{.data} (and in \code{crosswalk} if provided).
@@ -60,8 +60,24 @@ variables and MOEs are multiplied by the weight before summing.
 Percentages are recalculated from interpolated components. Intensive
 variables use the allocated population as weights.
 
+In fractional-allocation mode, area variables
+(\code{area_land_sq_kilometer}, \code{area_water_sq_kilometer},
+\code{area_land_water_sq_kilometer}) and \code{population_density_land_sq_kilometer}
+(and its MOE) are set to \code{NA} in the result. Crosswalk weights typically
+represent a population share rather than an area share, so scaling
+source-geography areas by the weight is not meaningful. If you need area
+or density for the target geographies, join your own area measurements
+onto the returned data frame.
+
 MOE propagation uses Census Bureau approximation formulas throughout.
 Crosswalk weights are treated as constants (no sampling error).
+
+\strong{NA handling}: Missing values (\code{NA}) in aggregated input columns
+propagate to the corresponding target geographies — i.e., if any source
+geography within a target has \code{NA} for a column being summed or averaged,
+the target's value for that column will be \code{NA}. A one-time warning is
+issued listing the affected columns. Filter or impute NAs upstream if a
+different behavior is desired.
 }
 \examples{
 \dontrun{
@@ -77,7 +93,7 @@ tract_data = compile_acs_data(
 tract_data$neighborhood = c("Downtown", "Downtown", "Uptown", ...)
 neighborhood_data = interpolate_acs(
   .data = tract_data,
-  target_geoid = "neighborhood"
+  target_geoid_column = "neighborhood"
 )
 
 # Fractional allocation with a crosswalk
@@ -89,7 +105,7 @@ crosswalk = data.frame(
 
 neighborhood_data = interpolate_acs(
   .data = tract_data,
-  target_geoid = "neighborhood",
+  target_geoid_column = "neighborhood",
   weight = "alloc_weight",
   crosswalk = crosswalk
 )

@@ -9,7 +9,9 @@
 
 ## Register a table definition (internal)
 register_table = function(table_def) {
-  stopifnot(!is.null(table_def$name))
+  if (is.null(table_def$name)) {
+    cli::cli_abort("{.code table_def$name} is required.")
+  }
   .table_registry$tables[[table_def$name]] = table_def
 }
 
@@ -116,6 +118,11 @@ define_percent = function(numerator,
                           exclude = NULL) {
 
   if (isTRUE(each)) {
+    if (!is.null(output)) {
+      cli::cli_warn(c(
+        "{.arg output} is ignored when {.code each = TRUE}.",
+        "i" = "In batch mode, output columns are named {.code <matched_column>_percent} per match."))
+    }
     ## batch mode -> across_percent
     result = list(
       type = "across_percent",
@@ -298,7 +305,7 @@ define_metadata = function(output, definition) {
 
 ## Detect regex metacharacters in a string
 .has_regex_metacharacters = function(x) {
-  grepl("[.*()|\\.\\[\\]^$+?\\\\]|\\{|\\}", x, perl = TRUE)
+  stringr::str_detect(x, "[.*()|\\.\\[\\]^$+?\\\\]|\\{|\\}")
 }
 
 ####----DSL VALIDATION AND HELPERS----####
@@ -314,14 +321,14 @@ is_dsl_definition = function(x) {
 ## Assert that a field is a non-empty string
 check_required_string = function(value, field_name, def_label) {
   if (is.null(value) || !is.character(value) || length(value) != 1 || nchar(value) == 0) {
-    stop(paste0("Definition `", def_label, "`: `", field_name, "` must be a non-empty string."))
+    cli::cli_abort("Definition {.val {def_label}}: {.field {field_name}} must be a non-empty string.")
   }
 }
 
 ## Assert that a field is a character vector
 check_character_vector = function(value, field_name, def_label) {
   if (!is.character(value) || length(value) == 0) {
-    stop(paste0("Definition `", def_label, "`: `", field_name, "` must be a non-empty character vector."))
+    cli::cli_abort("Definition {.val {def_label}}: {.field {field_name}} must be a non-empty character vector.")
   }
 }
 
@@ -329,26 +336,25 @@ check_character_vector = function(value, field_name, def_label) {
 check_valid_regex = function(value, field_name, def_label) {
   check_required_string(value, field_name, def_label)
   tryCatch(
-    grepl(value, "", perl = TRUE),
+    stringr::str_detect("", value),
     warning = function(w) {
-      stop(paste0("Definition `", def_label, "`: `", field_name,
-                   "` is not a valid regex: ", conditionMessage(w)))
+      cli::cli_abort("Definition {.val {def_label}}: {.field {field_name}} is not a valid regex: {conditionMessage(w)}")
     },
     error = function(e) {
-      stop(paste0("Definition `", def_label, "`: `", field_name,
-                   "` is not a valid regex: ", conditionMessage(e)))
+      cli::cli_abort("Definition {.val {def_label}}: {.field {field_name}} is not a valid regex: {conditionMessage(e)}")
     })
 }
 
 ## Structural validation of a single definition
 validate_definition = function(definition) {
   if (!is.list(definition)) {
-    stop("Definition must be a list.")
+    cli::cli_abort("Definition must be a list.")
   }
   type = definition[["type"]]
   if (is.null(type) || !type %in% .dsl_types) {
-    stop(paste0("Definition has invalid or missing `type`. Must be one of: ",
-                paste0(.dsl_types, collapse = ", "), "."))
+    cli::cli_abort(c(
+      "Definition has invalid or missing {.field type}.",
+      "i" = "Must be one of: {.val {(.dsl_types)}}."))
   }
   label = definition[["output"]] %||% definition[["input_regex"]] %||% "<unnamed>"
 
@@ -360,8 +366,8 @@ validate_definition = function(definition) {
     check_required_string(definition[["output"]], "output", label)
     has_num = !is.null(definition[["numerator_variables"]]) || !is.null(definition[["numerator_regex"]])
     has_den = !is.null(definition[["denominator_variables"]]) || !is.null(definition[["denominator_regex"]])
-    if (!has_num) stop(paste0("Definition `", label, "`: complex type requires `numerator_variables` or `numerator_regex`."))
-    if (!has_den) stop(paste0("Definition `", label, "`: complex type requires `denominator_variables` or `denominator_regex`."))
+    if (!has_num) cli::cli_abort("Definition {.val {label}}: complex type requires {.field numerator_variables} or {.field numerator_regex}.")
+    if (!has_den) cli::cli_abort("Definition {.val {label}}: complex type requires {.field denominator_variables} or {.field denominator_regex}.")
     if (!is.null(definition[["numerator_variables"]])) check_character_vector(definition[["numerator_variables"]], "numerator_variables", label)
     if (!is.null(definition[["numerator_regex"]])) check_valid_regex(definition[["numerator_regex"]], "numerator_regex", label)
     if (!is.null(definition[["denominator_variables"]])) check_character_vector(definition[["denominator_variables"]], "denominator_variables", label)
@@ -372,20 +378,20 @@ validate_definition = function(definition) {
     check_valid_regex(definition[["input_regex"]], "input_regex", label)
     check_required_string(definition[["output_suffix"]], "output_suffix", label)
     has_denom = !is.null(definition[["denominator"]]) || !is.null(definition[["denominator_function"]])
-    if (!has_denom) stop(paste0("Definition `", label, "`: across_percent type requires `denominator` or `denominator_function`."))
+    if (!has_denom) cli::cli_abort("Definition {.val {label}}: across_percent type requires {.field denominator} or {.field denominator_function}.")
     if (!is.null(definition[["denominator"]]) && !is.character(definition[["denominator"]])) {
-      stop(paste0("Definition `", label, "`: `denominator` must be a string."))
+      cli::cli_abort("Definition {.val {label}}: {.field denominator} must be a string.")
     }
     if (!is.null(definition[["denominator_function"]]) && !is.function(definition[["denominator_function"]])) {
-      stop(paste0("Definition `", label, "`: `denominator_function` must be a function."))
+      cli::cli_abort("Definition {.val {label}}: {.field denominator_function} must be a function.")
     }
   } else if (type == "across_sum") {
     check_valid_regex(definition[["input_regex"]], "input_regex", label)
     if (!is.function(definition[["addend_function"]])) {
-      stop(paste0("Definition `", label, "`: `addend_function` must be a function."))
+      cli::cli_abort("Definition {.val {label}}: {.field addend_function} must be a function.")
     }
     if (!is.function(definition[["output_naming_function"]])) {
-      stop(paste0("Definition `", label, "`: `output_naming_function` must be a function."))
+      cli::cli_abort("Definition {.val {label}}: {.field output_naming_function} must be a function.")
     }
   } else if (type == "one_minus") {
     check_required_string(definition[["output"]], "output", label)
@@ -396,7 +402,7 @@ validate_definition = function(definition) {
   } else if (type == "sum") {
     check_required_string(definition[["output"]], "output", label)
     if (is.null(definition[["columns"]]) || !is.character(definition[["columns"]]) || length(definition[["columns"]]) == 0) {
-      stop(paste0("Definition `", label, "`: sum type requires `columns` as a non-empty character vector."))
+      cli::cli_abort("Definition {.val {label}}: sum type requires {.field columns} as a non-empty character vector.")
     }
   }
 
@@ -650,7 +656,7 @@ execute_definition = function(.data, definition) {
     return(.data)
   }
 
-  stop(paste0("Unknown definition type: ", type))
+  cli::cli_abort("Unknown definition type: {.val {type}}")
 }
 
 ## Execute all definitions in order
@@ -890,7 +896,8 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       numerator_vars = list(entry[["numerator"]]),
       numerator_subtract_vars = list(character(0)),
       denominator_vars = list(entry[["denominator"]]),
-      denominator_subtract_vars = list(character(0))))
+      denominator_subtract_vars = list(character(0)),
+      se_calculation_type = "simple_percent"))
   }
 
   if (type == "across_percent") {
@@ -928,6 +935,10 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       ## determine subtract column for pre-parsed columns
       subtract_col = if (!is.null(entry[["denominator_subtract"]])) entry[["denominator_subtract"]] else character(0)
 
+      ## se_calculation_type: simple_percent when denominator has no subtraction;
+      ## complex_denominator when it does.
+      se_type = if (length(subtract_col) > 0) "complex_denominator" else "simple_percent"
+
       tibble::tibble(
         calculated_variable = output_column,
         variable_type = "Percent",
@@ -935,7 +946,8 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
         numerator_vars = list(column),
         numerator_subtract_vars = list(character(0)),
         denominator_vars = list(denominator_column),
-        denominator_subtract_vars = list(subtract_col))
+        denominator_subtract_vars = list(subtract_col),
+        se_calculation_type = se_type)
     }) %>% purrr::list_rbind()
   }
 
@@ -964,7 +976,8 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
         numerator_vars = list(c(column, addend)),
         numerator_subtract_vars = list(character(0)),
         denominator_vars = list(character(0)),
-        denominator_subtract_vars = list(character(0)))
+        denominator_subtract_vars = list(character(0)),
+        se_calculation_type = "sum")
     }) %>% purrr::list_rbind()
   }
 
@@ -1044,6 +1057,16 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       subtract_columns
     } else { character(0) }
 
+    ## derive se_calculation_type from cardinality of numerator and denominator
+    num_count = length(numerator_columns) + length(num_sub_cols)
+    denom_count = length(denominator_columns) + length(denom_sub_cols)
+    se_type = dplyr::case_when(
+      num_count == 1 & denom_count == 1 ~ "simple_percent",
+      num_count > 1 & denom_count == 1 ~ "complex_numerator",
+      num_count == 1 & denom_count > 1 ~ "complex_denominator",
+      num_count > 1 & denom_count > 1 ~ "complex_both",
+      TRUE ~ "unknown")
+
     return(tibble::tibble(
       calculated_variable = entry[["output"]],
       variable_type = "Percent",
@@ -1051,7 +1074,8 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       numerator_vars = list(numerator_columns),
       numerator_subtract_vars = list(num_sub_cols),
       denominator_vars = list(denominator_columns),
-      denominator_subtract_vars = list(denom_sub_cols)))
+      denominator_subtract_vars = list(denom_sub_cols),
+      se_calculation_type = se_type))
   }
 
   else if (type == "one_minus") {
@@ -1062,7 +1086,8 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       numerator_vars = list(entry[["source_variable"]]),
       numerator_subtract_vars = list(character(0)),
       denominator_vars = list(character(0)),
-      denominator_subtract_vars = list(character(0))))
+      denominator_subtract_vars = list(character(0)),
+      se_calculation_type = "one_minus"))
   }
 
   else if (type == "sum") {
@@ -1075,7 +1100,8 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       numerator_vars = list(columns),
       numerator_subtract_vars = list(character(0)),
       denominator_vars = list(character(0)),
-      denominator_subtract_vars = list(character(0))))
+      denominator_subtract_vars = list(character(0)),
+      se_calculation_type = "sum"))
   }
 
   else if (type == "metadata") {
@@ -1086,7 +1112,8 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       numerator_vars = list(character(0)),
       numerator_subtract_vars = list(character(0)),
       denominator_vars = list(character(0)),
-      denominator_subtract_vars = list(character(0))))
+      denominator_subtract_vars = list(character(0)),
+      se_calculation_type = "metadata"))
   }
 
   else {
@@ -1097,7 +1124,8 @@ expand_codebook_entry = function(entry, .data, crosswalk) {
       numerator_vars = list(character(0)),
       numerator_subtract_vars = list(character(0)),
       denominator_vars = list(character(0)),
-      denominator_subtract_vars = list(character(0))))
+      denominator_subtract_vars = list(character(0)),
+      se_calculation_type = "unknown"))
   }
 }
 
@@ -1488,27 +1516,27 @@ register_table(list(
       list(pattern = "B25074"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(pct)",
+    define_percent("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
                    output = "cost_burdened_30percentormore_allincomes_percent",
                    subtract_from_denominator = "household_income.*not_computed"),
-    define_percent("household_income_by_gross_rent.*50_0.*pct",
+    define_percent("household_income_by_gross_rent.*50_0.*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
                    output = "cost_burdened_50percentormore_allincomes_percent",
                    subtract_from_denominator = "household_income.*not_computed"),
-    define_percent("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(pct)",
+    define_percent("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*(10000|19999|34999)$",
                    output = "cost_burdened_30percentormore_incomeslessthan35000_percent",
                    subtract_from_denominator = "household_income.*(10000_|19999|34999).*not_computed"),
-    define_percent("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(pct)",
+    define_percent("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*(10000|19999|34999)$",
                    output = "cost_burdened_50percentormore_incomeslessthan35000_percent",
                    subtract_from_denominator = "household_income.*(10000_|19999|34999).*not_computed"),
-    define_percent("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(pct)",
+    define_percent("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
                    output = "cost_burdened_30percentormore_incomeslessthan50000_percent",
                    subtract_from_denominator = "household_income.*(10000_|19999|34999|49999).*not_computed"),
-    define_percent("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*pct",
+    define_percent("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
                    output = "cost_burdened_50percentormore_incomeslessthan50000_percent",
                    subtract_from_denominator = "household_income.*(10000_|19999|34999|49999).*not_computed"))
@@ -1819,34 +1847,7 @@ register_table(list(
 
 ####----GLOBAL VARIABLES----####
 
-utils::globalVariables(c(
-  "race_universe", "race_nonhispanic_white_alone_percent",
-  "sex_by_age_female", "sex_by_age_male", "sex_by_age_universe",
-  "age_under_5_years", "age_5_9_years", "age_10_14_years", "age_15_17_years",
-  "sex_by_age_by_disability_status_universe",
-  "tenure_universe", "tenure_by_occupants_per_room_universe",
-  "tenure_by_occupants_per_room_renter_occupied",
-  "units_in_structure_universe",
-  "tenure_by_units_in_structure_renter_occupied_housing_units",
-  "tenure_by_units_in_structure_renter_owner_occupied_housing_units",
-  "tenure_by_units_in_structure_owner_occupied_housing_units",
-  "year_structure_built_universe", "year_structure_built_built_since_1960_percent",
-  "means_transportation_work_universe", "means_transportation_work_worked_from_home",
-  "travel_time_work_universe",
-  "educational_attainment_population_25_years_over_universe",
-  "educational_attainment_population_25_years_over_ged_alternative_credential",
-  "educational_attainment_population_25_years_over_regular_high_school_diploma",
-  "educational_attainment_population_25_years_over_associates_degree",
-  "educational_attainment_population_25_years_over_bachelors_degree",
-  "school_enrollment_universe",
-  "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native",
-  "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born",
-  "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
-  "ability_speak_english_very_well_better_percent",
-  "employment_civilian_labor_force_employed", "employment_civilian_labor_force_universe",
-  "health_insurance_coverage_status_type_by_employment_status_universe",
-  "health_insurance_coverage_status_covered_percent",
-  "health_insurance_coverage_status_type_by_employment_status_in_labor_force",
-  "snap_received", "snap_universe", "public_assistance_received", "public_assistance_universe",
-  "total_population_universe", "area_land_sq_kilometer",
-  "indicator"))
+## All variable references in the DSL-based registry are strings inside list
+## structures, so they do not trigger NSE warnings under R CMD check. Only the
+## bare identifiers actually used in dplyr verbs need to be declared here.
+utils::globalVariables(c("raw_name"))

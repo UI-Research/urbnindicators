@@ -42,11 +42,12 @@ type data (ACS table B11001) as a running example.
 
 | Helper | Use case | Key arguments |
 |---|---|---|
-| `define_percent()` | Single output: numerator / denominator | `output`, `numerator`, `denominator` (simple) or `numerator_variables`, `denominator_variables`, regex variants (complex) |
-| `define_across_percent()` | Percentages across a regex-matched set of columns | `input_regex`, `output_suffix`, `denominator` or `denominator_function`, optional `exclude_regex` |
-| `define_across_sum()` | Summing paired columns (e.g., male + female) | `input_regex`, `addend_function`, `output_naming_function` |
-| `define_one_minus()` | Complement of an existing percentage (1 - x) | `output`, `source_variable` |
-| `define_metadata()` | Non-computed variables (e.g., medians) | `output`, `definition_text` |
+| `define_percent()` | Single output: numerator / denominator | `numerator`, `denominator`, `output`, optional `subtract_from_numerator`, `subtract_from_denominator`, `exclude` |
+| `define_percent(..., each = TRUE)` | Percentages across a regex-matched set of columns (one output per match, named `<matched_column>_percent`) | `numerator` (regex), `denominator` or `denominator_replace`, `exclude` |
+| `define_sum()` | Sum one or more columns into a single output | `columns`, `output` |
+| `define_sum(..., each = TRUE)` | Summing paired columns (e.g., male + female) for each match | `columns` (regex), `add_replace`, `output_replace`, `exclude` |
+| `define_complement()` | Complement of an existing percentage (1 - x) | `source`, `output` |
+| `define_metadata()` | Non-computed variables (e.g., medians) | `output`, `definition` |
 
 Definitions are passed to `compile_acs_data()` alongside table
 names in a `list()`. They operate on the columns produced by the
@@ -85,8 +86,9 @@ the definitions directly to `compile_acs_data()`.
 Our target variable--the share of white men aged 18-44--requires
 summing several age-group columns (18-19, 20, 21, 22-24, 25-29,
 30-34, 35-39, 40-44) and dividing by the table universe.
-`define_percent()` with `numerator_regex` handles this: it matches
-all columns fitting a pattern and sums them into the numerator.
+`define_percent()` handles this: when its `numerator` is a regex,
+it matches all columns fitting the pattern and sums them into the
+numerator.
 
 The auto-processed column names from B01001A follow the pattern
 `sex_by_age_white_alone_male_{age_range}_years`, so we can target
@@ -98,10 +100,10 @@ df = compile_acs_data(
   tables = list(
     "B01001A",
     define_percent(
-      "white_male_18_44_percent",
-      numerator_regex = "sex_by_age_white_alone_male_(1[89]|2[0-9]|3[0-9]|4[0-4])",
-      numerator_exclude_regex = "percent",
-      denominator_variables = c("sex_by_age_white_alone_universe"))),
+      numerator = "sex_by_age_white_alone_male_(1[89]|2[0-9]|3[0-9]|4[0-4])",
+      denominator = "sex_by_age_white_alone_universe",
+      output = "white_male_18_44_percent",
+      exclude = "percent")),
   years = 2024,
   geography = "county",
   states = "NJ")
@@ -148,30 +150,33 @@ df_snap %>%
   filter(!match)
 ```
 
-### Across-percent with a complement
+### Batch percentages with a complement
 
 Percentages for all race categories, plus a person-of-color
 complement. This is how the built-in `race` table works internally.
+Passing `each = TRUE` switches `define_percent()` into batch mode:
+the `numerator` is a regex, and one percentage is produced per
+matched column (each named `<matched_column>_percent`).
 
 ```r
 compile_acs_data(
   tables = list(
     "race",
-    define_across_percent(
-      input_regex = "^race_nonhispanic|^race_hispanic",
-      output_suffix = "_percent",
-      denominator = "race_universe"),
+    define_percent(
+      "^race_nonhispanic|^race_hispanic",
+      denominator = "race_universe",
+      each = TRUE),
     ## race_personofcolor_percent is the share of all individuals who are not
     ## non-Hispanic, White alone, i.e., the complement
-    define_one_minus(
-      "race_personofcolor_percent",
-      source_variable = "race_nonhispanic_white_alone_percent")),
+    define_complement(
+      source = "race_nonhispanic_white_alone_percent",
+      output = "race_personofcolor_percent")),
   years = 2024,
   geography = "county",
   states = "DC")
 ```
 
-### Across-sum followed by across-percent
+### Batch sum followed by batch percent
 
 Sum male + female counts into combined age variables, then calculate
 percentages. This is how the built-in `sex_by_age` table works
@@ -179,28 +184,26 @@ internally.
 
 This one is a bit tricky--the source table includes variables for
 each age group, split by sex. To get age groups, we have to add the
-two sex-specific estimates for the given age group. This requires us
-to specify an `input_regex`, which selects, in this case, all
-female-specific age variables. The `addend_function` then
-programmatically identifies the same-named, male-specific variables.
-The `output_naming_function` simplifies the resulting combined
-variable, removing the sex category and other extraneous words.
+two sex-specific estimates for the given age group. We pass a regex
+to `define_sum(..., each = TRUE)` that selects all female-specific
+age variables. `add_replace` programmatically identifies the
+same-named, male-specific variables via string substitution.
+`output_replace` simplifies the resulting combined variable name,
+removing the sex category and other extraneous words.
 
 ```r
 compile_acs_data(
   tables = list(
     "sex_by_age",
-    define_across_sum(
-      input_regex = "sex_by_age_female_.*years($|_over$)",
-      addend_function = function(column) {
-        column %>% stringr::str_replace("female", "male")},
-      output_naming_function = function(column) {
-        column %>% stringr::str_replace("sex_by_age_female_", "age_")
-      }),
-    define_across_percent(
-      input_regex = "^age.*years($|_over$)",
-      output_suffix = "_percent",
-      denominator = "sex_by_age_universe")),
+    define_sum(
+      "sex_by_age_female_.*years($|_over$)",
+      each = TRUE,
+      add_replace = c("female" = "male"),
+      output_replace = c("sex_by_age_female_" = "age_")),
+    define_percent(
+      "^age.*years($|_over$)",
+      denominator = "sex_by_age_universe",
+      each = TRUE)),
   years = 2024,
   geography = "county",
   states = "DC")
@@ -209,18 +212,19 @@ compile_acs_data(
 ### Complex percentage with subtraction
 
 For cases where the numerator or denominator requires summing or
-subtracting multiple variables, use the `numerator_variables`,
-`denominator_variables`, and optional `*_subtract_*` arguments:
+subtracting multiple variables, pass character vectors to
+`numerator` / `denominator` and use the `subtract_from_numerator` /
+`subtract_from_denominator` arguments:
 
 ```{r}
 df_complex = compile_acs_data(
   tables = list(
     "snap",
     define_percent(
-      "snap_not_received_pct_complex",
-      numerator_variables = c("snap_universe"),
-      numerator_subtract_variables = c("snap_received"),
-      denominator_variables = c("snap_universe"))),
+      numerator = "snap_universe",
+      denominator = "snap_universe",
+      subtract_from_numerator = "snap_received",
+      output = "snap_not_received_pct_complex")),
   years = 2024,
   geography = "county",
   states = "DC")
