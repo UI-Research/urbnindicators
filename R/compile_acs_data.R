@@ -490,7 +490,6 @@ compile_acs_data = function(
   ## warn user -- county-by-county queries are slow and should be used if only
   ## one or a few counties are desired
   if (length(counties) > 5) {
-
     cli::cli_warn(c(
       "County-level queries can be slow for more than a few counties.",
       "i" = "Omit the {.arg counties} parameter and filter after the function returns."))}

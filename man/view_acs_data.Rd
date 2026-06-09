@@ -31,9 +31,10 @@ geographies. Any other value (or \code{NULL}) hides the dropdown.}
 target geographies onto which the source data are interpolated via
 \code{\link[=interpolate_acs]{interpolate_acs()}} using area-weighted overlap. Must contain a \code{GEOID}
 column that uniquely identifies each polygon; an optional \code{NAME} column
-is used in popups when present. When supplied, a "Geography" toggle
-appears in the sidebar that switches the map between the source and the
-target dataset. Benchmark values remain computed from the source data;
+is used in popups when present. When supplied (or once polygons are drawn
+in-app), a "Geography" toggle appears in the sidebar that switches the map
+between the source and the target dataset. Benchmark values remain
+computed from the source data;
 in Target view, each target polygon is mapped to a parent (county /
 state / national) by majority-area overlap.}
 
@@ -75,6 +76,30 @@ and significance is tested via \code{\link[tidycensus:significance]{tidycensus::
 90 percent confidence level (matching the \emph{quantified survey error}
 vignette). Variables without a margin-of-error column fall back to the
 default coloring.
+
+Regardless of \code{target_geographies}, the map carries a drawing toolbar at its
+top-left. Draw one or more polygons and click "Interpolate to drawn area" in
+the sidebar to interpolate the source data onto them via \code{\link[=interpolate_acs]{interpolate_acs()}};
+the map then switches to a "Target" view of the result, and benchmarking (if
+available) compares each drawn polygon to the parent geography it mostly
+overlaps. "Clear target" discards the drawn polygons, reverting to
+\code{target_geographies} when one was supplied and otherwise to the source view.
+
+Interpolation is only accurate where a target polygon is fully covered by the
+source geographies. Any drawn polygon (or supplied \code{target_geographies} row)
+that extends beyond the source extent cannot be accurately interpolated, so
+its values are set to \code{NA} (rendered in neutral grey) and a warning is shown
+in the app.
+
+An "Export" section in the sidebar offers two downloads. "Download data"
+writes the currently-visualized data to CSV, including each variable's margin
+of error (\verb{<var>_M} columns) and, when a statistical benchmark is selected,
+the benchmark value, its margin of error, and the significance category for
+the selected variable. "Download figure" opens a dialog for choosing an
+export resolution (1x-4x the on-screen size), then saves the live map exactly
+as displayed — basemap, active layer, current zoom and pan, and any drawn
+areas — as a \code{.png}. The capture is performed in the browser, so it works
+only in an interactive (locally-run) session.
 
 \code{view_acs_data()} requires the \code{shiny}, \code{mapgl}, \code{bslib}, and \code{ggplot2}
 packages. These are listed in \code{Suggests} and checked at runtime.
