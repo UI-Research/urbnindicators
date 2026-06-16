@@ -30,12 +30,15 @@
 #' default coloring.
 #'
 #' Regardless of `target_geographies`, the map carries a drawing toolbar at its
-#' top-left. Draw one or more polygons and click "Interpolate to drawn area" in
-#' the sidebar to interpolate the source data onto them via [interpolate_acs()];
-#' the map then switches to a "Target" view of the result, and benchmarking (if
-#' available) compares each drawn polygon to the parent geography it mostly
-#' overlaps. "Clear target" discards the drawn polygons, reverting to
-#' `target_geographies` when one was supplied and otherwise to the source view.
+#' top-left with "Point", "Line", and "Polygon" tools. Each drawn feature gets a
+#' text field in the sidebar where it can be named; the names appear in popups
+#' and the exported data. Draw one or more polygons and click "Interpolate to
+#' drawn area" in the sidebar to interpolate the source data onto them via
+#' [interpolate_acs()]; the map then switches to a "Target" view of the result,
+#' and benchmarking (if available) compares each drawn polygon to the parent
+#' geography it mostly overlaps. "Clear target" discards the drawn polygons,
+#' reverting to `target_geographies` when one was supplied and otherwise to the
+#' source view.
 #'
 #' Interpolation is only accurate where a target polygon is fully covered by the
 #' source geographies. Any drawn polygon (or supplied `target_geographies` row)
@@ -43,15 +46,38 @@
 #' its values are set to `NA` (rendered in neutral grey) and a warning is shown
 #' in the app.
 #'
-#' An "Export" section in the sidebar offers two downloads. "Download data"
-#' writes the currently-visualized data to CSV, including each variable's margin
-#' of error (`<var>_M` columns) and, when a statistical benchmark is selected,
-#' the benchmark value, its margin of error, and the significance category for
-#' the selected variable. "Download figure" opens a dialog for choosing an
+#' A "Download" section in the sidebar offers two downloads. "Download data"
+#' opens a dialog to pick a file format — CSV, GeoPackage (`.gpkg`), GeoJSON,
+#' GeoParquet (`.parquet`), or non-spatial Parquet (`.parquet`) — and, when an
+#' interpolated (target) dataset exists, whether to export the interpolated
+#' geographies only or those plus the source geographies (distinguished by a
+#' `geography_type` column). The spatial formats retain geometry (and, in Target
+#' view, the user-supplied names of the drawn geographies); the export includes
+#' each variable's margin of error (`<var>_M` columns) and, when a statistical
+#' benchmark is selected, the benchmark value, its margin of error, and the
+#' significance category for the selected variable. GeoParquet requires the
+#' `sfarrow` package and non-spatial Parquet requires `arrow`; if a chosen
+#' format's packages aren't installed, the data is written to CSV instead.
+#' "Download figure" opens a dialog for choosing an
 #' export resolution (1x-4x the on-screen size), then saves the live map exactly
 #' as displayed — basemap, active layer, current zoom and pan, and any drawn
 #' areas — as a `.png`. The capture is performed in the browser, so it works
 #' only in an interactive (locally-run) session.
+#'
+#' The sidebar is organized into collapsible sections — "Data" (variable, year,
+#' statistical benchmark, and the data-distribution histogram), "Interpolate"
+#' (the source/target toggle and custom-geography drawing/naming), "Visual
+#' parameters", and "Download" — with only "Data" open at launch. The
+#' "Interpolate" section auto-expands whenever a polygon is drawn.
+#'
+#' The "Visual parameters" section exposes display controls that don't change the
+#' data: a polygon-opacity slider, a legend-title override (blank uses the
+#' variable's pretty name), a basemap picker (CARTO Positron / Dark Matter /
+#' Voyager plus tokenless ESRI satellite and OpenTopoMap topographic rasters),
+#' and checkboxes that toggle a scale bar and a cardinal-direction compass (with
+#' N/E/S/W labels and an "N" over the north arrow; click it to reset north). A
+#' layers toggle at the map's bottom-right separately shows or hides the
+#' base-geography choropleth and any drawn features.
 #'
 #' `view_acs_data()` requires the `shiny`, `mapgl`, `bslib`, and `ggplot2`
 #' packages. These are listed in `Suggests` and checked at runtime.
@@ -141,6 +167,13 @@ view_acs_data = function(.data, variables = NULL, geography = NULL,
   benchmark_levels = benchmark_levels_for_geography(geography)
 
   data1 = sf::st_transform(.data, 4326)
+  ## st_transform drops the compile_acs_data() attributes; re-attach the ones the
+  ## draw-your-own-target interpolation path needs (codebook is re-attached in the
+  ## server). The launch-time target path uses the original `.data`, which still
+  ## carries these.
+  attr(data1, "resolved_tables")    = attr(.data, "resolved_tables")
+  attr(data1, "auto_table_entries") = attr(.data, "auto_table_entries")
+  attr(data1, "user_definitions")   = attr(.data, "user_definitions")
   has_multi_year =
     "data_source_year" %in% colnames(data1) &&
     length(unique(data1$data_source_year)) > 1
@@ -469,8 +502,17 @@ interpolate_to_targets = function(source_sf, target_sf, benchmark_levels) {
       target_GEOID = .data$target_geoid,
       share        = .data$share)
 
+  ## Drop geometry but carry the compile_acs_data() attributes onto the frame
+  ## interpolate_acs() reads — it needs the codebook plus the registry/auto/user
+  ## definitions to recompute every derived variable (not just registry ones).
+  source_no_geom = sf::st_drop_geometry(source_sf)
+  for (a1 in c("codebook", "resolved_tables", "auto_table_entries",
+               "user_definitions")) {
+    attr(source_no_geom, a1) = attr(source_sf, a1)
+  }
+
   interp1 = interpolate_acs(
-    .data                 = sf::st_drop_geometry(source_sf),
+    .data                 = source_no_geom,
     target_geoid_column   = "target_GEOID",
     weight                = "share",
     crosswalk             = xwalk_for_interp)
@@ -532,6 +574,15 @@ prepare_target_dataset = function(.data, target_geographies, benchmark_levels) {
   if (nrow(target_geographies) == 0) {
     cli::cli_abort("{.arg target_geographies} has zero rows.")
   }
+  ## Fail loud on duplicate GEOIDs rather than silently dropping polygons in the
+  ## crosswalk's distinct() (build_spatial_crosswalk / interpolate_to_targets).
+  dup1 = unique(target_geographies[["GEOID"]][
+    duplicated(target_geographies[["GEOID"]])])
+  if (length(dup1) > 0) {
+    cli::cli_abort(c(
+      "{.arg target_geographies} has duplicate {.code GEOID} values.",
+      "i" = "Each polygon needs a unique GEOID; {length(dup1)} {?is/are} repeated: {.val {utils::head(dup1, 5)}}."))
+  }
 
   cli::cli_inform("Computing spatial crosswalk and interpolating to target geographies...")
 
@@ -591,9 +642,12 @@ classify_significance = function(est1, moe1, est2, moe2, clevel = 0.9) {
                              clevel = clevel),
     error = function(e) rep(NA, n1))
 
+  ## which() drops NAs from the index, so these assignments can't trip the
+  ## "NAs are not allowed in subscripted assignments" error regardless of what
+  ## tidycensus::significance() returns for NA inputs.
   out1 = rep("Not significant", n1)
-  out1[!is.na(sig1) & sig1 & est1 > est2] = "Larger"
-  out1[!is.na(sig1) & sig1 & est1 < est2] = "Smaller"
+  out1[which(!is.na(sig1) & sig1 & est1 > est2)] = "Larger"
+  out1[which(!is.na(sig1) & sig1 & est1 < est2)] = "Smaller"
   out1[is.na(est1) | is.na(est2) | is.na(moe1) | is.na(moe2) | is.na(sig1)] = NA_character_
   out1
 }
@@ -684,11 +738,29 @@ htmltools_escape = function(x) {
     stringr::str_replace_all('"', "&quot;")
 }
 
-## Evenly-spaced color stops across a numeric range; one stop per palette entry.
-## `range1` is taken as a 2-element numeric (lower, upper); when degenerate the
-## upper bound is nudged so mapgl::interpolate gets a strictly increasing input.
-make_color_stops = function(range1, palette) {
+## Color stops across a numeric range; one stop per palette entry. `range1` is a
+## 2-element numeric (lower, upper); when degenerate the upper bound is nudged so
+## mapgl::interpolate gets a strictly increasing input.
+##
+## With `quantile = TRUE` and a `values` vector, the stops are placed at the
+## empirical quantiles of the in-range values rather than at equal intervals,
+## so the (quintile) palette reflects the data's distribution — a true quantile
+## classification instead of an equal-interval one. Ties can collapse adjacent
+## stops; the palette is truncated to match. Falls back to equal spacing when
+## there aren't enough finite values to define one stop per color.
+make_color_stops = function(range1, palette, values = NULL, quantile = FALSE) {
   if (length(range1) != 2 || any(!is.finite(range1))) return(NULL)
+  if (isTRUE(quantile) && !is.null(values)) {
+    v1 = values[is.finite(values) & values >= range1[1] & values <= range1[2]]
+    if (length(v1) >= length(palette)) {
+      stops1 = sort(unique(stats::quantile(
+        v1, probs = seq(0, 1, length.out = length(palette)),
+        names = FALSE, type = 7)))
+      if (length(stops1) >= 2) {
+        return(list(stops = stops1, colors = palette[seq_along(stops1)]))
+      }
+    }
+  }
   if (range1[1] == range1[2]) range1[2] = range1[1] + 1e-9
   list(
     stops  = seq(range1[1], range1[2], length.out = length(palette)),
@@ -703,78 +775,169 @@ out_of_range_indices = function(values, range1) {
   which(out1)
 }
 
+## Basemap choices for the "Visual parameters" picker. The vector CARTO styles
+## (positron / dark-matter / voyager) and the satellite (ESRI World Imagery) and
+## topographic (OpenTopoMap) raster styles are all tokenless, so no API key is
+## required. Names are the user-facing labels; values are passed to basemap_style().
+.basemap_choices = c(
+  "Light (Positron)"  = "positron",
+  "Dark matter"       = "dark-matter",
+  "Streets (Voyager)" = "voyager",
+  "Satellite"         = "satellite",
+  "Topographic"       = "topographic")
+
+## Resolve a basemap choice to a MapLibre style: a style URL via
+## mapgl::carto_style() for the vector options, or a raw raster style list for
+## the satellite/topographic options (built from open, tokenless tile servers).
+basemap_style = function(name) {
+  raster_style = function(tiles, attribution, maxzoom = 19) {
+    list(
+      version = 8,
+      sources = list(basemap = list(
+        type        = "raster",
+        tiles       = list(tiles),
+        tileSize    = 256,
+        maxzoom     = maxzoom,
+        attribution = attribution)),
+      layers = list(list(
+        id = "basemap", type = "raster", source = "basemap")))
+  }
+  switch(name %||% "positron",
+    satellite = raster_style(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      "Tiles © Esri"),
+    topographic = raster_style(
+      "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
+      "© OpenTopoMap (CC-BY-SA)", maxzoom = 17),
+    mapgl::carto_style(name))
+}
+
+## Parse the mapbox-gl-draw FeatureCollection JSON that mapgl pushes to
+## input$<map>_drawn_features into an sf with `id` and `geom_type` columns, or
+## NULL when there are no features. sf::st_read preserves feature order and the
+## feature-level `id`, so user-supplied names keyed by id stay aligned across
+## redraws (e.g., when a vertex is edited).
+parse_drawn_features = function(json) {
+  if (is.null(json) || length(json) == 0 || json %in% c("", "null")) return(NULL)
+  out = tryCatch(sf::st_read(json, quiet = TRUE), error = function(e) NULL)
+  if (is.null(out) || nrow(out) == 0) return(NULL)
+  out$geom_type = as.character(sf::st_geometry_type(out))
+  if (!"id" %in% colnames(out)) out$id = as.character(seq_len(nrow(out)))
+  out$id = as.character(out$id)
+  out
+}
+
+## Friendly label for a drawn geometry's type, used in the naming UI.
+draw_type_label = function(geom_type) {
+  dplyr::case_when(
+    stringr::str_detect(geom_type, "POLYGON")    ~ "Polygon",
+    stringr::str_detect(geom_type, "LINESTRING") ~ "Line",
+    stringr::str_detect(geom_type, "POINT")      ~ "Point",
+    TRUE                                         ~ "Feature")
+}
+
 .view_acs_ui = function(choices1, has_multi_year, data1, benchmark_levels) {
   year_choices = if (has_multi_year) sort(unique(data1$data_source_year)) else NULL
 
   sidebar1 = bslib::sidebar(
     width = 320,
-    ## The Source/Target toggle appears once a target exists — either supplied
-    ## at launch via `target_geographies` or drawn in-app. `has_target_flag` is
-    ## a server-side reactive that tracks this.
-    shiny::conditionalPanel(
-      condition = "output.has_target_flag == true",
-      shiny::selectInput("geo_view",
-        label   = "Geography",
-        choices = c("Source", "Target"),
-        selected = "Source")),
-    shiny::selectInput("variable",
-      label   = "Variable",
-      choices = choices1,
-      selected = unname(choices1[[1]])),
-    if (has_multi_year)
-      shiny::selectInput("year",
-        label   = "Year",
-        choices = year_choices,
-        selected = max(year_choices))
-      else NULL,
-    if (length(benchmark_levels) > 0)
-      shiny::selectInput("benchmark",
-        label   = "Statistical benchmark",
-        choices = benchmark_levels,
-        selected = "none")
-      else NULL,
-    if (length(benchmark_levels) > 0)
-      shiny::tags$div(
-        style = "font-size: 9px; color: #5c5859; margin-top: -0.3em;",
-        shiny::textOutput("benchmark_note", inline = FALSE))
-      else NULL,
-    shiny::tags$hr(style = "margin: 0;"),
-    shiny::tags$div(
-      style = "font-weight: 700; font-size: 11px; margin-bottom: 0.05em;",
-      "Export"),
-    shiny::downloadButton("download_data", "Download data",
-      class = "btn-outline-secondary btn-sm", style = "width: 100%;"),
-    shiny::actionButton("figure_options", "Download figure",
-      class = "btn-outline-secondary btn-sm", width = "100%"),
-    shiny::tags$hr(style = "margin: 0;"),
-    shiny::tags$div(
-      shiny::tags$div(
-        style = "font-weight: 700; font-size: 11px; margin-bottom: 0.05em;",
-        "Custom geographies"),
-      shiny::tags$div(
-        style = "font-size: 10px; color: #000000;",
-        paste("Use the polygon tool at the top-left of the map to draw one or",
-              "more areas, then interpolate the ACS data onto them."))),
-    shiny::actionButton("use_drawn", "Interpolate to drawn area",
-      class = "btn-primary btn-sm", width = "100%"),
-    shiny::conditionalPanel(
-      condition = "output.has_target_flag == true",
-      shiny::actionButton("clear_target", "Clear target",
-        class = "btn-outline-secondary btn-sm", width = "100%")),
-    shiny::tags$hr(style = "margin: 0;"),
-    shiny::tags$div(
-      style = "font-size: 10px; color: #000000;",
-      "Drag on the histogram to limit the choropleth color range."),
-    shiny::plotOutput(
-      "hist",
-      height = "240px",
-      brush  = shiny::brushOpts(
-        id         = "hist_brush",
-        direction  = "x",
-        resetOnNew = TRUE,
-        fill       = "#1696d2",
-        stroke     = "#0a4c6a",
-        opacity    = 0.25)))
+    bslib::accordion(
+      ## Only the "Data" section is open at launch; the rest start collapsed.
+      ## `id` lets the server auto-open "Interpolate" when a polygon is drawn.
+      id    = "sidebar_sections",
+      open  = "Data",
+      class = "acs-sidebar-accordion",
+
+      bslib::accordion_panel(
+        "Data",
+        shiny::selectInput("variable",
+          label   = "Variable",
+          choices = choices1,
+          selected = unname(choices1[[1]])),
+        if (has_multi_year)
+          shiny::selectInput("year",
+            label   = "Year",
+            choices = year_choices,
+            selected = max(year_choices))
+          else NULL,
+        if (length(benchmark_levels) > 0)
+          shiny::selectInput("benchmark",
+            label   = "Statistical benchmark",
+            choices = benchmark_levels,
+            selected = "none")
+          else NULL,
+        if (length(benchmark_levels) > 0)
+          shiny::tags$div(
+            style = "font-size: 9px; color: #5c5859; margin-top: -0.3em;",
+            shiny::textOutput("benchmark_note", inline = FALSE))
+          else NULL,
+        shiny::tags$div(
+          style = "font-weight: 700; font-size: 11px; margin: 0.4em 0 0.05em;",
+          "Data distribution"),
+        shiny::tags$div(
+          style = "font-size: 10px; color: #000000;",
+          "Drag on the histogram to limit the choropleth color range."),
+        shiny::plotOutput(
+          "hist",
+          height = "240px",
+          brush  = shiny::brushOpts(
+            id         = "hist_brush",
+            direction  = "x",
+            resetOnNew = TRUE,
+            fill       = "#1696d2",
+            stroke     = "#0a4c6a",
+            opacity    = 0.25))),
+
+      bslib::accordion_panel(
+        "Interpolate",
+        ## The Source/Target toggle appears once a target exists — either supplied
+        ## at launch via `target_geographies` or drawn in-app. `has_target_flag`
+        ## is a server-side reactive that tracks this.
+        shiny::conditionalPanel(
+          condition = "output.has_target_flag == true",
+          shiny::selectInput("geo_view",
+            label   = "Geography",
+            choices = c("Source", "Target"),
+            selected = "Source")),
+        shiny::tags$div(
+          style = "font-weight: 700; font-size: 11px; margin-bottom: 0.05em;",
+          "Custom geographies"),
+        shiny::tags$div(
+          style = "font-size: 10px; color: #000000;",
+          paste("Use the point, line, and polygon tools at the top-left of the",
+                "map to draw and name features, then interpolate the ACS data",
+                "onto any polygons.")),
+        ## One named text field per drawn feature (server-rendered).
+        shiny::uiOutput("drawn_features_ui"),
+        shiny::actionButton("use_drawn", "Interpolate to drawn area",
+          class = "btn-primary btn-sm", width = "100%"),
+        shiny::conditionalPanel(
+          condition = "output.has_target_flag == true",
+          shiny::actionButton("clear_target", "Clear target",
+            class = "btn-outline-secondary btn-sm", width = "100%"))),
+
+      bslib::accordion_panel(
+        "Visual parameters",
+        shiny::sliderInput("poly_opacity", "Polygon opacity",
+          min = 0, max = 1, value = 0.7, step = 0.05, ticks = FALSE),
+        shiny::textInput("legend_title", "Legend title",
+          value = "", placeholder = "(variable name)"),
+        shiny::numericInput("legend_font_size", "Legend font size (px)",
+          value = 11, min = 6, max = 28, step = 1),
+        shiny::selectInput("basemap", "Basemap",
+          choices = .basemap_choices, selected = "positron"),
+        shiny::checkboxInput("show_compass", "Compass", value = FALSE),
+        shiny::checkboxInput("show_scalebar", "Scale bar", value = FALSE)),
+
+      bslib::accordion_panel(
+        "Download",
+        shiny::tags$div(
+          style = "font-weight: 700; font-size: 11px; margin-bottom: 0.05em;",
+          "Export"),
+        shiny::actionButton("data_options", "Download data",
+          class = "btn-outline-secondary btn-sm", width = "100%"),
+        shiny::actionButton("figure_options", "Download figure",
+          class = "btn-outline-secondary btn-sm", width = "100%"))))
 
   bslib::page_sidebar(
     title    = "ACS Data Viewer",
@@ -784,7 +947,13 @@ out_of_range_indices = function(values, range1) {
       shiny::tags$style(shiny::HTML(.legend_css)),
       shiny::tags$style(shiny::HTML(.notification_css)),
       shiny::tags$style(shiny::HTML(.sidebar_css)),
-      shiny::tags$script(shiny::HTML(.export_js))),
+      shiny::tags$script(shiny::HTML(.export_js)),
+      shiny::tags$script(shiny::HTML(.controls_js)),
+      shiny::tags$script(shiny::HTML(.draw_tooltips_js)),
+      shiny::tags$script(shiny::HTML(.layers_js)),
+      shiny::tags$script(shiny::HTML(.draw_popup_js))),
+    ## Reactive <style> driven by the legend-font-size input (zero-height).
+    shiny::uiOutput("legend_font_css"),
     mapgl::maplibreOutput("map", height = "100%"))
 }
 
@@ -792,6 +961,12 @@ out_of_range_indices = function(values, range1) {
 ## Note: do NOT set background-color on `[class*='legend']` here — that selector
 ## also matches the color-swatch elements inside categorical legends and would
 ## paint them white, hiding the colors entirely.
+##
+## mapgl scopes the legend title as `#<legend-id> h2 { white-space: nowrap;
+## text-overflow: ellipsis }` — an id selector that out-specifies a class
+## selector, so the on-screen title truncates rather than wraps. Override it with
+## `!important` (which beats specificity) so the title wraps for both continuous
+## and categorical (statistical-significance) legends.
 .legend_css = "
 .maplibregl-map [class*='legend'],
 .mapboxgl-map  [class*='legend'] {
@@ -803,6 +978,13 @@ out_of_range_indices = function(values, range1) {
   overflow: visible;
   text-overflow: clip;
 }
+.maplibregl-map .mapboxgl-legend h2,
+.mapboxgl-map  .mapboxgl-legend h2 {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: 100% !important;
+}
 "
 
 ## Compact sidebar typography: bold-but-small input labels ("Variable",
@@ -812,8 +994,8 @@ out_of_range_indices = function(values, range1) {
 .sidebar_css = "
 .sidebar > .sidebar-content {
   gap: 0.35rem !important;
-  padding-left: 0.9rem !important;
-  padding-right: 0.9rem !important;
+  padding-left: 1.15rem !important;
+  padding-right: 1.15rem !important;
   padding-top: 1.5rem !important;
   padding-bottom: 0.9rem !important;
 }
@@ -829,15 +1011,38 @@ out_of_range_indices = function(values, range1) {
 }
 .sidebar .form-select,
 .sidebar .selectize-input,
-.sidebar select {
+.sidebar select,
+.sidebar .form-control,
+.sidebar input[type='text'],
+.sidebar input[type='number'] {
   font-size: 11px;
   min-height: auto;
   padding-top: 0.2rem;
   padding-bottom: 0.2rem;
 }
+/* Checkbox labels (\"Compass\", \"Scale bar\") mirror the bold-11px input labels
+   used by selects like \"Basemap\". */
+.sidebar .checkbox label,
+.sidebar .form-check-label {
+  font-weight: 700;
+  font-size: 11px;
+}
 .sidebar .btn-sm {
   font-size: 11px;
   padding: 0.25rem 0.5rem;
+}
+/* Section headers (Data / Geographies / Visual parameters / Download): bold and
+   slightly smaller than the Bootstrap default, applied uniformly. */
+.sidebar .accordion-button {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0.45rem 0.6rem;
+}
+.sidebar .accordion-body {
+  padding: 0.5rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 "
 
@@ -884,8 +1089,12 @@ out_of_range_indices = function(values, range1) {
   // S = device pixels per CSS pixel, so the legend is sized like the on-screen one.
   function drawLegend(ctx, lg, W, S) {
     if (!lg || !lg.type) return;
-    var pad = 8 * S, fT = 10.5 * S, fL = 11 * S, mg = 10 * S, lineGap = 4 * S;
-    var titleLH = fT * 1.25, sw = 12 * S, gap = 6 * S, rowH = 18 * S, barH = 10 * S;
+    // Base font size from the sidebar control (px); other metrics scale off it
+    // so rows/swatches/bar track the chosen size like the on-screen legend.
+    var base = (lg.font_size && lg.font_size > 0) ? lg.font_size : 11;
+    var pad = 8 * S, fT = base * S, fL = base * S, mg = 10 * S, lineGap = 4 * S;
+    var titleLH = fT * 1.3, sw = base * S, gap = 6 * S,
+        rowH = base * 1.7 * S, barH = base * 0.9 * S;
     var labels = lg.labels || [], colors = lg.colors || [];
     ctx.textBaseline = 'top'; ctx.textAlign = 'left';
 
@@ -1020,6 +1229,248 @@ out_of_range_indices = function(values, range1) {
     renderMap.once('idle', finish);
     setTimeout(finish, 8000);
   });
+})();
+"
+
+## Client-side toggle for the compass and scale-bar map controls. mapgl exposes
+## no per-control removal (only clear_controls(), which would also drop the draw
+## toolbar), so add/remove the native maplibre controls directly and stash the
+## instances on the map so they can be removed again. The scale bar is a plain
+## ScaleControl; the compass is a custom maplibre IControl (makeCompass) drawing
+## a dial with N/E/S/W labels and a two-tone needle whose 'N' sits over the north
+## arrow, rotating opposite the map bearing. A polling wrapper defers
+## registration until Shiny is available.
+.controls_js = "
+(function register() {
+  if (typeof Shiny === 'undefined' || !Shiny.addCustomMessageHandler) {
+    setTimeout(register, 50);
+    return;
+  }
+
+  function ensureCompassCss() {
+    if (document.getElementById('acs-compass-css')) return;
+    var s = document.createElement('style');
+    s.id = 'acs-compass-css';
+    s.textContent =
+      '.acs-compass-ctrl{cursor:pointer;padding:2px;line-height:0;}' +
+      '.acs-compass-ctrl svg{display:block;}';
+    document.head.appendChild(s);
+  }
+
+  // Compass dial: N/E/S/W labels and a two-tone needle, with 'N' over the north
+  // arrow. The rotor group is rotated by -bearing (via the SVG transform attr,
+  // which is more reliable than CSS transform-origin on SVG) so north always
+  // points to true north. Clicking the control resets bearing and pitch.
+  function makeCompass() {
+    return {
+      onAdd: function(map) {
+        ensureCompassCss();
+        this._map = map;
+        var c = document.createElement('div');
+        c.className = 'maplibregl-ctrl maplibregl-ctrl-group acs-compass-ctrl';
+        c.title = 'Reset north';
+        c.innerHTML =
+          '<svg width=\"40\" height=\"40\" viewBox=\"0 0 44 44\">' +
+            '<g class=\"acs-compass-rotor\">' +
+              '<circle cx=\"22\" cy=\"22\" r=\"20\" fill=\"none\" stroke=\"#d2d2d2\" stroke-width=\"1\"/>' +
+              '<polygon points=\"22,12 18.5,22 25.5,22\" fill=\"#1696d2\"/>' +
+              '<polygon points=\"22,32 18.5,22 25.5,22\" fill=\"#9d9d9d\"/>' +
+              '<text x=\"22\" y=\"6.5\" text-anchor=\"middle\" dominant-baseline=\"central\" font-size=\"8\" font-weight=\"700\" font-family=\"sans-serif\" fill=\"#000000\">N</text>' +
+              '<text x=\"37.5\" y=\"22\" text-anchor=\"middle\" dominant-baseline=\"central\" font-size=\"7\" font-family=\"sans-serif\" fill=\"#5c5859\">E</text>' +
+              '<text x=\"22\" y=\"37.5\" text-anchor=\"middle\" dominant-baseline=\"central\" font-size=\"7\" font-family=\"sans-serif\" fill=\"#5c5859\">S</text>' +
+              '<text x=\"6.5\" y=\"22\" text-anchor=\"middle\" dominant-baseline=\"central\" font-size=\"7\" font-family=\"sans-serif\" fill=\"#5c5859\">W</text>' +
+            '</g>' +
+          '</svg>';
+        var rotor = c.querySelector('.acs-compass-rotor');
+        this._update = function() {
+          rotor.setAttribute('transform', 'rotate(' + (-map.getBearing()) + ' 22 22)');
+        };
+        map.on('rotate', this._update);
+        this._update();
+        c.addEventListener('click', function() { map.easeTo({bearing: 0, pitch: 0}); });
+        this._el = c;
+        return c;
+      },
+      onRemove: function() {
+        if (this._update) this._map.off('rotate', this._update);
+        if (this._el && this._el.parentNode) this._el.parentNode.removeChild(this._el);
+        this._map = undefined;
+      }
+    };
+  }
+
+  Shiny.addCustomMessageHandler('acs_toggle_control', function(data) {
+    var widget = HTMLWidgets.find('#' + data.id);
+    if (!widget || typeof widget.getMap !== 'function') return;
+    var map = widget.getMap();
+    if (!map || typeof maplibregl === 'undefined') return;
+    map.__acsControls = map.__acsControls || {};
+    var key = data.control;
+    var existing = map.__acsControls[key];
+    if (data.show) {
+      if (existing) return;
+      var ctrl = (key === 'compass')
+        ? makeCompass()
+        : new maplibregl.ScaleControl({maxWidth: 100, unit: 'imperial'});
+      map.addControl(ctrl, data.position || 'bottom-right');
+      map.__acsControls[key] = ctrl;
+    } else if (existing) {
+      try { map.removeControl(existing); } catch (e) {}
+      map.__acsControls[key] = null;
+    }
+  });
+})();
+"
+
+## Relabel the mapbox-gl-draw toolbar buttons' hover tooltips to the plain
+## geometry names. The buttons render a short time after the map, so poll until
+## they exist (then stop). Titles persist across basemap (set_style) swaps since
+## controls aren't part of the map style.
+.draw_tooltips_js = "
+(function () {
+  var labels = {
+    'mapbox-gl-draw_point':   'Point',
+    'mapbox-gl-draw_line':    'Line',
+    'mapbox-gl-draw_polygon': 'Polygon'
+  };
+  function apply() {
+    var found = false;
+    Object.keys(labels).forEach(function (cls) {
+      var btns = document.getElementsByClassName(cls);
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].setAttribute('title', labels[cls]);
+        btns[i].setAttribute('aria-label', labels[cls]);
+        found = true;
+      }
+    });
+    return found;
+  }
+  var tries = 0;
+  var timer = setInterval(function () {
+    if (apply() || ++tries > 60) clearInterval(timer);
+  }, 400);
+})();
+"
+
+## On-map layers toggle: a small checkbox control (bottom-right) that shows/hides
+## the base-geography choropleth (the `acs` fill layer) and the user's drawn
+## features (the mapbox-gl-draw `gl-draw-*` layers). Visibility is stored on the
+## map and re-applied on every `idle` so it survives choropleth rebuilds (which
+## otherwise reset the new layer to visible) and draw edits.
+.layers_js = "
+(function () {
+  var tries = 0;
+  function injectCss() {
+    if (document.getElementById('acs-layers-css')) return;
+    var s = document.createElement('style');
+    s.id = 'acs-layers-css';
+    s.textContent =
+      '.acs-layers-ctrl{padding:5px 8px;font:11px/1.5 sans-serif;background:rgba(255,255,255,0.9);}' +
+      '.acs-layers-ctrl label{display:block;cursor:pointer;white-space:nowrap;margin:0;}' +
+      '.acs-layers-ctrl input{margin-right:5px;vertical-align:middle;}';
+    document.head.appendChild(s);
+  }
+  function init() {
+    if (typeof HTMLWidgets === 'undefined' || typeof maplibregl === 'undefined') {
+      if (++tries < 120) setTimeout(init, 300);
+      return;
+    }
+    var widget = HTMLWidgets.find('#map');
+    var map = widget && widget.getMap ? widget.getMap() : null;
+    if (!map) { if (++tries < 120) setTimeout(init, 300); return; }
+    if (map.__acsLayersControl) return;
+    injectCss();
+    map.__acsLayerVis = { acs: true, drawn: true };
+    function applyVis() {
+      var st = map.__acsLayerVis;
+      if (map.getLayer('acs')) {
+        map.setLayoutProperty('acs', 'visibility', st.acs ? 'visible' : 'none');
+      }
+      var layers = (map.getStyle() && map.getStyle().layers) || [];
+      for (var i = 0; i < layers.length; i++) {
+        if (layers[i].id.indexOf('gl-draw') === 0) {
+          try {
+            map.setLayoutProperty(layers[i].id, 'visibility', st.drawn ? 'visible' : 'none');
+          } catch (e) {}
+        }
+      }
+    }
+    var ctrl = {
+      onAdd: function () {
+        var c = document.createElement('div');
+        c.className = 'maplibregl-ctrl maplibregl-ctrl-group acs-layers-ctrl';
+        c.innerHTML =
+          '<label><input type=\"checkbox\" checked data-acs-layer=\"acs\"> Base geographies</label>' +
+          '<label><input type=\"checkbox\" checked data-acs-layer=\"drawn\"> Drawn features</label>';
+        c.addEventListener('change', function (e) {
+          var k = e.target.getAttribute('data-acs-layer');
+          if (!k) return;
+          map.__acsLayerVis[k] = e.target.checked;
+          applyVis();
+        });
+        this._el = c;
+        return c;
+      },
+      onRemove: function () {
+        if (this._el && this._el.parentNode) this._el.parentNode.removeChild(this._el);
+      }
+    };
+    map.addControl(ctrl, 'bottom-right');
+    map.__acsLayersControl = ctrl;
+    map.on('idle', applyVis);
+  }
+  init();
+})();
+"
+
+## While a draw tool is active, clicks are for placing vertices — not for
+## inspecting the choropleth — so suppress the layer's click popups. mapbox-gl-draw
+## fires `draw.modechange` on the map whenever the active mode changes; any mode
+## whose name starts with `draw_` (draw_point / draw_line_string / draw_polygon)
+## is an active-drawing mode. We toggle an `acs-drawing` class on the map
+## container that hides any maplibre popup via CSS (decoupled from mapgl's own
+## click handler, so handler order doesn't matter), and close any popup already
+## open when drawing starts. The binding lives on the map object, so it survives
+## basemap (set_style) swaps. A polling wrapper defers until the map exists.
+.draw_popup_js = "
+(function () {
+  var tries = 0;
+  function injectCss() {
+    if (document.getElementById('acs-draw-popup-css')) return;
+    var s = document.createElement('style');
+    s.id = 'acs-draw-popup-css';
+    s.textContent = '.acs-drawing .maplibregl-popup,' +
+                    '.acs-drawing .mapboxgl-popup{display:none !important;}';
+    document.head.appendChild(s);
+  }
+  function init() {
+    if (typeof HTMLWidgets === 'undefined') {
+      if (++tries < 120) setTimeout(init, 300);
+      return;
+    }
+    var widget = HTMLWidgets.find('#map');
+    var map = widget && widget.getMap ? widget.getMap() : null;
+    if (!map) { if (++tries < 120) setTimeout(init, 300); return; }
+    if (map.__acsDrawPopupBound) return;
+    map.__acsDrawPopupBound = true;
+    injectCss();
+    var container = map.getContainer();
+    function setDrawing(on) {
+      if (on) {
+        container.classList.add('acs-drawing');
+        var ps = container.querySelectorAll('.maplibregl-popup, .mapboxgl-popup');
+        for (var i = 0; i < ps.length; i++) {
+          if (ps[i].parentNode) ps[i].parentNode.removeChild(ps[i]);
+        }
+      } else {
+        container.classList.remove('acs-drawing');
+      }
+    }
+    map.on('draw.modechange', function (e) {
+      setDrawing(!!(e && e.mode && e.mode.indexOf('draw_') === 0));
+    });
+  }
+  init();
 })();
 "
 
@@ -1226,21 +1677,19 @@ out_of_range_indices = function(values, range1) {
       compute_benchmark_data(source_filtered_data(), st1$level)
     })
 
-    ## Per-row benchmark info for the active variable: a list of `values`,
-    ## `moes`, and `category` aligned to filtered_data() row order. NULL when
-    ## benchmarking is inactive.
-    benchmark_for_active_var = shiny::reactive({
+    ## Per-row benchmark info for the active variable against an arbitrary
+    ## dataset `df`: a list of `values`, `moes`, and `category` aligned to df's
+    ## row order. `lookup` is the target→parent map in Target view (NULL for
+    ## source-coded GEOIDs). NULL when benchmarking is inactive/unavailable.
+    row_benchmark_for = function(df, lookup) {
       st1 = benchmark_state()
       if (!st1$active) return(NULL)
       info1 = active_var_info()
       bt1   = benchmark_table()
       if (is.null(bt1) || !info1$var %in% colnames(bt1)) return(NULL)
+      if (is.null(info1$moe) || !info1$moe %in% colnames(df)) return(NULL)
 
-      df1 = filtered_data()
-      ds  = active_dataset()
-      lookup1 = if (ds$view == "target") target_state()$parent_lookup else NULL
-      parent_ids = assign_parent_geoids(df1[["GEOID"]], st1$level,
-                                        lookup = lookup1)
+      parent_ids = assign_parent_geoids(df[["GEOID"]], st1$level, lookup = lookup)
       lookup_idx = match(parent_ids, bt1[["parent_geoid"]])
 
       bench_vals = bt1[[info1$var]][lookup_idx]
@@ -1252,14 +1701,21 @@ out_of_range_indices = function(values, range1) {
       }
 
       cats1 = classify_significance(
-        est1 = df1[[info1$var]],
-        moe1 = df1[[info1$moe]],
+        est1 = df[[info1$var]],
+        moe1 = df[[info1$moe]],
         est2 = bench_vals,
         moe2 = bench_moes,
         clevel = 0.9)
 
       list(values = bench_vals, moes = bench_moes,
            category = cats1, label = st1$label)
+    }
+
+    ## The map/legend benchmark: row benchmark for the active (rendered) dataset.
+    benchmark_for_active_var = shiny::reactive({
+      ds      = active_dataset()
+      lookup1 = if (ds$view == "target") target_state()$parent_lookup else NULL
+      row_benchmark_for(filtered_data(), lookup1)
     })
 
     output$benchmark_note = shiny::renderText({
@@ -1269,51 +1725,183 @@ out_of_range_indices = function(values, range1) {
     shiny::outputOptions(output, "benchmark_note", suspendWhenHidden = FALSE)
 
     ## ----- Downloads -----
-    ## The currently-visualized data (the active dataset filtered to the
-    ## selected year). Per-variable MOEs are already present as `<var>_M`
-    ## columns; when benchmarking is active, the benchmark value, its MOE, and
-    ## the significance category for the selected variable are appended.
-    export_data = shiny::reactive({
-      df1   = filtered_data()
-      base1 = sf::st_drop_geometry(df1)
-      bm1   = benchmark_for_active_var()
-      if (!is.null(bm1)) {
-        info1 = active_var_info()
-        base1[[paste0(info1$var, "_benchmark")]]    = bm1$values
-        base1[[paste0(info1$var, "_benchmark_M")]]  = bm1$moes
-        base1[[paste0(info1$var, "_significance")]] = bm1$category
+    ## Append the active variable's benchmark columns (value, MOE, significance)
+    ## to `df`, computed against the supplied parent `lookup`. Returns `df`
+    ## unchanged when no benchmark is active.
+    attach_benchmark_cols = function(df, lookup) {
+      rb1 = row_benchmark_for(df, lookup)
+      if (is.null(rb1)) return(df)
+      info1 = active_var_info()
+      df[[paste0(info1$var, "_benchmark")]]    = rb1$values
+      df[[paste0(info1$var, "_benchmark_M")]]  = rb1$moes
+      df[[paste0(info1$var, "_significance")]] = rb1$category
+      df
+    }
+
+    ## Force an sf object's active geometry column to be named "geometry" so two
+    ## datasets can be row-bound without producing duplicate geometry columns.
+    standardize_geometry = function(x) {
+      gcol = attr(x, "sf_column")
+      if (identical(gcol, "geometry")) return(x)
+      geom = sf::st_geometry(x)
+      d = sf::st_drop_geometry(x)
+      d[["geometry"]] = geom
+      sf::st_as_sf(d, sf_column_name = "geometry")
+    }
+
+    ## The data to export, kept as an sf so spatial formats retain geometry.
+    ## `scope` is "interpolated" (the drawn/target geographies only) or "both"
+    ## (target rows plus the source geographies); it only matters when a target
+    ## exists. A `geography_type` column distinguishes the two when both are
+    ## included. Per-variable MOEs are already present as `<var>_M`; the drawn
+    ## geographies carry their user-supplied `NAME`s.
+    export_dataset_scoped = function(scope) {
+      tgt1 = target_state()
+      if (is.null(tgt1)) {
+        return(attach_benchmark_cols(filter_by_year(data1), NULL))
       }
-      base1
+      tgt_df1 = attach_benchmark_cols(filter_by_year(tgt1$data), tgt1$parent_lookup)
+      if (!identical(scope, "both")) return(tgt_df1)
+      src_df1 = attach_benchmark_cols(filter_by_year(data1), NULL)
+      src_df1[["geography_type"]] = "source"
+      tgt_df1[["geography_type"]] = "interpolated"
+      ## dplyr::bind_rows() can drop the sf class (returning a plain tibble)
+      ## depending on sf/dplyr/vctrs versions; re-promote so st_write() succeeds.
+      combined1 = dplyr::bind_rows(standardize_geometry(src_df1),
+                                   standardize_geometry(tgt_df1))
+      if (!inherits(combined1, "sf")) {
+        combined1 = sf::st_as_sf(combined1, sf_column_name = "geometry")
+      }
+      combined1
+    }
+
+    ## Whether the dependencies needed to write a given format are installed; CSV
+    ## always works. When they aren't, the download silently falls back to CSV.
+    export_format_ok = function(fmt) {
+      switch(fmt,
+        csv        = TRUE,
+        parquet    = requireNamespace("arrow", quietly = TRUE),
+        geoparquet = requireNamespace("sfarrow", quietly = TRUE),
+        gpkg       = "GPKG" %in% sf::st_drivers()$name,
+        geojson    = "GeoJSON" %in% sf::st_drivers()$name,
+        FALSE)
+    }
+    ## The format that will actually be written: the requested one if its
+    ## dependencies are present, else CSV.
+    effective_format = function() {
+      fmt1 = input$data_format %||% "csv"
+      if (export_format_ok(fmt1)) fmt1 else "csv"
+    }
+    format_extension = function(fmt) {
+      switch(fmt, csv = "csv", gpkg = "gpkg", geojson = "geojson",
+             geoparquet = "parquet", parquet = "parquet", "csv")
+    }
+
+    ## "Download data" opens a dialog for the file format and — only when an
+    ## interpolated (target) dataset exists — whether to include the source
+    ## geographies too.
+    shiny::observeEvent(input$data_options, {
+      shiny::showModal(shiny::modalDialog(
+        title     = "Download data",
+        size      = "s",
+        easyClose = TRUE,
+        shiny::selectInput("data_format", "File format",
+          choices = c("CSV (.csv)"                      = "csv",
+                      "GeoPackage (.gpkg)"              = "gpkg",
+                      "GeoJSON (.geojson)"              = "geojson",
+                      "GeoParquet (.parquet)"           = "geoparquet",
+                      "Parquet, non-spatial (.parquet)" = "parquet"),
+          selected = "csv"),
+        if (has_target_now())
+          shiny::radioButtons("data_scope", "Geographies to include",
+            choices = c("Interpolated only"        = "interpolated",
+                        "Interpolated and source"  = "both"),
+            selected = "interpolated")
+          else NULL,
+        footer = shiny::tagList(
+          shiny::modalButton("Cancel"),
+          shiny::downloadButton("download_data", "Download",
+            class = "btn-primary"))))
     })
 
     output$download_data = shiny::downloadHandler(
-      filename = function() paste0("acs_data_", Sys.Date(), ".csv"),
-      content  = function(file) {
-        utils::write.csv(export_data(), file, row.names = FALSE, na = "")
+      filename = function() {
+        paste0("acs_data_", Sys.Date(), ".", format_extension(effective_format()))
+      },
+      content = function(file) {
+        requested1 = input$data_format %||% "csv"
+        fmt1       = effective_format()
+        if (!identical(fmt1, requested1)) {
+          .acs_notify(paste0(
+            "The packages required to export ", requested1,
+            " aren't installed; saved as CSV instead."), type = "warning")
+        }
+        ds1 = export_dataset_scoped(input$data_scope %||% "interpolated")
+        switch(fmt1,
+          csv        = utils::write.csv(sf::st_drop_geometry(ds1), file,
+                                        row.names = FALSE, na = ""),
+          parquet    = arrow::write_parquet(sf::st_drop_geometry(ds1), file),
+          geoparquet = sfarrow::st_write_parquet(ds1, file),
+          gpkg       = sf::st_write(ds1, file, driver = "GPKG",
+                                    delete_dsn = TRUE, quiet = TRUE),
+          geojson    = sf::st_write(ds1, file, driver = "GeoJSON",
+                                    delete_dsn = TRUE, quiet = TRUE))
+        shiny::removeModal(session = session)
       })
+
+    ## Legend font size (px), clamped; NA/blank input falls back to the default.
+    legend_font_size = shiny::reactive({
+      sz1 = suppressWarnings(as.numeric(input$legend_font_size))
+      if (length(sz1) == 0 || is.na(sz1) || sz1 <= 0) return(NA_real_)
+      max(6, min(40, sz1))
+    })
+
+    ## Live legend font size: a reactive <style> that resizes the on-screen legend
+    ## (title and labels) without rebuilding the layer. The rule targets the
+    ## legend by class, so it survives legend rebuilds; NA input leaves mapgl's
+    ## default in place.
+    output$legend_font_css = shiny::renderUI({
+      sz1 = legend_font_size()
+      if (is.na(sz1)) return(NULL)
+      px1 = as.integer(round(sz1))
+      shiny::tags$style(shiny::HTML(paste0(
+        ".maplibregl-map [class*='legend'], .mapboxgl-map [class*='legend'],\n",
+        ".maplibregl-map [class*='legend'] *, .mapboxgl-map [class*='legend'] * {\n",
+        "  font-size: ", px1, "px !important;\n}")))
+    })
+    shiny::outputOptions(output, "legend_font_css", suspendWhenHidden = FALSE)
 
     ## Spec for the legend reconstructed onto the exported figure (the on-screen
     ## legend is an HTML overlay outside the WebGL canvas). Mirrors the legend
     ## drawn by .add_choropleth_layer(); NULL when the live map has no legend.
     legend_spec = shiny::reactive({
-      info1 = active_var_info()
-      bm1   = benchmark_for_active_var()
+      info1   = active_var_info()
+      bm1     = benchmark_for_active_var()
+      ltitle1 = input$legend_title
+      has_custom_title1 = !is.null(ltitle1) && nzchar(trimws(ltitle1))
+      font1   = legend_font_size()
+      font1   = if (is.na(font1)) 11 else font1
       if (!is.null(bm1)) {
         return(list(
-          type   = "categorical",
-          title  = "Statistically significant differences",
-          colors = unname(c(.benchmark_colors[["Larger"]],
+          type      = "categorical",
+          title     = if (has_custom_title1) ltitle1 else "Statistically significant differences",
+          colors    = unname(c(.benchmark_colors[["Larger"]],
                             .benchmark_colors[["Smaller"]],
                             .benchmark_colors[["Not significant"]])),
-          labels = c("Larger", "Smaller", "Not significant")))
+          labels    = c("Larger", "Smaller", "Not significant"),
+          font_size = font1))
       }
-      stops1 = make_color_stops(selected_range(), info1$palette)
+      stops1 = make_color_stops(
+        selected_range(), info1$palette,
+        values   = filtered_data()[[info1$var]],
+        quantile = identical(info1$type, "Percent"))
       if (is.null(stops1)) return(NULL)
       list(
-        type   = "continuous",
-        title  = info1$label,
-        colors = stops1$colors,
-        labels = format_value(range(stops1$stops), info1$fmt))
+        type      = "continuous",
+        title     = if (has_custom_title1) ltitle1 else info1$label,
+        colors    = stops1$colors,
+        labels    = format_value(range(stops1$stops), info1$fmt),
+        font_size = font1)
     })
 
     ## "Download figure" opens a modal for the export resolution. The capture
@@ -1374,15 +1962,12 @@ out_of_range_indices = function(values, range1) {
         ggplot2::scale_x_continuous(
           labels = x_labeller,
           expand = ggplot2::expansion(mult = 0.02)) +
-        ggplot2::labs(
-          subtitle = "Distribution of data values",
-          x = NULL, y = NULL) +
+        ggplot2::labs(x = NULL, y = NULL) +
         ggplot2::theme_minimal(base_size = 11) +
         ggplot2::theme(
           panel.grid.major.y = ggplot2::element_blank(),
           panel.grid.minor.y = ggplot2::element_blank(),
           axis.text.y        = ggplot2::element_blank(),
-          plot.subtitle      = ggplot2::element_text(size = 9, color = "#5c5859"),
           plot.margin        = ggplot2::margin(4, 6, 2, 2))
     }, res = 96)
 
@@ -1392,34 +1977,48 @@ out_of_range_indices = function(values, range1) {
       df1   = shiny::isolate(filtered_data())
       sel1  = shiny::isolate(selected_range())
       bm1   = shiny::isolate(benchmark_for_active_var())
+      opacity1 = shiny::isolate(input$poly_opacity) %||% 0.7
+      ltitle1  = shiny::isolate(input$legend_title)
 
-      stops1 = make_color_stops(sel1, info1$palette)
+      stops1 = make_color_stops(sel1, info1$palette,
+                                values   = df1[[info1$var]],
+                                quantile = identical(info1$type, "Percent"))
       ## preserveDrawingBuffer keeps the WebGL canvas readable after compositing
       ## so the figure-export path (see .export_js) can call toDataURL().
       m1 = mapgl::maplibre(
-        style                = mapgl::carto_style("positron"),
+        style                = basemap_style(shiny::isolate(input$basemap)),
         bounds               = sf::st_bbox(df1),
         preserveDrawingBuffer = TRUE) %>%
         mapgl::add_draw_control(position = "top-left")
-      .add_choropleth_layer(m1, df1, info1, stops1, sel1, bm1)
+      .add_choropleth_layer(m1, df1, info1, stops1, sel1, bm1,
+                            opacity = opacity1, legend_title = ltitle1)
     })
+
+    ## Debounce the legend-title text input so the layer isn't rebuilt on every
+    ## keystroke.
+    legend_title_d = shiny::debounce(
+      shiny::reactive(input$legend_title %||% ""), 400)
 
     ## ----- Updates: redraw the layer on any of these changing -----
     shiny::observeEvent(
       list(input$variable, input$year, input$hist_brush, input$benchmark,
-           input$geo_view, target_state()),
+           input$geo_view, target_state(), legend_title_d()),
       ignoreInit = TRUE,
       {
         info1 = active_var_info()
         df1   = filtered_data()
         sel1  = selected_range()
         bm1   = benchmark_for_active_var()
-        stops1 = make_color_stops(sel1, info1$palette)
+        stops1 = make_color_stops(sel1, info1$palette,
+                                  values   = df1[[info1$var]],
+                                  quantile = identical(info1$type, "Percent"))
 
         proxy1 = mapgl::maplibre_proxy("map")
         mapgl::clear_layer(proxy1, "acs")
         mapgl::clear_legend(proxy1)
-        .add_choropleth_layer(proxy1, df1, info1, stops1, sel1, bm1)
+        .add_choropleth_layer(proxy1, df1, info1, stops1, sel1, bm1,
+                              opacity = input$poly_opacity %||% 0.7,
+                              legend_title = legend_title_d())
       })
 
     ## When the active dataset changes (view toggle or a freshly drawn target),
@@ -1434,6 +2033,120 @@ out_of_range_indices = function(values, range1) {
           mapgl::fit_bounds(mapgl::maplibre_proxy("map"), bbox1)
         }
       })
+
+    ## ----- Visual parameters -----
+    ## Polygon opacity: set the paint property in place rather than rebuilding the
+    ## layer, so dragging the slider updates the map live.
+    shiny::observeEvent(input$poly_opacity, ignoreInit = TRUE, {
+      mapgl::set_paint_property(
+        mapgl::maplibre_proxy("map"), "acs", "fill-opacity",
+        input$poly_opacity)
+    })
+
+    ## Basemap: swap the style, keeping the choropleth layer and legend in place.
+    shiny::observeEvent(input$basemap, ignoreInit = TRUE, {
+      mapgl::set_style(
+        mapgl::maplibre_proxy("map"), basemap_style(input$basemap),
+        preserve_layers = TRUE)
+    })
+
+    ## Compass and scale-bar toggles are handled client-side (see .controls_js):
+    ## they add/remove native maplibre controls without disturbing the draw toolbar.
+    shiny::observeEvent(input$show_compass, ignoreInit = TRUE, {
+      session$sendCustomMessage("acs_toggle_control", list(
+        id = "map", control = "compass",
+        show = isTRUE(input$show_compass), position = "bottom-right"))
+    })
+    shiny::observeEvent(input$show_scalebar, ignoreInit = TRUE, {
+      session$sendCustomMessage("acs_toggle_control", list(
+        id = "map", control = "scale",
+        show = isTRUE(input$show_scalebar), position = "bottom-left"))
+    })
+
+    ## ----- Naming drawn features -----
+    ## mapgl pushes the drawn FeatureCollection to input$map_drawn_features on
+    ## every draw/edit. `drawn_meta` tracks one row per feature (id, type, a
+    ## default name, and the name field's input id); it is rebuilt only when the
+    ## set of feature ids changes, so editing a vertex doesn't reset name fields.
+    drawn_meta = shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(input$map_drawn_features, {
+      feats1 = parse_drawn_features(input$map_drawn_features)
+      if (is.null(feats1)) { drawn_meta(NULL); return() }
+      ids1   = as.character(feats1$id)
+      types1 = draw_type_label(feats1$geom_type)
+      cur1   = drawn_meta()
+      if (is.null(cur1) || !setequal(cur1$id, ids1) ||
+          length(cur1$id) != length(ids1)) {
+        seqn1 = tibble::tibble(type_label = types1) %>%
+          dplyr::mutate(n = dplyr::row_number(), .by = "type_label") %>%
+          dplyr::pull("n")
+        meta1 = tibble::tibble(
+          id           = ids1,
+          type_label   = types1,
+          default_name = paste0(types1, " ", seqn1),
+          input_id     = paste0("drawname_",
+                                stringr::str_replace_all(ids1, "[^A-Za-z0-9]", "_")))
+        ## Keep previously-assigned default names for features that persist.
+        if (!is.null(cur1)) {
+          keep1 = match(meta1$id, cur1$id)
+          has1  = !is.na(keep1)
+          meta1$default_name[has1] = cur1$default_name[keep1[has1]]
+        }
+        drawn_meta(meta1)
+      }
+      ## Auto-expand the Interpolate section whenever a polygon is drawn.
+      if (any(stringr::str_detect(feats1$geom_type, "POLYGON"))) {
+        bslib::accordion_panel_open("sidebar_sections", "Interpolate")
+      }
+    })
+
+    ## One text field per drawn feature, prefilled with the default name (or the
+    ## user's prior entry, preserved across rebuilds via isolate()).
+    output$drawn_features_ui = shiny::renderUI({
+      meta1 = drawn_meta()
+      if (is.null(meta1) || nrow(meta1) == 0) {
+        return(shiny::tags$div(
+          style = "font-size: 10px; color: #5c5859; margin: 0.2em 0;",
+          "Draw features on the map to name them."))
+      }
+      rows1 = purrr::map(seq_len(nrow(meta1)), function(i) {
+        iid1 = meta1$input_id[i]
+        val1 = shiny::isolate(input[[iid1]])
+        if (is.null(val1) || !nzchar(val1)) val1 = meta1$default_name[i]
+        shiny::tags$div(
+          style = "display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.15rem;",
+          shiny::tags$span(
+            style = "font-size: 9px; color: #5c5859; flex: 0 0 44px;",
+            meta1$type_label[i]),
+          shiny::tags$div(style = "flex: 1 1 auto;",
+            shiny::textInput(iid1, label = NULL, value = val1, width = "100%")))
+      })
+      shiny::tagList(
+        shiny::tags$div(
+          style = "font-weight: 700; font-size: 11px; margin: 0.3em 0 0.1em;",
+          "Name drawn features"),
+        rows1)
+    })
+    shiny::outputOptions(output, "drawn_features_ui", suspendWhenHidden = FALSE)
+
+    ## Current name for each drawn-feature id: the user's text when non-empty,
+    ## else the default. Returns a character vector aligned to `ids`.
+    drawn_names_for = function(ids) {
+      meta1 = drawn_meta()
+      ids   = as.character(ids)
+      if (is.null(meta1)) return(rep(NA_character_, length(ids)))
+      purrr::map_chr(ids, function(idv) {
+        row1 = which(meta1$id == idv)
+        if (length(row1) == 0) return(NA_character_)
+        v1 = input[[meta1$input_id[row1[1]]]]
+        if (is.null(v1) || !nzchar(trimws(v1))) {
+          meta1$default_name[row1[1]]
+        } else {
+          trimws(v1)
+        }
+      })
+    }
 
     ## ----- Draw-your-own target geographies -----
     ## Pull the polygons the user drew on the map, interpolate the source ACS
@@ -1459,12 +2172,20 @@ out_of_range_indices = function(values, range1) {
         return()
       }
 
-      ## Give each drawn polygon a unique GEOID and a friendly NAME for popups;
+      ## Give each drawn polygon a unique GEOID and carry the user-supplied NAME
+      ## (falling back to a default) for popups and the exported data;
       ## interpolate_to_targets() requires GEOID and uses NAME when present.
+      ids_poly1 = if ("id" %in% colnames(drawn_poly1)) {
+        as.character(drawn_poly1$id)
+      } else {
+        as.character(seq_len(nrow(drawn_poly1)))
+      }
+      names_poly1 = drawn_names_for(ids_poly1)
       drawn_poly1 = drawn_poly1 %>%
         dplyr::mutate(
           GEOID = paste0("drawn_", dplyr::row_number()),
-          NAME  = paste0("Drawn area ", dplyr::row_number())) %>%
+          NAME  = dplyr::coalesce(names_poly1,
+                                  paste0("Drawn area ", dplyr::row_number()))) %>%
         dplyr::select("GEOID", "NAME")
 
       res1 = tryCatch(
@@ -1523,7 +2244,23 @@ out_of_range_indices = function(values, range1) {
 ## urbn palette. Out-of-range polygons (per the histogram brush) always
 ## override to grey.
 .add_choropleth_layer = function(target, df1, info1, stops1, sel1,
-                                 benchmark = NULL) {
+                                 benchmark = NULL, opacity = 0.7,
+                                 legend_title = NULL) {
+  ## A non-empty legend_title (from the "Visual parameters" text input) overrides
+  ## the per-mode default title.
+  has_custom_title = !is.null(legend_title) && nzchar(trimws(legend_title))
+
+  ## Defense in depth: if the selected variable isn't present in this dataset
+  ## (e.g., a derived variable that couldn't be recomputed during interpolation),
+  ## render the geographies in neutral grey rather than crashing on a zero-length
+  ## value column. With the definition-replay fix in interpolate_acs() this is
+  ## rare, but it guarantees the map never errors out on a missing column.
+  if (is.null(df1[[info1$var]])) {
+    df1[[info1$var]] = NA_real_
+    info1$moe = NULL
+    benchmark = NULL
+    stops1    = NULL
+  }
   out_idx = out_of_range_indices(df1[[info1$var]], sel1)
 
   popup_text = make_popup_html(
@@ -1538,7 +2275,7 @@ out_of_range_indices = function(values, range1) {
     cats1[is.na(cats1)] = "Out of range"
     df1[["__sig_category__"]] = cats1
 
-    title1 = "Statistically significant differences"
+    title1 = if (has_custom_title) legend_title else "Statistically significant differences"
 
     out1 = target %>%
       mapgl::add_fill_layer(
@@ -1551,7 +2288,7 @@ out_of_range_indices = function(values, range1) {
                       .benchmark_colors[["Smaller"]],
                       .benchmark_colors[["Not significant"]]),
           default = .out_of_range_color),
-        fill_opacity       = 0.7,
+        fill_opacity       = opacity,
         fill_outline_color = "#ffffff",
         popup              = "__popup__") %>%
       mapgl::add_legend(
@@ -1577,7 +2314,7 @@ out_of_range_indices = function(values, range1) {
       id           = "acs",
       source       = df1,
       fill_color   = .out_of_range_color,
-      fill_opacity = 0.7,
+      fill_opacity = opacity,
       popup        = "__popup__"))
   }
 
@@ -1590,11 +2327,11 @@ out_of_range_indices = function(values, range1) {
         values   = stops1$stops,
         stops    = stops1$colors,
         na_color = .out_of_range_color),
-      fill_opacity       = 0.7,
+      fill_opacity       = opacity,
       fill_outline_color = "#ffffff",
       popup              = "__popup__") %>%
     mapgl::add_legend(
-      legend_title = info1$label,
+      legend_title = if (has_custom_title) legend_title else info1$label,
       values       = format_value(range(stops1$stops), info1$fmt),
       colors       = stops1$colors,
       type         = "continuous",

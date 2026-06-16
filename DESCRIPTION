@@ -31,6 +31,7 @@ Imports:
     tibble,
     sf
 Suggests:
+    arrow,
     bslib,
     crosswalk,
     distributional,
@@ -42,6 +43,7 @@ Suggests:
     reactable,
     remotes,
     rmarkdown,
+    sfarrow,
     shiny,
     testthat (>= 3.0.0),
     scales,

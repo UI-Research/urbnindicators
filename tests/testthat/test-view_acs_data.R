@@ -118,6 +118,27 @@ testthat::test_that("make_color_stops() spans the given range with palette lengt
   testthat::expect_null(make_color_stops(c(0, 1, 2), pal1))
 })
 
+testthat::test_that("make_color_stops() places stops at quantiles when requested", {
+  pal1 = .urbn_palettes$quintile
+  ## Right-skewed values: quantile stops must differ from equal-interval ones.
+  skewed = c(rep(0.01, 50), rep(0.05, 30), 0.10, 0.40, 0.90)
+  linear1 = make_color_stops(c(0, 1), pal1)
+  quant1  = make_color_stops(c(0, 1), pal1, values = skewed, quantile = TRUE)
+
+  testthat::expect_false(identical(linear1$stops, quant1$stops))
+  testthat::expect_equal(length(quant1$stops), length(quant1$colors))
+  testthat::expect_true(all(diff(quant1$stops) > 0))  # strictly increasing for mapgl
+
+  ## Too few finite values to fill the palette -> falls back to equal spacing.
+  fallback1 = make_color_stops(c(0, 1), pal1, values = c(0.2, 0.3), quantile = TRUE)
+  testthat::expect_equal(fallback1$stops, linear1$stops)
+
+  ## All-identical values: ties collapse but the result stays valid (increasing).
+  tie1 = make_color_stops(c(0, 1), pal1, values = rep(0.4, 100), quantile = TRUE)
+  testthat::expect_equal(length(tie1$stops), length(tie1$colors))
+  testthat::expect_true(all(diff(tie1$stops) > 0))
+})
+
 testthat::test_that("default_range_for_variable() defaults to c(0,1) for Percent vars", {
   rng1 = default_range_for_variable(c(0.1, 0.4, 0.7), "Percent")
   testthat::expect_equal(rng1, c(0, 1))
@@ -342,6 +363,22 @@ testthat::test_that("classify_significance() returns all-NA when MOEs are missin
   testthat::expect_true(all(is.na(out1)))
 })
 
+testthat::test_that("classify_significance() never errors on mixed NA est/moe", {
+  testthat::skip_if_not_installed("tidycensus")
+  ## Unmatched benchmark parents produce NA est2/moe2 interleaved with valid
+  ## rows. The which()-based assignment must not trip the "NAs are not allowed
+  ## in subscripted assignments" error.
+  est1 = c(0.50, NA,   0.30, 0.20, NA)
+  moe1 = c(0.02, 0.02, NA,   0.02, NA)
+  est2 = c(0.30, 0.30, 0.30, NA,   NA)
+  moe2 = c(0.02, 0.02, 0.02, NA,   0.02)
+  out1 = testthat::expect_no_error(
+    classify_significance(est1, moe1, est2, moe2, clevel = 0.9))
+  testthat::expect_length(out1, 5)
+  testthat::expect_equal(out1[1], "Larger")
+  testthat::expect_true(all(is.na(out1[2:5])))  # any NA input -> NA category
+})
+
 testthat::test_that("make_popup_html() includes benchmark info when supplied", {
   df1 = data.frame(
     NAME = c("A", "B"),
@@ -359,7 +396,25 @@ testthat::test_that("make_popup_html() includes benchmark info when supplied", {
                            out_of_range_idx = integer(0),
                            benchmark = bm1)
 
-  testthat::expect_true(stringr::str_detect(popups[1], "vs. County"))
-  testthat::expect_true(stringr::str_detect(popups[1], "significantly larger"))
-  testthat::expect_true(stringr::str_detect(popups[2], "not significantly different"))
+  ## The benchmark line reads "{label}: {value}" and the significance sentence
+  ## uses the "(Not) statistically significantly ..." phrasing set in
+  ## make_popup_html(); keep these assertions in sync with that wording.
+  testthat::expect_true(stringr::str_detect(popups[1], "County:"))
+  testthat::expect_true(stringr::str_detect(popups[1], "Statistically significantly larger"))
+  testthat::expect_true(stringr::str_detect(popups[2], "Not statistically significantly different"))
+})
+
+testthat::test_that("prepare_target_dataset() aborts on duplicate target GEOIDs", {
+  testthat::skip_if_not_installed("sf")
+  ## Two distinct polygons sharing a GEOID would be silently dropped by the
+  ## crosswalk's distinct(); we want a loud error at the boundary instead.
+  poly = function(x) sf::st_polygon(list(rbind(
+    c(x, 0), c(x + 1, 0), c(x + 1, 1), c(x, 1), c(x, 0))))
+  tgt = sf::st_sf(
+    GEOID = c("n1", "n1"),
+    geometry = sf::st_sfc(poly(0), poly(2), crs = 4326))
+
+  testthat::expect_error(
+    prepare_target_dataset(NULL, tgt, character(0)),
+    "duplicate")
 })

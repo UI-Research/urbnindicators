@@ -765,3 +765,46 @@ testthat::test_that(
     )
   }
 )
+
+testthat::test_that("interpolate_acs() recomputes non-registry (user/auto) derived variables", {
+  ## Variables defined outside .table_registry (raw ACS codes -> auto tables, or
+  ## user define_*() calls) are carried as attributes by compile_acs_data() so
+  ## interpolate_acs() can replay their definitions. Without that replay, their
+  ## derived columns (percents, complements) would be silently dropped from the
+  ## aggregated result. This is a synthetic, API-free regression test.
+  df = tibble::tibble(
+    GEOID                       = c("t1", "t2"),
+    data_source_year            = c(2022, 2022),
+    nbhd                        = c("A", "A"),
+    total_population_universe   = c(100, 300),
+    total_population_universe_M = c(10, 20),
+    foo_count                   = c(20, 30),
+    foo_count_M                 = c(5, 6),
+    foo_count_percent           = c(0.20, 0.10))
+
+  codebook = tibble::tibble(
+    calculated_variable = c("total_population_universe", "foo_count", "foo_count_percent"),
+    variable_type       = c("Count", "Count", "Percent"),
+    definition          = c("pop", "foo", "foo pct"))
+
+  attr(df, "codebook")         = codebook
+  attr(df, "resolved_tables")  = character(0)  # isolate the user-definition path
+  attr(df, "user_definitions") = list(
+    define_percent(numerator = "foo_count", denominator = "total_population_universe"))
+
+  out = interpolate_acs(df, target_geoid_column = "nbhd", weight = NULL)
+
+  ## The derived percent survives and is recomputed from summed components
+  ## (50 / 400 = 0.125), not naively averaged from the source rows.
+  testthat::expect_true("foo_count_percent" %in% colnames(out))
+  testthat::expect_equal(out$foo_count, 50)
+  testthat::expect_equal(out$foo_count_percent, 0.125)
+
+  ## Control: without the attribute, the derived variable is dropped — confirming
+  ## the attribute replay is precisely the mechanism that retains it.
+  df2 = df
+  attr(df2, "user_definitions") = NULL
+  out2 = suppressWarnings(
+    interpolate_acs(df2, target_geoid_column = "nbhd", weight = NULL))
+  testthat::expect_false("foo_count_percent" %in% colnames(out2))
+})

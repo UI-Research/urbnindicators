@@ -78,12 +78,15 @@ vignette). Variables without a margin-of-error column fall back to the
 default coloring.
 
 Regardless of \code{target_geographies}, the map carries a drawing toolbar at its
-top-left. Draw one or more polygons and click "Interpolate to drawn area" in
-the sidebar to interpolate the source data onto them via \code{\link[=interpolate_acs]{interpolate_acs()}};
-the map then switches to a "Target" view of the result, and benchmarking (if
-available) compares each drawn polygon to the parent geography it mostly
-overlaps. "Clear target" discards the drawn polygons, reverting to
-\code{target_geographies} when one was supplied and otherwise to the source view.
+top-left with "Point", "Line", and "Polygon" tools. Each drawn feature gets a
+text field in the sidebar where it can be named; the names appear in popups
+and the exported data. Draw one or more polygons and click "Interpolate to
+drawn area" in the sidebar to interpolate the source data onto them via
+\code{\link[=interpolate_acs]{interpolate_acs()}}; the map then switches to a "Target" view of the result,
+and benchmarking (if available) compares each drawn polygon to the parent
+geography it mostly overlaps. "Clear target" discards the drawn polygons,
+reverting to \code{target_geographies} when one was supplied and otherwise to the
+source view.
 
 Interpolation is only accurate where a target polygon is fully covered by the
 source geographies. Any drawn polygon (or supplied \code{target_geographies} row)
@@ -91,15 +94,38 @@ that extends beyond the source extent cannot be accurately interpolated, so
 its values are set to \code{NA} (rendered in neutral grey) and a warning is shown
 in the app.
 
-An "Export" section in the sidebar offers two downloads. "Download data"
-writes the currently-visualized data to CSV, including each variable's margin
-of error (\verb{<var>_M} columns) and, when a statistical benchmark is selected,
-the benchmark value, its margin of error, and the significance category for
-the selected variable. "Download figure" opens a dialog for choosing an
+A "Download" section in the sidebar offers two downloads. "Download data"
+opens a dialog to pick a file format — CSV, GeoPackage (\code{.gpkg}), GeoJSON,
+GeoParquet (\code{.parquet}), or non-spatial Parquet (\code{.parquet}) — and, when an
+interpolated (target) dataset exists, whether to export the interpolated
+geographies only or those plus the source geographies (distinguished by a
+\code{geography_type} column). The spatial formats retain geometry (and, in Target
+view, the user-supplied names of the drawn geographies); the export includes
+each variable's margin of error (\verb{<var>_M} columns) and, when a statistical
+benchmark is selected, the benchmark value, its margin of error, and the
+significance category for the selected variable. GeoParquet requires the
+\code{sfarrow} package and non-spatial Parquet requires \code{arrow}; if a chosen
+format's packages aren't installed, the data is written to CSV instead.
+"Download figure" opens a dialog for choosing an
 export resolution (1x-4x the on-screen size), then saves the live map exactly
 as displayed — basemap, active layer, current zoom and pan, and any drawn
 areas — as a \code{.png}. The capture is performed in the browser, so it works
 only in an interactive (locally-run) session.
+
+The sidebar is organized into collapsible sections — "Data" (variable, year,
+statistical benchmark, and the data-distribution histogram), "Interpolate"
+(the source/target toggle and custom-geography drawing/naming), "Visual
+parameters", and "Download" — with only "Data" open at launch. The
+"Interpolate" section auto-expands whenever a polygon is drawn.
+
+The "Visual parameters" section exposes display controls that don't change the
+data: a polygon-opacity slider, a legend-title override (blank uses the
+variable's pretty name), a basemap picker (CARTO Positron / Dark Matter /
+Voyager plus tokenless ESRI satellite and OpenTopoMap topographic rasters),
+and checkboxes that toggle a scale bar and a cardinal-direction compass (with
+N/E/S/W labels and an "N" over the north arrow; click it to reset north). A
+layers toggle at the map's bottom-right separately shows or hides the
+base-geography choropleth and any drawn features.
 
 \code{view_acs_data()} requires the \code{shiny}, \code{mapgl}, \code{bslib}, and \code{ggplot2}
 packages. These are listed in \code{Suggests} and checked at runtime.
