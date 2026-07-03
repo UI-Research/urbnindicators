@@ -67,7 +67,7 @@ testthat::test_that("census block geography is not supported", {
 
 testthat::test_that("list_tables(geography = 'block group') returns a restricted subset", {
   testthat::skip_if_offline()
-  testthat::skip_if(!nzchar(Sys.getenv("CENSUS_API_KEY")), "CENSUS_API_KEY not set")
+  skip_if_no_census_key()
   bg_tables = list_tables(geography = "block group")
   all_tables = list_tables()
 
@@ -108,7 +108,7 @@ testthat::test_that("block-group data has 12-digit GEOIDs and bounded percentage
 
 testthat::test_that("block-group request of only DSL definitions does not error", {
   testthat::skip_if_offline()
-  testthat::skip_if(!nzchar(Sys.getenv("CENSUS_API_KEY")), "CENSUS_API_KEY not set")
+  skip_if_no_census_key()
   ## total_population is available at the block-group level, so a custom definition
   ## computed from its columns should run (and not trip the "none available" error)
   bg_df = compile_acs_data(

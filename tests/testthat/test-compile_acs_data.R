@@ -870,6 +870,7 @@ testthat::test_that(
 testthat::test_that(
   "collect_raw_variables returns named vector for specified tables",
   {
+    skip_if_no_census_key()
     resolved = resolve_tables(tables = "snap")
     vars = collect_raw_variables(resolved_tables = resolved, year = 2022)
     testthat::expect_true(is.character(vars))
