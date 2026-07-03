@@ -4,10 +4,11 @@
 \alias{get_acs_codebook}
 \title{Browse the ACS codebook with clean variable names}
 \usage{
-get_acs_codebook(year = 2024, table = NULL)
+get_acs_codebook(year = latest_acs_year(), table = NULL)
 }
 \arguments{
-\item{year}{A four-digit year for the five-year ACS estimates (default 2022).}
+\item{year}{A four-digit year for the five-year ACS estimates. Defaults to
+the most recent ACS five-year vintage expected to be available.}
 
 \item{table}{An optional ACS table code (e.g., \code{"B22003"}) to filter
 results to a single table.}
