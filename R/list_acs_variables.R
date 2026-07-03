@@ -59,7 +59,8 @@ list_acs_variables = function(year = "2022", tables = NULL) {
 #'   parent table code, raw variable code, and a cleaned snake_case name.
 #'   Useful for finding the table code to pass to
 #'   \code{compile_acs_data(tables = ...)}.
-#' @param year A four-digit year for the five-year ACS estimates (default 2022).
+#' @param year A four-digit year for the five-year ACS estimates. Defaults to
+#'   the most recent ACS five-year vintage expected to be available.
 #' @param table An optional ACS table code (e.g., \code{"B22003"}) to filter
 #'   results to a single table.
 #' @returns A tibble with columns \code{table} (parent ACS table code),
@@ -77,7 +78,7 @@ list_acs_variables = function(year = "2022", tables = NULL) {
 #' get_acs_codebook() %>% dplyr::filter(stringr::str_detect(variable_clean, "snap"))
 #' }
 #' @export
-get_acs_codebook = function(year = 2024, table = NULL) {
+get_acs_codebook = function(year = latest_acs_year(), table = NULL) {
   suppressWarnings({suppressMessages({
     census_variables = load_acs_variables(year = year, dataset = "acs5")
   })})

@@ -70,8 +70,20 @@ load_acs_variables = function(year, dataset = "acs5") {
     dplyr::filter(!stringr::str_detect(label, "Margin Of Error|Margin of Error"))
 
   if (year > 2010) {
+    ## tidycensus::acs5_geography maps table -> lowest published geography by
+    ## year, but it trails the newest ACS releases (joining an uncovered year
+    ## yields an all-NA geography column, which reads as "nothing is published
+    ## at the block-group level"). Fall back to the nearest covered vintage.
+    lookup_years = unique(tidycensus::acs5_geography$year)
+    lookup_year = if (year %in% lookup_years) {
+      year
+    } else if (any(lookup_years < year)) {
+      max(lookup_years[lookup_years < year])
+    } else {
+      min(lookup_years)
+    }
     geography_lookup = tidycensus::acs5_geography %>%
-      dplyr::filter(year == !!year)
+      dplyr::filter(year == !!lookup_year)
     variables_filtered = variables_filtered %>%
       dplyr::mutate(table = stringr::str_remove(name, "_.*")) %>%
       dplyr::left_join(geography_lookup, by = "table") %>%

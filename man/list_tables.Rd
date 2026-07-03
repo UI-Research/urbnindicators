@@ -4,7 +4,7 @@
 \alias{list_tables}
 \title{List available table names}
 \usage{
-list_tables(geography = NULL, year = 2022)
+list_tables(geography = NULL, year = latest_acs_year())
 }
 \arguments{
 \item{geography}{Optional geography type. When \code{"block group"}, only the

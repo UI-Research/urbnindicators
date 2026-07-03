@@ -4,10 +4,11 @@
 \alias{list_variables}
 \title{List all variables and their tables}
 \usage{
-list_variables(year = 2022)
+list_variables(year = latest_acs_year())
 }
 \arguments{
-\item{year}{The ACS year used to resolve variable names (default 2022).}
+\item{year}{The ACS year used to resolve variable names. Defaults to the
+most recent ACS five-year vintage expected to be available.}
 }
 \value{
 A tibble with columns \code{variable} and \code{table}.

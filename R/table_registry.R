@@ -689,7 +689,7 @@ execute_definitions = function(.data, definitions) {
 #' list_tables(geography = "block group")
 #' }
 #' @export
-list_tables = function(geography = NULL, year = 2022) {
+list_tables = function(geography = NULL, year = latest_acs_year()) {
   table_names = names(.table_registry$tables)
 
   if (!is.null(geography) && tolower(geography) == "block group") {
@@ -776,7 +776,7 @@ collect_table_variables = function(table_entry, census_codebook) {
 ## block-group level (per the codebook `geography` column) are retained.
 ## A pre-loaded `census_codebook` may be supplied to avoid a redundant load
 ## and to ensure the codebook matches the requested year.
-collect_raw_variables = function(resolved_tables, year = 2022, geography = NULL, census_codebook = NULL) {
+collect_raw_variables = function(resolved_tables, year = latest_acs_year(), geography = NULL, census_codebook = NULL) {
   if (is.null(census_codebook)) {
     census_codebook = load_acs_variables(year = year, dataset = "acs5")
   }
@@ -846,7 +846,8 @@ bg_partition_tables = function(resolved_tables, census_codebook) {
 #'   for registered tables. Variables from unregistered ACS tables passed as
 #'   raw codes (e.g., \code{"B25070"}) are not included here; they are
 #'   auto-generated at runtime.
-#' @param year The ACS year used to resolve variable names (default 2022).
+#' @param year The ACS year used to resolve variable names. Defaults to the
+#'   most recent ACS five-year vintage expected to be available.
 #' @returns A tibble with columns \code{variable} and \code{table}.
 #' @examples
 #' \dontrun{
@@ -854,7 +855,7 @@ bg_partition_tables = function(resolved_tables, census_codebook) {
 #' list_variables() %>% dplyr::filter(table == "age")
 #' }
 #' @export
-list_variables = function(year = 2022) {
+list_variables = function(year = latest_acs_year()) {
   suppressWarnings({suppressMessages({
     census_codebook = load_acs_variables(year = year, dataset = "acs5")
   })})

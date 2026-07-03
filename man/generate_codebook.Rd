@@ -9,7 +9,7 @@ generate_codebook(
   resolved_tables = NULL,
   auto_table_entries = list(),
   user_definitions = list(),
-  year = 2024
+  year = latest_acs_year()
 )
 }
 \arguments{
