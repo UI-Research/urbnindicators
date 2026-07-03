@@ -1390,9 +1390,9 @@ register_table(list(
       list(pattern = "B01001_"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("sex_by_age_female", "sex_by_age_universe",
+    define_percent("^sex_by_age_female$", "^sex_by_age_universe$",
                    output = "sex_female_percent"),
-    define_percent("sex_by_age_male", "sex_by_age_universe",
+    define_percent("^sex_by_age_male$", "^sex_by_age_universe$",
                    output = "sex_male_percent"),
     define_sum("sex_by_age_female_.*years($|_over$)",
                each = TRUE,
@@ -1474,7 +1474,7 @@ register_table(list(
                    denominator = "tenure_by_occupants_per_room_universe",
                    output = "overcrowding_morethan1_ppr_alltenures_percent"),
     define_percent("tenure_by_occupants_per_room_renter.*(1_01|1_51|2_01)",
-                   denominator = "tenure_by_occupants_per_room_renter_occupied",
+                   denominator = "^tenure_by_occupants_per_room_renter_occupied$",
                    output = "overcrowding_morethan1_ppr_renteroccupied_percent"))
 ))
 
@@ -1687,11 +1687,11 @@ register_table(list(
     define_percent("means_transportation_work_(bicycle|walked)$",
                    denominator = "means_transportation_work_universe",
                    output = "means_transportation_work_bicycle_walked_percent",
-                   subtract_from_denominator = "means_transportation_work_worked_from_home"),
+                   subtract_from_denominator = "^means_transportation_work_worked_from_home$"),
     define_percent("means_transportation_work_(car_truck_van|taxicab|motorcycle)$",
                    denominator = "means_transportation_work_universe",
                    output = "means_transportation_work_motor_vehicle_percent",
-                   subtract_from_denominator = "means_transportation_work_worked_from_home"))
+                   subtract_from_denominator = "^means_transportation_work_worked_from_home$"))
 ))
 
 register_table(list(
@@ -1807,11 +1807,11 @@ register_table(list(
              match_type = "positive")))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native",
-                   "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
+    define_percent("^nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native$",
+                   "^nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe$",
                    output = "nativity_native_born_percent"),
-    define_percent("nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born",
-                   "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
+    define_percent("^nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born$",
+                   "^nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe$",
                    output = "nativity_foreign_born_percent"),
     define_percent("nativity.*(only_english|english_very_well)",
                    denominator = "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
@@ -1870,10 +1870,10 @@ register_table(list(
     define_complement("health_insurance_coverage_status_covered_percent",
                       output = "health_insurance_coverage_status_notcovered_percent"),
     define_percent("health_insurance_coverage_status_type_by_employment_status.*_employed.*with_health_insurance_coverage$",
-                   denominator = "health_insurance_coverage_status_type_by_employment_status_in_labor_force",
+                   denominator = "^health_insurance_coverage_status_type_by_employment_status_in_labor_force$",
                    output = "health_insurance_coverage_status_covered_employed_percent"),
     define_percent("health_insurance_coverage_status_type_by_employment_status.*_unemployed.*with_health_insurance_coverage$",
-                   denominator = "health_insurance_coverage_status_type_by_employment_status_in_labor_force",
+                   denominator = "^health_insurance_coverage_status_type_by_employment_status_in_labor_force$",
                    output = "health_insurance_coverage_status_covered_unemployed_percent"))
 ))
 
