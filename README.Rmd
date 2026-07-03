@@ -336,7 +336,7 @@ Check out the vignettes for additional details:
 -   You can re-create your indicators and their measures of error
     for [**Custom Geographies**](articles/custom-geographies.html).
 
--   See how you can spin up a [**Local Shiny app**](articles/shiny-app.html) 
+-   See how you can spin up a [**Local Shiny app**](articles/view_acs_data.html)
     to explore, interpolate, and export your data.
 
 # Credits
@@ -348,9 +348,9 @@ accessing the Census Bureau API. Learn more here:
 
 A number of staff in the Urban Institute's Housing and Communities
 Division and Data Science and Technology team provided feedback, code reviewed,
-and otherwise supported the development of this package.  
+and otherwise supported the development of this package.
 
 ## Use of Generative AI
 
-This package was developed in part using agentic AI, under the 
+This package was developed in part using agentic AI, under the
 supervision of the author.

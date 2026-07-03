@@ -12,6 +12,9 @@ reference:
   - define_sum
   - define_complement
   - define_metadata
+- title: Explore data
+  contents:
+  - view_acs_data
 - title: Helper functions
   contents:
   - list_tables

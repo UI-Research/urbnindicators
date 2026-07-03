@@ -31,15 +31,20 @@ Imports:
     tibble,
     sf
 Suggests:
+    arrow,
+    bslib,
     crosswalk,
     distributional,
     ggdist,
     ggplot2,
     gridExtra,
     knitr,
+    mapgl,
     reactable,
     remotes,
     rmarkdown,
+    sfarrow,
+    shiny,
     testthat (>= 3.0.0),
     scales,
     urbnthemes (>= 0.0.2)

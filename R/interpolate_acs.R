@@ -14,6 +14,11 @@
 ##   averages of intensive variables.
 ## @param codebook Data frame. The codebook attribute from compile_acs_data() output.
 ## @param resolved_tables Character vector. Table names for re-running definitions.
+## @param auto_table_entries List of auto-table (raw ACS code) entries, each with
+##   a `definitions` list, re-run after the registry pass so their derived
+##   variables are recomputed rather than dropped. Defaults to empty.
+## @param user_definitions Flat list of user DSL definition objects, re-run after
+##   the registry and auto-table passes. Defaults to empty.
 ## @returns Data frame aggregated to target geographies with estimates and MOEs.
 ## @keywords internal
 .aggregate_to_target = function(
@@ -21,7 +26,9 @@
     target_col,
     weight_variable,
     codebook,
-    resolved_tables) {
+    resolved_tables,
+    auto_table_entries = list(),
+    user_definitions = list()) {
 
   codebook = ensure_aggregation_strategy(codebook)
 
@@ -238,6 +245,22 @@
       .data
     }
   }, .init = result_for_defs)
+
+  ## Re-run auto-table (raw ACS code) and user (DSL) definitions too. These live
+  ## outside the registry, so without this their derived variables (percents,
+  ## complements) would not be recomputed and would be dropped from the result.
+  if (length(auto_table_entries) > 0) {
+    result_for_defs = purrr::reduce(auto_table_entries, function(.data, auto_entry) {
+      if (!is.null(auto_entry[["definitions"]]) && length(auto_entry[["definitions"]]) > 0) {
+        execute_definitions(.data, auto_entry[["definitions"]])
+      } else {
+        .data
+      }
+    }, .init = result_for_defs)
+  }
+  if (length(user_definitions) > 0) {
+    result_for_defs = execute_definitions(result_for_defs, user_definitions)
+  }
 
   ## Re-attach MOE columns
   result = result_for_defs %>%
@@ -474,6 +497,11 @@ interpolate_acs = function(
     resolved_tables = names(.table_registry$tables)
   }
 
+  ## Auto-table and user definitions live outside the registry; re-run them after
+  ## the registry pass so their derived variables are recomputed (not dropped).
+  auto_table_entries = attr(.data, "auto_table_entries") %||% list()
+  user_definitions   = attr(.data, "user_definitions") %||% list()
+
   ## Drop geometry if present
   if (inherits(.data, "sf")) {
     .data = sf::st_drop_geometry(.data)
@@ -608,7 +636,9 @@ interpolate_acs = function(
     target_col = target_geoid_column,
     weight_variable = weight_variable,
     codebook = codebook,
-    resolved_tables = resolved_tables)
+    resolved_tables = resolved_tables,
+    auto_table_entries = auto_table_entries,
+    user_definitions = user_definitions)
 
   ####----Blank out area and density in fractional allocation mode----####
   ## Source-geography areas do not aggregate meaningfully to target geographies

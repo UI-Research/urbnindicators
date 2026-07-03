@@ -490,7 +490,6 @@ compile_acs_data = function(
   ## warn user -- county-by-county queries are slow and should be used if only
   ## one or a few counties are desired
   if (length(counties) > 5) {
-
     cli::cli_warn(c(
       "County-level queries can be slow for more than a few counties.",
       "i" = "Omit the {.arg counties} parameter and filter after the function returns."))}
@@ -675,6 +674,13 @@ compile_acs_data = function(
   attr(df_moes, "codebook") = codebook %>%
     dplyr::select(calculated_variable, variable_type, definition, dplyr::everything())
   attr(df_moes, "resolved_tables") = resolved_tables
+  ## Persist the auto-table (raw ACS code) and user (DSL) definitions too, so
+  ## interpolate_acs() can re-run them and recompute their derived (percent /
+  ## complement) variables on the aggregated geographies. Without these, only
+  ## registry-table definitions would be recomputed and these variables would be
+  ## silently dropped from interpolated output.
+  attr(df_moes, "auto_table_entries") = auto_table_entries
+  attr(df_moes, "user_definitions")   = user_definitions
 
   if (isTRUE(spatial)) { df_moes = sf::st_as_sf(df_moes) }
 
