@@ -676,12 +676,28 @@ execute_definitions = function(.data, definitions) {
 #'   Note: only pre-registered tables are listed here. Any valid ACS table code
 #'   (e.g., \code{"B25070"}) can also be passed to \code{compile_acs_data(tables = ...)}
 #'   and will be auto-processed.
+#' @param geography Optional geography type. When \code{"block group"}, only the
+#'   tables published at the block-group level are returned (the ACS tabulates a
+#'   limited subset of tables at this geography). When \code{NULL} (default), all
+#'   registered tables are returned.
+#' @param year The ACS year used to determine block-group availability when
+#'   \code{geography = "block group"} (default 2022). Ignored otherwise.
 #' @returns A character vector of table names.
 #' @examples
 #' list_tables()
+#' \dontrun{
+#' list_tables(geography = "block group")
+#' }
 #' @export
-list_tables = function() {
-  all_names = purrr::map(names(.table_registry$tables), function(table_name) {
+list_tables = function(geography = NULL, year = 2022) {
+  table_names = names(.table_registry$tables)
+
+  if (!is.null(geography) && tolower(geography) == "block group") {
+    census_codebook = load_acs_variables(year = year, dataset = "acs5")
+    table_names = bg_partition_tables(table_names, census_codebook)[["keep"]]
+  }
+
+  all_names = purrr::map(table_names, function(table_name) {
     table_entry = .table_registry$tables[[table_name]]
     get_construct_names(table_entry)
   }) %>% unlist()
@@ -729,39 +745,98 @@ resolve_tables = function(tables = NULL) {
   return(resolved)
 }
 
-## Build named ACS variable vector for resolved tables (internal)
-collect_raw_variables = function(resolved_tables, year = 2022) {
-  suppressWarnings({suppressMessages({
-    census_codebook = load_acs_variables(year = 2022, dataset = "acs5")
-  })})
+## Collect the named ACS variable vector for a single table (internal)
+collect_table_variables = function(table_entry, census_codebook) {
+  if (is.null(table_entry)) return(NULL)
 
   select_variables = purrr::partial(select_variables_by_name, census_codebook = census_codebook)
 
+  selected_variables = c()
+  if (!is.null(table_entry[["raw_variable_source"]]) && table_entry[["raw_variable_source"]][["type"]] == "select_variables") {
+    selected_variables = purrr::map(table_entry[["raw_variable_source"]][["calls"]], function(selection_call) {
+      selected = select_variables(variable_name = selection_call[["pattern"]])
+      if (!is.null(selection_call[["filter"]])) {
+        selected = filter_variables(
+          variable_vector = selected,
+          match_string = selection_call[["filter"]][["match_string"]],
+          match_type = selection_call[["filter"]][["match_type"]])
+      }
+      selected
+    }) %>% unlist()
+  }
+
+  if (!is.null(table_entry[["raw_variables"]])) {
+    selected_variables = c(selected_variables, table_entry[["raw_variables"]])
+  }
+  selected_variables
+}
+
+## Build named ACS variable vector for resolved tables (internal)
+## When `geography` is "block group", only variables published at the
+## block-group level (per the codebook `geography` column) are retained.
+## A pre-loaded `census_codebook` may be supplied to avoid a redundant load
+## and to ensure the codebook matches the requested year.
+collect_raw_variables = function(resolved_tables, year = 2022, geography = NULL, census_codebook = NULL) {
+  if (is.null(census_codebook)) {
+    census_codebook = load_acs_variables(year = year, dataset = "acs5")
+  }
+
   all_variables = purrr::map(resolved_tables, function(table_name) {
-    table_entry = get_table(table_name)
-    if (is.null(table_entry)) return(NULL)
-
-    selected_variables = c()
-    if (!is.null(table_entry[["raw_variable_source"]]) && table_entry[["raw_variable_source"]][["type"]] == "select_variables") {
-      selected_variables = purrr::map(table_entry[["raw_variable_source"]][["calls"]], function(selection_call) {
-        selected = select_variables(variable_name = selection_call[["pattern"]])
-        if (!is.null(selection_call[["filter"]])) {
-          selected = filter_variables(
-            variable_vector = selected,
-            match_string = selection_call[["filter"]][["match_string"]],
-            match_type = selection_call[["filter"]][["match_type"]])
-        }
-        selected
-      }) %>% unlist()
-    }
-
-    if (!is.null(table_entry[["raw_variables"]])) {
-      selected_variables = c(selected_variables, table_entry[["raw_variables"]])
-    }
-    selected_variables
+    collect_table_variables(get_table(table_name), census_codebook)
   }) %>% purrr::compact() %>% unlist()
 
+  ## at the block-group level, retain only variables published at that geography
+  if (!is.null(geography) && tolower(geography) == "block group" && length(all_variables) > 0) {
+    bg_variables = census_codebook$name[census_codebook$geography == "block group"]
+    all_variables = all_variables[all_variables %in% bg_variables]
+  }
+
   return(all_variables)
+}
+
+## Partition resolved tables by block-group availability (internal)
+## Reads the codebook `geography` column (each variable's lowest published
+## geography). Returns a list with:
+##   keep    - tables having >= 1 block-group-available variable, plus derived
+##             tables that have no raw variables of their own (e.g.,
+##             population_density, whose inputs come from its dependencies)
+##   dropped - tables with no block-group-available variables
+##   partial - named list mapping a kept table to the variable codes that are
+##             NOT available at the block-group level (and are therefore dropped)
+bg_partition_tables = function(resolved_tables, census_codebook) {
+  if (!"geography" %in% colnames(census_codebook)) {
+    stop("The ACS codebook does not include a `geography` column, so block-group ",
+         "availability cannot be determined. Please update the tidycensus package.")
+  }
+  bg_variables = census_codebook$name[census_codebook$geography == "block group"]
+
+  keep = character(0)
+  dropped = character(0)
+  partial = list()
+
+  for (table_name in resolved_tables) {
+    table_entry = get_table(table_name)
+    if (is.null(table_entry)) next
+
+    table_variables = collect_table_variables(table_entry, census_codebook)
+    if (length(table_variables) == 0) {
+      ## derived table with no raw variables of its own (e.g., population_density)
+      keep = c(keep, table_name)
+      next
+    }
+
+    available = table_variables[table_variables %in% bg_variables]
+    if (length(available) == 0) {
+      dropped = c(dropped, table_name)
+    } else {
+      keep = c(keep, table_name)
+      if (length(available) < length(table_variables)) {
+        partial[[table_name]] = setdiff(unname(table_variables), unname(available))
+      }
+    }
+  }
+
+  list(keep = keep, dropped = dropped, partial = partial)
 }
 
 #' @title List all variables and their tables
@@ -1315,9 +1390,9 @@ register_table(list(
       list(pattern = "B01001_"))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("sex_by_age_female", "sex_by_age_universe",
+    define_percent("^sex_by_age_female$", "^sex_by_age_universe$",
                    output = "sex_female_percent"),
-    define_percent("sex_by_age_male", "sex_by_age_universe",
+    define_percent("^sex_by_age_male$", "^sex_by_age_universe$",
                    output = "sex_male_percent"),
     define_sum("sex_by_age_female_.*years($|_over$)",
                each = TRUE,
@@ -1399,7 +1474,7 @@ register_table(list(
                    denominator = "tenure_by_occupants_per_room_universe",
                    output = "overcrowding_morethan1_ppr_alltenures_percent"),
     define_percent("tenure_by_occupants_per_room_renter.*(1_01|1_51|2_01)",
-                   denominator = "tenure_by_occupants_per_room_renter_occupied",
+                   denominator = "^tenure_by_occupants_per_room_renter_occupied$",
                    output = "overcrowding_morethan1_ppr_renteroccupied_percent"))
 ))
 
@@ -1612,11 +1687,11 @@ register_table(list(
     define_percent("means_transportation_work_(bicycle|walked)$",
                    denominator = "means_transportation_work_universe",
                    output = "means_transportation_work_bicycle_walked_percent",
-                   subtract_from_denominator = "means_transportation_work_worked_from_home"),
+                   subtract_from_denominator = "^means_transportation_work_worked_from_home$"),
     define_percent("means_transportation_work_(car_truck_van|taxicab|motorcycle)$",
                    denominator = "means_transportation_work_universe",
                    output = "means_transportation_work_motor_vehicle_percent",
-                   subtract_from_denominator = "means_transportation_work_worked_from_home"))
+                   subtract_from_denominator = "^means_transportation_work_worked_from_home$"))
 ))
 
 register_table(list(
@@ -1732,11 +1807,11 @@ register_table(list(
              match_type = "positive")))),
   raw_variables = NULL,
   definitions = list(
-    define_percent("nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native",
-                   "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
+    define_percent("^nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_native$",
+                   "^nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe$",
                    output = "nativity_native_born_percent"),
-    define_percent("nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born",
-                   "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
+    define_percent("^nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_foreign_born$",
+                   "^nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe$",
                    output = "nativity_foreign_born_percent"),
     define_percent("nativity.*(only_english|english_very_well)",
                    denominator = "nativity_by_language_spoken_at_home_by_ability_speak_english_population_5_years_over_universe",
@@ -1795,10 +1870,10 @@ register_table(list(
     define_complement("health_insurance_coverage_status_covered_percent",
                       output = "health_insurance_coverage_status_notcovered_percent"),
     define_percent("health_insurance_coverage_status_type_by_employment_status.*_employed.*with_health_insurance_coverage$",
-                   denominator = "health_insurance_coverage_status_type_by_employment_status_in_labor_force",
+                   denominator = "^health_insurance_coverage_status_type_by_employment_status_in_labor_force$",
                    output = "health_insurance_coverage_status_covered_employed_percent"),
     define_percent("health_insurance_coverage_status_type_by_employment_status.*_unemployed.*with_health_insurance_coverage$",
-                   denominator = "health_insurance_coverage_status_type_by_employment_status_in_labor_force",
+                   denominator = "^health_insurance_coverage_status_type_by_employment_status_in_labor_force$",
                    output = "health_insurance_coverage_status_covered_unemployed_percent"))
 ))
 

@@ -30,16 +30,20 @@ library(scales)
 library(urbnthemes) # install from https://github.com/UrbanInstitute/urbnthemes
 ```
 
+If you're new to the ACS or want to understand how 5-year estimates,
+geographies, and universe variables work, see
+[ACS Background and Best Practices](acs-background.html).
+
 This vignette is organized into three parts:
 
-1.  We illustrate a typical workflow for obtaining American Community
-    Survey (ACS) data using `library(tidycensus)`.
+1.  We illustrate a typical workflow for obtaining ACS data using
+    `library(tidycensus)`.
 
-2.  We show how `library(urbnindicators)` can produce similar outputs, but with
-    much less code and effort.
+2.  We show how `library(urbnindicators)` can produce similar
+    outputs, but with much less code and effort.
 
-3.  We highlight how `library(urbnindicators)` provides metadata and improves the
-    quality and reliability of the analysis process.
+3.  We highlight how `library(urbnindicators)` provides metadata and
+    improves the quality and reliability of the analysis process.
 
 ## A Typical Workflow
 
@@ -128,14 +132,6 @@ are disabled).
 
 ### Acquire data
 
-It's as simple as the call below. Note that you can provide a vector of
-years and/or states if you want data over different time periods or
-geographies.
-
-Note that selecting more tables or more geographic units--either by selecting 
-a `geography` option comprising more units, by selecting more states, or selecting 
-more years--can significantly increase the query time.
-
 Use `list_tables()` to see some of the most commonly-used tables:
 
 ```{r}
@@ -150,7 +146,7 @@ get_acs_codebook() |>
   head(10)
 ```
 
-Here we request just two tables--`disability` and `transportation_to_work`.
+Here we request just two tables---`disability` and `transportation_to_work`.
 
 ```{r, message = FALSE, warning = FALSE}
 df_urbnindicators = compile_acs_data(
@@ -162,7 +158,10 @@ df_urbnindicators = compile_acs_data(
 ```
 
 You can also pass vectors of years and/or states to pull data across
-multiple time periods or geographies in a single call:
+multiple time periods or geographies in a single call. 
+Note that selecting more tables or more geographic units--either by selecting 
+a `geography` option comprising more units, by selecting more states, or selecting 
+more years--can significantly increase the query time.
 
 ```{r, message = FALSE, warning = FALSE}
 df_multi = compile_acs_data(
@@ -250,10 +249,14 @@ codebook %>%
 
 ### Create your own derived variables
 
-For tables from `list_tables()`, raw ACS variables and derived variables are automatically returned. But for other tables, there are no pre-computed (by `urbnindicators`) derived variables. And even for tables reflected in `list_tables()`, 
+For tables from `list_tables()`, raw ACS variables and derived variables are automatically returned. But for other tables, there are no pre-computed (by `urbnindicators`) derived variables. And even for tables reflected in `list_tables()`,
 you may want alternate or additional derived variables. `urbnindicators` provides a
 suite of helper functions (`define_*()`) that allow you to specify how you want to create these derived variables; these helper functions abstract away the actual calculations and ensure that you get an updated codeboook and correctly-pooled margins
 of error for each of your newly-derived variables. See [Custom Derived Variables](custom-derived-variables.html) for more.
+
+To learn more about how ACS tables are structured, how `urbnindicators`
+selects and renames variables, and how percentages are calculated, see
+[ACS Table Structures](acs-table-structures.html).
 
 ### Interpolate data to custom geographies
 

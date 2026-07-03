@@ -210,6 +210,27 @@ Confidence intervals are presented around each point but are extremely small"),
 
 <img src="man/figures/README-unnamed-chunk-5-1.png" alt="" width="100%" />
 
+## Supported Geographies
+
+`compile_acs_data()` returns five-year ACS estimates for any geography
+accepted by `tidycensus::get_acs()`. Estimates are available for **2009
+and later** (the first year of five-year ACS data); `geography` defaults
+to `"county"` and `years` to a recent release.
+
+| `geography` | `states` argument | Notes |
+|----|----|----|
+| `"us"`, `"region"`, `"division"`, `"cbsa"`, `"zcta"`, `"urban area"` | Ignored | Returned nationally |
+| `"state"` | Optional (filters) | States and DC |
+| `"county"` (default), `"place"`, `"county subdivision"` | Recommended | Omitting `states` pulls every state, which is slow |
+| `"tract"` | Required | Census tracts |
+| `"block group"` | Required | **2013 and later only.** Only the subset of tables the ACS publishes at this level is returned (others are dropped with a warning---see `list_tables(geography = "block group")`), and estimates carry large margins of error |
+
+Census blocks (`geography = "block"`) are not supported, as the ACS
+publishes no block-level data. For `"county"`, `"tract"`, and
+`"block group"`, you can also pass `counties` (five-digit FIPS codes) to
+limit the pull to specific counties. See `vignette("acs-background")` for
+more on geographies, including boundary changes across the 2020 census.
+
 ## Custom Geographies
 
 ACS data are available for standard geographies (tracts, counties,
@@ -297,9 +318,18 @@ Check out the vignettes for additional details:
 - A package overview to help users [**Get
   Started**](articles/urbnindicators.html).
 
+- [**ACS Background and Best Practices**](articles/acs-background.html)
+  for users new to the ACS---covers 5-year estimates, geographies,
+  boundary changes, and universe variables.
+
 - An interactive version of the package’s
   [**Codebook**](articles/codebook.html) so that prospective users can
   know what to expect.
+
+- A breakdown of [**ACS Table
+  Structures**](articles/acs-table-structures.html)---how the package
+  selects variables, renames them, calculates percentages, and returns
+  results.
 
 - A brief description of the package’s [**Design
   Philosophy**](articles/design-philosophy.html) to clarify the

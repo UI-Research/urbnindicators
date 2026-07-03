@@ -99,6 +99,7 @@ testthat::test_that(
 testthat::test_that(
   "list_variables() returns a tibble with variable and table columns",
   {
+    skip_if_no_census_key()
     vars = list_variables()
 
     testthat::expect_true(tibble::is_tibble(vars))
@@ -113,6 +114,7 @@ testthat::test_that(
 testthat::test_that(
   "list_variables() assigns age and sex constructs correctly",
   {
+    skip_if_no_census_key()
     vars = list_variables()
 
     age_vars = vars %>% dplyr::filter(table == "age")
@@ -131,6 +133,7 @@ testthat::test_that(
 testthat::test_that(
   "list_variables() assigns nativity and language constructs correctly",
   {
+    skip_if_no_census_key()
     vars = list_variables()
 
     nativity_vars = vars %>% dplyr::filter(table == "nativity")
@@ -150,6 +153,7 @@ testthat::test_that(
 testthat::test_that(
   "list_variables() includes variables from simple tables",
   {
+    skip_if_no_census_key()
     vars = list_variables()
 
     snap_vars = vars %>% dplyr::filter(table == "snap")

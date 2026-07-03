@@ -4,7 +4,16 @@
 \alias{list_tables}
 \title{List available table names}
 \usage{
-list_tables()
+list_tables(geography = NULL, year = 2022)
+}
+\arguments{
+\item{geography}{Optional geography type. When \code{"block group"}, only the
+tables published at the block-group level are returned (the ACS tabulates a
+limited subset of tables at this geography). When \code{NULL} (default), all
+registered tables are returned.}
+
+\item{year}{The ACS year used to determine block-group availability when
+\code{geography = "block group"} (default 2022). Ignored otherwise.}
 }
 \value{
 A character vector of table names.
@@ -20,4 +29,7 @@ and will be auto-processed.
 }
 \examples{
 list_tables()
+\dontrun{
+list_tables(geography = "block group")
+}
 }

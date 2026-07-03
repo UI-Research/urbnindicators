@@ -27,9 +27,8 @@ library(tidycensus)
 ```
 
 `compile_acs_data()` supports a large set of pre-built derived
-variables (percentages, complements, etc.) from the package's
-registered tables. But you can also define your own derived
-variables using the `define_*()` helpers and pass them directly to
+variables (percentages, complements, etc.). But you can also define your own derived
+variables using the `define_*()` helpers and then pass these definitions directly to
 `compile_acs_data()` via the `tables` parameter. Your custom
 variables automatically get codebook entries and margins of error,
 just like the built-in ones.

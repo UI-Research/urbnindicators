@@ -48,7 +48,7 @@ fetch_acs = function(geography, variables, years, states, counties,
       }) %>% purrr::list_rbind())
   }
 
-  county_filterable = geography %in% c("tract", "county", "county subdivision")
+  county_filterable = geography %in% c("tract", "county", "county subdivision", "block group")
   user_supplied_counties = length(counties) > 0
 
   purrr::map(states, function(state) {
@@ -58,7 +58,10 @@ fetch_acs = function(geography, variables, years, states, counties,
         year = as.numeric(year), state = state,
         survey = "acs5", output = "wide")
 
-      if (user_supplied_counties && county_filterable) {
+      ## block-group queries are always scoped by county (county_codes holds all
+      ## counties in the state when the user did not supply a subset); other
+      ## county-filterable geographies are scoped only when the user asked
+      if (geography == "block group" || (user_supplied_counties && county_filterable)) {
         county_vec = county_codes %>%
           dplyr::filter(state == !!state) %>%
           dplyr::pull(county)
@@ -105,8 +108,13 @@ fetch_acs = function(geography, variables, years, states, counties,
 #' @param years A numeric vector of four-digit years for which to pull five-year
 #'    American Community Survey estimates.
 #' @param geography A geography type that is accepted by \code{tidycensus::get_acs()}, e.g.,
-#'    "tract", "county", "state", among others. Geographies below the tract level are not
-#'    supported.
+#'    "tract", "county", "state", among others. \code{"block group"} is supported for
+#'    years 2013 and later and requires an explicit \code{states} argument; because the
+#'    ACS publishes only a limited subset of tables at the block-group level, requested
+#'    tables that are not available there are dropped with a warning (use
+#'    \code{list_tables(geography = "block group")} to see what is available). Block-group
+#'    estimates carry large margins of error and should be used with care. Census blocks
+#'    (geography = "block") are not supported, as the ACS publishes no block-level data.
 #' @param states A vector of one or more state names, abbreviations, or codes as
 #'    accepted by \code{tidycensus::get_acs()}.
 #' @param counties A vector of five-digit county FIPS codes. If specified, this parameter
@@ -156,6 +164,10 @@ fetch_acs = function(geography, variables, years, states, counties,
 #' ## Pull specific tables
 #' df = compile_acs_data(tables = c("race", "snap"), years = 2022,
 #'                       geography = "county", states = "NJ")
+#'
+#' ## Pull block-group data (2013+, requires states; unavailable tables are dropped)
+#' df = compile_acs_data(tables = c("race", "tenure"), years = 2022,
+#'                       geography = "block group", states = "NJ")
 #'
 #' ## Pull an unregistered ACS table by code
 #' df = compile_acs_data(tables = "B25070", years = 2022,
@@ -346,9 +358,95 @@ compile_acs_data = function(
     names(auto_table_entries) = raw_acs_codes
   }
 
+  ####----Block-group geography: validate and restrict to available tables----####
+  ## census blocks carry no ACS data; reject early (before any data query)
+  if (tolower(geography) == "block") {
+    cli::cli_abort("Block-level geography is not supported; the ACS does not publish estimates for census blocks.")
+  }
+
+  ## The ACS publishes only a limited subset of tables at the block-group level.
+  ## Availability is read from the codebook `geography` column (each variable's
+  ## lowest published geography), so no live data query is needed to decide it.
+  is_block_group = (tolower(geography) == "block group")
+  bg_codebook = NULL
+
+  if (is_block_group) {
+    geography = "block group"  ## normalize for tidycensus / tigris
+
+    ## cartographic block-group boundaries (tigris cb = TRUE) begin in 2013
+    if (min(years) < 2013) {
+      cli::cli_abort(c(
+        "Block-group geography is supported only for years 2013 and later
+        (the earliest year of cartographic block-group boundaries).",
+        "i" = "Requested earliest year: {min(years)}."))
+    }
+
+    ## block groups number ~240,000 nationwide; require an explicit state selection
+    if (length(states) == 0) {
+      cli::cli_abort(c(
+        "Block-group queries require an explicit {.arg states} argument (e.g., {.code states = \"NJ\"}).",
+        "i" = "National block-group pulls are not supported."))
+    }
+
+    bg_codebook = load_acs_variables(year = max(years), dataset = "acs5")
+
+    ## registry tables: partition into available / dropped / partial
+    partition = bg_partition_tables(resolved_tables, bg_codebook)
+
+    if (length(partition[["dropped"]]) > 0) {
+      cli::cli_warn(
+        "These tables are not published at the block-group level and have been dropped: {.val {sort(partition[['dropped']])}}.")
+    }
+    if (length(partition[["partial"]]) > 0) {
+      partial_messages = purrr::imap_chr(partition[["partial"]], function(dropped_vars, table_name) {
+        paste0(table_name, " (", paste0(sort(dropped_vars), collapse = ", "), ")")
+      })
+      cli::cli_warn(
+        "Some variables are not published at the block-group level and have been dropped from: {partial_messages}.")
+    }
+
+    resolved_tables = partition[["keep"]]
+
+    ## auto (raw-code) tables: drop those not published at the block-group level,
+    ## with a clear message (tidycensus itself returns an empty error here)
+    bg_variables = bg_codebook$name[bg_codebook$geography == "block group"]
+    if (length(auto_table_entries) > 0) {
+      kept_auto = list()
+      for (code in names(auto_table_entries)) {
+        entry = auto_table_entries[[code]]
+        if (any(entry[["raw_variables"]] %in% bg_variables)) {
+          kept_auto[[code]] = entry
+        } else {
+          lowest_geography = bg_codebook$geography[bg_codebook$name == paste0(code, "_001")]
+          lowest_geography = if (length(lowest_geography) == 0) "an unsupported geography" else lowest_geography[1]
+          cli::cli_warn(
+            "ACS table {.val {code}} is not published at the block-group level for {max(years)} (lowest available geography: {lowest_geography}); it has been dropped.")
+        }
+      }
+      auto_table_entries = kept_auto
+    }
+
+    ## error out only if NONE of the requested tables are available at this
+    ## geography. User-supplied DSL definitions compute from whatever columns are
+    ## present (e.g., total_population), so they do not count as "unavailable".
+    explicit_total_population = is.character(registry_tables) && "total_population" %in% registry_tables
+    requested_survivors = c(
+      setdiff(resolved_tables, "total_population"),
+      names(auto_table_entries),
+      if (explicit_total_population) "total_population" else character(0))
+    if (has_explicit_tables && length(requested_survivors) == 0 && length(user_definitions) == 0) {
+      cli::cli_abort(c(
+        "None of the requested tables are published at the block-group level.",
+        "i" = "Use {.code list_tables(geography = \"block group\")} to see available tables."))
+    }
+  }
+
   ## collect raw ACS variables from the registry
   suppressWarnings({suppressMessages({
-    variables = collect_raw_variables(resolved_tables = resolved_tables, year = max(years))
+    variables = collect_raw_variables(
+      resolved_tables = resolved_tables, year = max(years),
+      geography = geography,
+      census_codebook = bg_codebook)
   })})
 
   ## append auto-table raw variables
@@ -368,11 +466,6 @@ compile_acs_data = function(
     "metropolitan statistical area/micropolitan statistical area",
     "cbsa", "urban area", "zip code tabulation area", "zcta")
 
-  ## tracts and larger are supported
-  if (geography %in% c("block", "block group")) {
-    cli::cli_abort("Block and block group geographies are not supported.")
-  }
-
   ## warn when `counties` is supplied with a geography that doesn't honor it
   if (length(counties) > 0 && geography %in% super_state_geographies) {
     cli::cli_warn(c(
@@ -388,10 +481,10 @@ compile_acs_data = function(
   }
 
   ## warning about inter-decadal tract geometry changes
-  if ( (max(years) >= 2020) & (min(years) < 2020) & (geography == "tract") ) {
+  if ( (max(years) >= 2020) & (min(years) < 2020) & (geography %in% c("tract", "block group")) ) {
     cli::cli_warn(c(
-      "Requested years span 2020, when the Census Bureau reconfigured tract boundaries.",
-      "i" = "It is not valid to compare tract-level statistics across the 2020 boundary.",
+      "Requested years span 2020, when the Census Bureau reconfigured tract and block-group boundaries.",
+      "i" = "It is not valid to compare tract- or block group-level statistics across the 2020 boundary.",
       "i" = "Crosswalks are available from NHGIS, or via {.pkg crosswalk} ({.code renv::install('UI-Research/crosswalk')}).")) }
 
   ## warn user -- county-by-county queries are slow and should be used if only
@@ -409,7 +502,7 @@ compile_acs_data = function(
   }
 
   ## resolve county_codes and the state vector used for downstream fetches
-  if (geography %in% c("county", "county subdivision", "tract") & length(counties) > 0) {
+  if (geography %in% c("county", "county subdivision", "tract", "block group") & length(counties) > 0) {
     county_codes = tidycensus::fips_codes %>%
       dplyr::mutate(county_fips = paste0(state_code, county_code)) %>%
       dplyr::filter(county_fips %in% counties)
@@ -457,6 +550,12 @@ compile_acs_data = function(
                 county_codes %>% dplyr::filter(state == s) %>% dplyr::pull(county_code)
               } else NULL
               tigris::tracts(state = s, county = county_vec, cb = TRUE, year = year, progress_bar = FALSE)
+            }) %>% dplyr::bind_rows(),
+            "block group" = purrr::map(states_for_fetch, function(s) {
+              county_vec = if (length(counties) > 0) {
+                county_codes %>% dplyr::filter(state == s) %>% dplyr::pull(county_code)
+              } else NULL
+              tigris::block_groups(state = s, county = county_vec, cb = TRUE, year = year, progress_bar = FALSE)
             }) %>% dplyr::bind_rows(),
             "place" = purrr::map(states_for_fetch, ~ tigris::places(state = .x, cb = TRUE, year = year, progress_bar = FALSE)) %>% dplyr::bind_rows(),
             "alaska native regional corporation" = tigris::alaska_native_regional_corporations(cb = TRUE, year = year),
