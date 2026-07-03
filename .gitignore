@@ -8,8 +8,5 @@ inst/doc
 *.csv
 /doc/
 /Meta/
-*.rds
-/inst
-tests/testthat/fixtures
 dev/*.parquet
 dev/*.png

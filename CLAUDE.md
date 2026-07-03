@@ -27,7 +27,7 @@ devtools::check()
 devtools::document()
 ```
 
-Tests use pre-saved `.rds` fixtures (compiled output + codebook) in `tests/testthat/test-data/` for reproducibility and speed. The test framework is testthat edition 3. Many integration tests `skip_if_not(file.exists(...))` and reference a dated fixture path (e.g., `tests/testthat/fixtures/test_data_<DATE>.rds`); if the date in those paths doesn't match a file in `test-data/`, those tests silently skip.
+Tests use pre-saved `.rds` fixtures (compiled output + codebook) in `tests/testthat/fixtures/`, which are committed to the repository so fixture-gated tests run on CI and fresh clones. Regeneration recipes live in the header comments of the test files that use them (regenerate after changing any table definition, then re-run the suite). Tests that hit the live Census API are gated on `skip_if_no_census_key()` (see `tests/testthat/helper-skips.R`); the variables metadata endpoint requires a `CENSUS_API_KEY` even for discovery functions. The test framework is testthat edition 3.
 
 CI runs on GitHub Actions: `test-coverage.yaml` (push/PR to main) and `pkgdown.yaml` (site deployment).
 
