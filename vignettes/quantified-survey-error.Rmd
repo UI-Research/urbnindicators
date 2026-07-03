@@ -194,7 +194,7 @@ Statistical significance testing is critical to understanding whether
 estimates are meaningfully different. Estimates that may appear
 substantially different in isolation are frequently, especially at
 smaller geographies, not statistically significantly different because
-their errors are so significant.
+their margines of error are so significant.
 
 We'll illustrate this numerically and demonstrate the impacts of
 accounting for error when visualizing data, leveraging
@@ -331,13 +331,13 @@ benchmark (see the map above) is another common approach.
 
 # Limitations of Calculated Errors
 
-MOEs for raw ACS estimates–i.e., those that are directly reported by the
-Census Bureau–should be accurate measurements of survey error. This is
+MOEs for raw ACS estimates–--i.e., those that are directly reported by the
+Census Bureau–--should be accurate measurements of survey error. This is
 because these errors are calculated after accounting for estimate
 covariance using individual-level responses (see footnote 1). However,
-the calculations of error for derived estimates–that is, estimates that
+the calculations of error for derived estimates–--that is, estimates that
 `library(urbnindicators)` calculates behind the scenes using two or more
-raw ACS estimates are imperfect for at least two reasons:
+raw ACS estimates---are imperfect for at least two reasons:
 
 1.  Errors for derived estimates do not account for covariance;
 
@@ -367,7 +367,7 @@ non-trivial to work with.
 A similar option that may be appropriate for some use-cases is to work
 with the the individual-level data, which is often referred to as the
 "Public Use Microdata". These data comprise respondent-level ACS data as
-well as large set of survey replicate weights that can be used to
+well as a large set of survey replicate weights that can be used to
 calculate more accurate margins of error and related error statistics.
 However, these data are much more cumbersome to work with than the
 tabulated estimates tables returned by `urbnindicators`, and in order to

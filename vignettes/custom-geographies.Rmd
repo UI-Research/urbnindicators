@@ -31,11 +31,11 @@ library(urbnthemes)
 library(tidycensus)
 ```
 
-For many ACS-supported geographies and variables, sample sizes can lead to problematically large margins of error (MOEs). For example, census tracts are useful geographic units because they reveal spatial nuance, but in many cases, their MOEs
-are larger than the actual estimates they accompany. (Note that similar issues arise with small-population places and counties, among many other geographies.) While it's easy to simply ignore these MOEs, estimates with large MOEs can offer a very misleading sense of nuance and precision, leading to incorrect inferences and decisionmaking. And for more rigorous analysis that looks for statistically significant differences, large MOEs at, for example, the tract level, make it difficult to detect meaningful differences between areas---even when real differences exist.
+For many ACS-supported geographies and variables, sample sizes can lead to problematically large margins of error (MOEs). For example, block groups are useful geographic units because they reveal spatial nuance, but in many cases, their MOEs
+are larger than the actual estimates they accompany. (Note that similar issues arise with tracts and small-population places and counties, among many other geographies.) While it's easy to simply ignore these MOEs, estimates with large MOEs can offer a very misleading sense of precision, leading to incorrect inferences and decisionmaking. And for more  analyses that look for statistically significant differences, large MOEs at, for example, the tract level, make it difficult to detect meaningful differences between areas---even when real differences exist.
 
 Another challenge is that much decisionmaking occurs at geographies that are not
-supported directly by the ACS. Think, for example, of school districts, political wards, a city's neighborhoods, or the unincorporated area governed by a county. To translate (or "interpolate") data to these geographies can require significant work, and the process of accurately interpolating not just estimates but also their MOEs is both error-prone and time-intensive to the point where very few analysts do so. But MOEs are as fundamental to interpreting ACS data as are ACS estimates themselves.
+supported directly by the ACS. Think, for example, of school districts, political wards, a city's neighborhoods, or the unincorporated area governed by a county. To translate (or "interpolate") data to these geographies can require significant work, and the process of accurately interpolating not just estimates but also their MOEs is both error-prone and time-intensive to the point where very few analysts do so. But MOEs are as fundamental to interpreting ACS data as are the estimates themselves.
 
 `interpolate_acs()` addresses some of these challenges by supporting users in interpolating both ACS estimates and MOEs to user-defined geographies. It requires a crosswalk that specifies the share of source geography values that should be allocated to each target geography, though for the special case where source geographies are perfectly nested within target geographies (e.g., tracts within counties), the function assigns weights of one to every observation (the case when `weight = NULL`). Note that `interpolate_acs()` always returns a non-spatial dataframe, so geometry must be managed separately.
 
@@ -340,28 +340,19 @@ gridExtra::grid.arrange(
     gp = grid::gpar(fontsize = 12, fontface = "bold")))
 ```
 
-With `weight = NULL` (the default used in the quadrant example),
-`interpolate_acs()` assumes perfect nesting---each source geography's
-values are entirely attributed to the target geography. Providing a
-`weight` column enables proportional allocation for partial-overlap
-crosswalks. Count variables and their MOEs are multiplied by the
-crosswalk weight before summing; percentages are then recalculated
-from the allocated components.
-
 # Key Takeaways
 
-`interpolate_acs()` helps make your analysis more precise:
+`interpolate_acs()` helps make your analysis more precise and relevant to decisionmaking contexts:
 
 1.  **Aggregation improves precision**: Combining geographies into larger
     geographies reduces margins of error. Got some very-small-population 
-    tracts or counties? Aggregate these with adjacent geographies to get 
-    estimates with smaller (relative) MOEs.
+    areas? Aggregate adjacent geographies to get estimates with smaller (relative) MOEs.
 
 2.  **Better inference**: More precise estimates--those with smaller relative
-    MOES--enable detection of statistically significant differences that would 
+    MOEs--enable detection of statistically significant differences that would 
     otherwise be obscured by sampling error.
 
 3.  **Flexible target geographies**: The ACS reports estimates at many
     geographies, but there are many others that are not supported.
-    Provide a crosswalk and you can interpolate both estimates and MOES
+    Provide a crosswalk and you can interpolate both estimates and MOEs
     to any geography you want--wards, school districts, etc.

@@ -1,0 +1,159 @@
+---
+title: "ACS Background and Best Practices"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{ACS Background and Best Practices}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>")
+```
+
+This vignette covers ACS concepts and best practices that are
+useful context for working with `urbnindicators`. It is not a
+comprehensive guide to the ACS; the Census Bureau's
+[ACS Handbook](https://www.census.gov/programs-surveys/acs/library/handbooks/general.html)
+is the authoritative reference.
+
+## Prerequisites
+
+`urbnindicators` uses the Census Bureau API via
+[tidycensus](https://walker-data.com/tidycensus/index.html). You'll
+need a free API key, which you can request at
+<https://api.census.gov/data/key_signup.html>. Once you have one,
+install it so it's available across sessions:
+
+```r
+tidycensus::census_api_key("YOUR_KEY_HERE", install = TRUE)
+```
+
+After running this once, restart R. The key is stored in your
+`.Renviron` file and will be used automatically by `tidycensus` (and
+therefore by `urbnindicators`).
+
+## What Is the ACS?
+
+The American Community Survey (ACS) is an ongoing nationwide survey
+conducted by the U.S. Census Bureau. Unlike the decennial census,
+which attempts to count every person in the country once every ten
+years, the ACS surveys a sample of roughly 3.5 million addresses
+every year. The Census Bureau uses these responses to produce
+estimates of population characteristics---demographics, housing,
+income, education, employment, and more---for geographies ranging
+from the entire nation down to individual block groups. (Unlike the
+decennial census, the ACS does not produce block-level estimates.)
+
+Because the ACS is a *survey*, its results are estimates with
+associated sampling error, not exact counts. Every ACS estimate is
+accompanied by a margin of error (MOE) that quantifies the
+uncertainty around it. See
+[Drawing Inferences while Accounting for Survey Error](quantified-survey-error.html)
+for more on how `urbnindicators` helps you work with MOEs.
+
+## Five-Year Estimates
+
+The Census Bureau releases ACS data in two forms: 1-year estimates
+(for geographies with populations of 65,000+) and 5-year estimates
+(available for all geographies).
+`urbnindicators` supports 5-year estimates exclusively.
+
+A "5-year estimate" pools survey responses collected over a
+five-year window. When you request `years = 2024`, you receive the
+**2020-2024 ACS**, which includes data collected during all five
+of those calendar years. This has two important implications:
+
+1.  **5-year estimates are period estimates, not point-in-time
+    snapshots.** The 2020--2024 ACS does not describe the population
+    as of 2024. It reflects average conditions across the full
+    five-year window.
+
+2.  **Overlapping windows complicate comparisons over time.**
+    Adjacent releases share underlying survey data. For example,
+    the 2023 ACS (2019--2023) and the 2024 ACS (2020--2024) share
+    four of five years of survey responses. Changes between two
+    overlapping releases are muted and the estimates are correlated,
+    making standard significance tests invalid. To compare two
+    points in time using five-year estimates, select non-overlapping 
+    periods---for example, `years = c(2019, 2024)` compares the 2015--2019 
+    and 2020--2024 windows, which share no data.
+
+## Geographies
+
+The ACS publishes estimates for a variety of geographic levels. 
+
+For geographies that span states (`"us"`, `"region"`, `"division"`,
+`"zcta"`, `"cbsa"`, etc.), the `states` parameter in `compile_acs_data` 
+is ignored because these geographies are returned nationally. For sub-state geographies
+(`"tract"`, `"county"`, `"place"`, etc.), providing `states`
+restricts the results to the specified state(s). If `states` is
+omitted for sub-state geographies, all states are included, which
+can be very slow. You can also use the `counties` parameter to
+request data for specific counties, which can be helpful for county-nested geographies:
+`"tract"` and `"block group"`. 
+
+## Geography Changes over Time
+
+Census tract and block group boundaries are redrawn after each
+decennial census. ACS releases through 2019 use **2010-vintage**
+boundaries, and releases starting in 2020 use **2020-vintage**
+boundaries. This means that tract GEOIDs are not directly
+comparable across this boundary:
+
+-   A tract GEOID that appears in both the 2019 and 2024 ACS may
+    refer to **different physical areas** (the boundaries changed
+    but the ID was reused).
+-   Some 2010-vintage tracts were **split or merged** into new
+    2020-vintage tracts with entirely different GEOIDs.
+
+If you need to compare tract-level data across the 2020 boundary
+change, you'll need a crosswalk to align geographies. See
+[Translating ACS Data to Custom Geographies](custom-geographies.html)
+for a worked example using the
+[crosswalk](https://github.com/UI-Research/crosswalk) package.
+County and state boundaries rarely change, so this issue primarily
+affects tracts and sub-county geographies, though counties do occasionally
+change---e.g., all Connecticut counties were re-defined in 2022. Note that
+tract and block group changes are coordinated around the decennial census years
+in almost all cases; county changes can occur in any year.
+
+## Universe Variables
+
+Every ACS table has a "universe"---the population to which the
+table's estimates apply. For example:
+
+-   The race table (B03002) universe is **all people**.
+-   The SNAP table (B22003) universe is **all households**.
+-   The cost burden table (B25070) universe is **renter-occupied housing units with cash rent**.
+
+In the `urbnindicators` output, universe variables are named with a
+`_universe` suffix (e.g., `snap_universe`, `race_universe`). These
+are the denominators used by default to calculate percentages:
+`snap_received_percent` = `snap_received / snap_universe`. 
+
+In some cases, a table may have an overarching universe variable, and then 
+one or more sub-table universe variables. For example, for a table 
+of housing unit type by housing tenure, the universe variable for the entire
+table might be a variable representing all households, while there may be
+distinct sub-universe variables for all owner-occupant households and for
+all renter-occupant households. Selecting different universe or sub-universe 
+variables when calculating percentages allows for different types of comparisons.
+
+Understanding universes is important because **counts from tables
+with different universes are not directly comparable.** Dividing a
+count of people by a count of households is not meaningful. When
+constructing custom derived variables, always check that the
+numerator and denominator share the same universe. Further, even when
+two tables nominally have the same universes---for example, they both
+refer to all households---it is still best to use the table-specific
+universe variable to calculate percentages, as table-specific universes 
+can vary somewhat depending on response rates to specific ACS questions. 
+(`urbnindicators` intentionally does not support calculating percentages
+using universe variables from one table and numerator variables from another 
+table.)
