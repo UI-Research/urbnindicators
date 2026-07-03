@@ -4,7 +4,7 @@
 
 **urbnindicators** is an R package that provides analysis-ready American Community Survey (ACS) data with minimal user effort. The main entry point is `compile_acs_data()`, which pulls hundreds of standardized variables (raw counts + calculated percentages), generates a codebook, and computes margins of error.
 
-- Five-year ACS estimates only; tract-level geography and up (no block groups)
+- Five-year ACS estimates only; block-group geography and up. Block groups are supported for 2013+ and require an explicit `states` argument; only the subset of tables the ACS publishes at the block-group level is returned (others are dropped with a warning). See "Block-group geography" below.
 - Lifecycle stage: experimental
 - Repository: https://github.com/UI-Research/urbnindicators
 
@@ -92,6 +92,19 @@ When `tables` are specified:
 4. `execute_definitions()` runs each table's `definitions` list (registered, then auto, then user) against the fetched data.
 5. Codebook and MOEs are generated only for returned variables.
 6. Tigris geometry is fetched only when `spatial = TRUE` or `"population_density"` is in the resolved tables.
+
+### Block-group geography
+
+`geography = "block group"` is supported for years **2013+** (the floor for `tigris::block_groups(cb = TRUE)`) and **requires an explicit `states` argument** (national block-group pulls are disallowed). Queries iterate county-by-county within each state.
+
+The ACS publishes only a subset of detailed tables at the block-group level. **Availability is read from the codebook, not by querying data**: `tidycensus::load_variables(year, "acs5")` includes a `geography` column giving each variable's *lowest published geography*; a variable is block-group-available iff `geography == "block group"`. This is authoritative, year-specific, and free (the codebook is already loaded).
+
+- `bg_partition_tables()` (in `R/table_registry.R`) classifies resolved tables into `keep` / `dropped` / `partial` using that column. Derived tables with no raw variables of their own (e.g., `population_density`) are always kept.
+- In `compile_acs_data()`, the partition runs *before* querying: dropped tables and partial-table sub-variables are warned about as early as possible; the function errors only if **none** of the user's requested tables are available. Auto/raw ACS codes are checked the same way (tidycensus returns an uninformative error for these, so we drop them with a clear message instead).
+- `collect_raw_variables(geography = "block group")` filters the variable vector to block-group-available codes (this is what drops a partial table's unavailable lines, e.g., the `B19013A–I` race iterations of median household income).
+- `list_tables(geography = "block group")` returns the available subset.
+
+Note: don't hard-code a list of block-group tables — derive it from the codebook so it stays correct across vintages.
 
 ### Key source files
 

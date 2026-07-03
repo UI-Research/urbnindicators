@@ -48,8 +48,13 @@ tables must be requested explicitly).}
 American Community Survey estimates.}
 
 \item{geography}{A geography type that is accepted by \code{tidycensus::get_acs()}, e.g.,
-"tract", "county", "state", among others. Geographies below the tract level are not
-supported.}
+"tract", "county", "state", among others. \code{"block group"} is supported for
+years 2013 and later and requires an explicit \code{states} argument; because the
+ACS publishes only a limited subset of tables at the block-group level, requested
+tables that are not available there are dropped with a warning (use
+\code{list_tables(geography = "block group")} to see what is available). Block-group
+estimates carry large margins of error and should be used with care. Census blocks
+(geography = "block") are not supported, as the ACS publishes no block-level data.}
 
 \item{states}{A vector of one or more state names, abbreviations, or codes as
 accepted by \code{tidycensus::get_acs()}.}
@@ -111,6 +116,10 @@ df = compile_acs_data(years = c(2022), geography = "county", states = "NJ")
 ## Pull specific tables
 df = compile_acs_data(tables = c("race", "snap"), years = 2022,
                       geography = "county", states = "NJ")
+
+## Pull block-group data (2013+, requires states; unavailable tables are dropped)
+df = compile_acs_data(tables = c("race", "tenure"), years = 2022,
+                      geography = "block group", states = "NJ")
 
 ## Pull an unregistered ACS table by code
 df = compile_acs_data(tables = "B25070", years = 2022,
