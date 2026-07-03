@@ -11,5 +11,5 @@ inst/doc
 *.rds
 /inst
 tests/testthat/fixtures
-*.parquet
-*.png
+dev/*.parquet
+dev/*.png
