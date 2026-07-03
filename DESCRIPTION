@@ -1,18 +1,20 @@
 Package: urbnindicators
 Type: Package
-Title: Out of the Box Social Science Indicators from the American Community Survey (ACS)
-Version: 0.0.0.9401
+Title: Analysis-Ready Social Science Indicators from the American Community Survey (ACS)
+Version: 0.1.0
 Authors@R: person("Will", "Curran-Groome", email = "wcurrangroome@gmail.com",
                   role = c("aut", "cre"))
-Description: There are many packages available that facilitate queries to the Census
-  Bureau API, but subsequent steps in the analysis workflow still require significant
-  work (much of which must be repeated from analysis to analysis), such as identifying
-  and selecting relevant variables, determining how to accurately calculate derived 
-  measures (e.g., percentages), and naming variables semantically. urbnindicators
-  abstracts much of this process away and provides users a simple interface to obtain
-  commonly-used social sciences measures from the ACS.
+Description: Provides analysis-ready social science measures from the American
+  Community Survey (ACS) with a single function call. Wraps the Census Bureau
+  API (via 'tidycensus') to return semantically-named variables, pre-computed
+  percentages with correctly pooled margins of error per Census Bureau
+  guidance, and an attached codebook documenting how every variable is
+  calculated. Includes tools to aggregate or interpolate estimates to custom
+  geographies with propagated margins of error, to define custom derived
+  variables, and to explore results in a local 'shiny' viewer.
 Encoding: UTF-8
-LazyData: true
+Depends:
+    R (>= 4.1)
 Imports:
     cli,
     dplyr,
@@ -51,10 +53,10 @@ Suggests:
 Remotes:
     UI-Research/crosswalk,
     UrbanInstitute/urbnthemes
-URL: https://ui-research.github.io/urbnindicators/
+URL: https://ui-research.github.io/urbnindicators/, https://github.com/UI-Research/urbnindicators
+BugReports: https://github.com/UI-Research/urbnindicators/issues
 VignetteBuilder: knitr, rmarkdown
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
-License: GPL (>= 3) + file LICENSE
-Config/roxygen2/version: 8.0.0
+License: GPL (>= 3)
 RoxygenNote: 7.3.3
