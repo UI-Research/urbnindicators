@@ -11,8 +11,6 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Codecov test
 coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](https://app.codecov.io/gh/UI-Research/urbnindicators)
-[![Codecov test
-coverage](https://codecov.io/gh/UI-Research/urbnindicators/graph/badge.svg)](https://app.codecov.io/gh/UI-Research/urbnindicators)
 <!-- badges: end -->
 
 # Overview
@@ -23,8 +21,7 @@ the American Community Survey (ACS).
 What you can access:
 
 - Hundreds of pre-computed variables, including percentages and the raw
-  count variables used to produce them. Or flexibly query any table your
-  heart desires.
+  count variables used to produce them.
 
 - Or flexibly specify your own derived variables with a series of helper
   functions.
@@ -48,6 +45,9 @@ What you can access:
 - Tools to aggregate or interpolate your data to different
   geographies–along with correctly adjusted margins of error.
 
+- A local Shiny app to render your selected data and interactively
+  explore, interpolate, and export those data to disk.
+
 # Installation
 
 Install the development version of `urbnindicators` from
@@ -58,7 +58,7 @@ Install the development version of `urbnindicators` from
 renv::install("UI-Research/urbnindicators")
 ```
 
-You’ll want a Census API key ([request one
+You’ll need a Census API key ([request one
 here](https://api.census.gov/data/key_signup.html)). Set it once with:
 
 ``` r
@@ -215,7 +215,7 @@ Confidence intervals are presented around each point but are extremely small"),
 `compile_acs_data()` returns five-year ACS estimates for any geography
 accepted by `tidycensus::get_acs()`. Estimates are available for **2009
 and later** (the first year of five-year ACS data); `geography` defaults
-to `"county"` and `years` to a recent release.
+to `"county"` and `years` to the most recent release.
 
 | `geography` | `states` argument | Notes |
 |----|----|----|
@@ -223,13 +223,13 @@ to `"county"` and `years` to a recent release.
 | `"state"` | Optional (filters) | States and DC |
 | `"county"` (default), `"place"`, `"county subdivision"` | Recommended | Omitting `states` pulls every state, which is slow |
 | `"tract"` | Required | Census tracts |
-| `"block group"` | Required | **2013 and later only.** Only the subset of tables the ACS publishes at this level is returned (others are dropped with a warning---see `list_tables(geography = "block group")`), and estimates carry large margins of error |
+| `"block group"` | Required | 2013 and later only. Only a subset of tables is published at this geography (see `list_tables(geography = "block group")`). Estimates carry large margins of error |
 
-Census blocks (`geography = "block"`) are not supported, as the ACS
-publishes no block-level data. For `"county"`, `"tract"`, and
-`"block group"`, you can also pass `counties` (five-digit FIPS codes) to
-limit the pull to specific counties. See `vignette("acs-background")` for
-more on geographies, including boundary changes across the 2020 census.
+Census blocks are not supported, as the ACS publishes no block-level
+data. For `"county"`, `"tract"`, and `"block group"`, you can also pass
+`counties` (five-digit FIPS codes) to limit the pull to specific
+counties. See `vignette("acs-background")` for more on geographies,
+including boundary changes across the 2020 census.
 
 ## Custom Geographies
 
@@ -282,17 +282,17 @@ See `vignette("custom-geographies")` for more.
 Beyond the package’s built-in tables, you can define your own derived
 variables using the `define_*()` helpers and pass them directly to
 `compile_acs_data()`. Your custom variables automatically get codebook
-entries and margins of error:
+entries and correctly calculated margins of error:
 
 ``` r
 df = compile_acs_data(
   tables = list(
     "snap",
     define_percent(
-      "snap_not_received_percent",
-      numerator_variables = c("snap_universe"),
-      numerator_subtract_variables = c("snap_received"),
-      denominator_variables = c("snap_universe"))),
+      numerator = "snap_universe",
+      denominator = "snap_universe",
+      subtract_from_numerator = "snap_received",
+      output = "snap_not_received_percent")),
   years = 2024,
   geography = "county",
   states = "DC")
@@ -318,38 +318,35 @@ Check out the vignettes for additional details:
 - A package overview to help users [**Get
   Started**](articles/urbnindicators.html).
 
-- [**ACS Background and Best Practices**](articles/acs-background.html)
-  for users new to the ACS---covers 5-year estimates, geographies,
-  boundary changes, and universe variables.
-
-- An interactive version of the package’s
-  [**Codebook**](articles/codebook.html) so that prospective users can
-  know what to expect.
-
-- A breakdown of [**ACS Table
-  Structures**](articles/acs-table-structures.html)---how the package
-  selects variables, renames them, calculates percentages, and returns
-  results.
-
-- A brief description of the package’s [**Design
-  Philosophy**](articles/design-philosophy.html) to clarify the
-  use-cases that `urbnindicators` is built to support.
+- An interactive table of the package’s
+  [**Codebook**](articles/codebook.html).
 
 - An illustration of how [**Quantifying Survey
   Error**](articles/quantified-survey-error.html) can improve inference
   making.
 
-- You can re-create your indicators and their measures of error for
-  [**Custom Geographies**](articles/custom-geographies.html).
-  Neighborhoods? Unincorporated counties? Start here.
-
 - A guide to defining [**Custom Derived
   Variables**](articles/custom-derived-variables.html) using the
   `define_*()` helpers.
 
+- You can re-create your indicators and their measures of error for
+  [**Custom Geographies**](articles/custom-geographies.html).
+
+- See how you can spin up a [**Local Shiny
+  app**](articles/view_acs_data.html) to explore, interpolate, and
+  export your data.
+
 # Credits
 
-This package is built on top of and enormously indebted to
-`library(tidycensus)`, which provides the core functionality for
-accessing the Census Bureau API. Learn more here:
-<https://walker-data.com/tidycensus/index.html>.
+This package is built on top of `library(tidycensus)`, which provides
+the core functionality for accessing the Census Bureau API. Learn more
+here: <https://walker-data.com/tidycensus/index.html>.
+
+A number of staff in the Urban Institute’s Housing and Communities
+Division and Data Science and Technology team provided feedback, code
+reviewed, and otherwise supported the development of this package.
+
+## Use of Generative AI
+
+This package was developed in part using agentic AI, under the
+supervision of the author.
