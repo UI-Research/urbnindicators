@@ -95,8 +95,8 @@ is ignored because these geographies are returned nationally. For sub-state geog
 restricts the results to the specified state(s). If `states` is
 omitted for sub-state geographies, all states are included, which
 can be very slow. You can also use the `counties` parameter to
-request data for specific counties, which can be helpful for county-nested geographies:
-`"tract"` and `"block group"`. 
+request data for specific counties; it applies to `"county"`,
+`"county subdivision"`, `"tract"`, and `"block group"` queries.
 
 ## Geography Changes over Time
 
@@ -130,7 +130,12 @@ table's estimates apply. For example:
 
 -   The race table (B03002) universe is **all people**.
 -   The SNAP table (B22003) universe is **all households**.
--   The cost burden table (B25070) universe is **renter-occupied housing units with cash rent**.
+-   The cost burden table used by this package (B25074, household
+    income by gross rent as a percentage of household income) has a
+    universe of **renter-occupied housing units**; households whose
+    burden cannot be computed (e.g., no cash rent) fall in the
+    table's "not computed" category and are excluded from the
+    package's cost-burden denominators.
 
 In the `urbnindicators` output, universe variables are named with a
 `_universe` suffix (e.g., `snap_universe`, `race_universe`). These

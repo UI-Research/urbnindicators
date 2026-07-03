@@ -100,7 +100,7 @@ df_disability = get_acs(
 ```
 
 This returns us 21 observations–one for each county in NJ--along with an
-intimidating 80 columns with unintelligble names along the lines of
+intimidating 80 columns with unintelligible names along the lines of
 `B18101_039E`.
 
 ### Calculating our measure of interest
@@ -219,20 +219,24 @@ codebook %>%
   head(5)
 ```
 
-The codebook has three columns:
+The codebook's three primary columns are:
 
 -   **calculated_variable** -- the variable name as it appears in the
     dataframe.
--   **variable_type** -- whether the variable is a `count` (raw ACS
-    estimate), a `percent` (derived ratio), or `metadata` (e.g., a
-    median or geographic identifier).
--   **definition** -- a formula showing how the variable was
-    calculated. For raw ACS variables, this is the original Census
-    Bureau variable code (e.g., `B22003_002`). For derived variables,
-    this is an expression like `snap_received / snap_universe`.
+-   **variable_type** -- the kind of variable: `Count` (raw ACS
+    estimate), `Percent` or `Sum` (derived), `Median`/`Median ($)`/
+    `Average`/`Quintile ($)`/`Index`, or `Metadata` (e.g., a
+    geographic identifier).
+-   **definition** -- a description of how the variable was
+    calculated. Raw ACS variables read `"This is a raw ACS
+    estimate."`; derived variables spell out their numerator and
+    denominator alongside the original Census Bureau codes, e.g.,
+    `"Numerator = snap_received (B22003_002). Denominator =
+    snap_universe (B22003_001)."`
 
-These definition strings are also used internally to calculate
-margins of error for derived variables (see
+The codebook's remaining columns record each derived variable's
+numerator/denominator components; margins of error are computed from
+these (see
 [Quantifying Survey Error](quantified-survey-error.html)), so their
 accuracy is critical.
 
@@ -251,7 +255,7 @@ codebook %>%
 
 For tables from `list_tables()`, raw ACS variables and derived variables are automatically returned. But for other tables, there are no pre-computed (by `urbnindicators`) derived variables. And even for tables reflected in `list_tables()`,
 you may want alternate or additional derived variables. `urbnindicators` provides a
-suite of helper functions (`define_*()`) that allow you to specify how you want to create these derived variables; these helper functions abstract away the actual calculations and ensure that you get an updated codeboook and correctly-pooled margins
+suite of helper functions (`define_*()`) that allow you to specify how you want to create these derived variables; these helper functions abstract away the actual calculations and ensure that you get an updated codebook and correctly-pooled margins
 of error for each of your newly-derived variables. See [Custom Derived Variables](custom-derived-variables.html) for more.
 
 To learn more about how ACS tables are structured, how `urbnindicators`
@@ -261,7 +265,7 @@ selects and renames variables, and how percentages are calculated, see
 ### Interpolate data to custom geographies
 
 ACS data are available for many statistical and political geographies, but many analyses
-rfocus on other geographies like neighborhoods or planning districts.
+focus on other geographies like neighborhoods or planning districts.
 `interpolate_acs()` translates data from ACS-supported geographies to any
 user-defined geography, properly re-deriving percentages and
 propagating margins of error. See

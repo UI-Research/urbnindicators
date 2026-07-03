@@ -34,8 +34,9 @@ variables automatically get codebook entries and margins of error,
 just like the built-in ones.
 
 This vignette walks through the process of identifying variables,
-choosing denominators, and writing definitions, using household
-type data (ACS table B11001) as a running example.
+choosing denominators, and writing definitions, using sex-by-age
+data for the White-alone population (ACS table B01001A) as a
+running example.
 
 ## The `define_*()` Helpers
 
@@ -55,9 +56,10 @@ variables your definitions reference.
 
 ## Step 1: Identify the Raw Variables
 
-We're going to create a variable describing the share of white
-men between the ages of 18 and 44. The needed raw variables are
-from ACS table B01001A, as described in the codebook
+We're going to create a variable describing White-alone men aged
+18 to 44 as a share of the total White-alone population (the table
+universe). The needed raw variables are from ACS table B01001A, as
+described in the codebook.
 
 ```{r}
 codebook = get_acs_codebook()
@@ -82,9 +84,9 @@ we just use the table universe here.
 We express the new variable(s) using `define_*()` helpers and pass
 the definitions directly to `compile_acs_data()`.
 
-Our target variable--the share of white men aged 18-44--requires
-summing several age-group columns (18-19, 20, 21, 22-24, 25-29,
-30-34, 35-39, 40-44) and dividing by the table universe.
+Our target variable requires summing several male age-group
+columns (in B01001A these are collapsed brackets: 18-19, 20-24,
+25-29, 30-34, and 35-44) and dividing by the table universe.
 `define_percent()` handles this: when its `numerator` is a regex,
 it matches all columns fitting the pattern and sums them into the
 numerator.

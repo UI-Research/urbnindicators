@@ -147,8 +147,13 @@ concept "GROSS RENT AS A PERCENTAGE OF HOUSEHOLD INCOME IN THE
 PAST 12 MONTHS" and label "Less than 10.0 percent" becomes:
 
 ```
-gross_rent_as_a_pct_of_household_income_in_the_past_12_months_less_than_10_0_pct
+gross_rent_as_a_percentage_household_income_in_past_12_months_less_than_10_0_pct
 ```
+
+(Common connector words like "of" and "the" are collapsed, and a
+trailing "percent" becomes `pct` so that computed percentage
+variables--which end in `_percent`--remain distinguishable from raw
+ACS variables that happen to measure percentages.)
 
 These names are functional but verbose. To see what names a
 table will produce before pulling data, you can use
@@ -165,10 +170,11 @@ get_acs_codebook(table = "B25070")
 Registered tables define their percentages explicitly. Each
 table's definitions specify which variable(s) form the numerator,
 which form the denominator, and what the output variable should
-be called. For example, `snap_received_percent` is defined as:
+be called. For example, `snap_received_percent` is documented in
+the codebook as:
 
 ```
-snap_received / snap_universe
+Numerator = snap_received (B22003_002). Denominator = snap_universe (B22003_001).
 ```
 
 Some percentage calculations are more complex. For example,
@@ -266,12 +272,14 @@ was calculated:
 attr(df, "codebook")
 ```
 
-The **definition** column is especially important: for raw ACS
-variables, it shows the ACS variable code (e.g., `B22003_002`);
-for derived variables, it shows the formula (e.g.,
-`snap_received / snap_universe`). These definition strings are
-also used internally to pool margins of error, so they
-always reflect the actual calculation.
+The **definition** column is especially important: raw ACS
+variables read `"This is a raw ACS estimate."`, while derived
+variables spell out their inputs alongside the original ACS codes
+(e.g., `"Numerator = snap_received (B22003_002). Denominator =
+snap_universe (B22003_001)."`). The codebook's component
+list-columns (`numerator_vars`, `denominator_vars`, and their
+`_subtract_` counterparts) drive the pooled margin-of-error
+calculations, so they always reflect the actual calculation.
 
 ### GEOIDs
 
@@ -294,11 +302,18 @@ sub-state geography.
 `urbnindicators` provides several functions for exploring what
 data is available:
 
-| Function | Purpose | Requires API? |
+| Function | Purpose | Requires API key? |
 |---|---|---|
-| `list_tables()` | Names of all registered tables | No |
+| `list_tables()` | Names of all registered tables | No* |
 | `list_variables()` | Every variable mapped to its table | Yes |
 | `get_acs_codebook()` | Browse all ACS variables with clean names | Yes |
+
+\*`list_tables(geography = "block group")` also requires a key,
+because block-group availability is read from the ACS variable
+dictionary. The Census Bureau's variables metadata endpoint requires
+an API key, so any function that loads the dictionary needs
+`CENSUS_API_KEY` set (see
+`tidycensus::census_api_key("YOUR_KEY", install = TRUE)`).
 
 A typical discovery workflow:
 
