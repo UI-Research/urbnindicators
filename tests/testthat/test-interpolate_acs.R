@@ -58,7 +58,7 @@ testthat::test_that(
     testthat::expect_error(
       interpolate_acs(df, source_geoid = "nonexistent",
                       target_geoid_column = "tgt", weight = "w"),
-      "not found in .data"
+      "not found in `\\.data`"
     )
   }
 )
@@ -71,12 +71,12 @@ testthat::test_that(
 
     testthat::expect_error(
       interpolate_acs(df, target_geoid_column = "nonexistent", weight = "w"),
-      "not found in .data"
+      "not found in `\\.data`"
     )
 
     testthat::expect_error(
       interpolate_acs(df, target_geoid_column = "nonexistent"),
-      "not found in .data"
+      "not found in `\\.data`"
     )
   }
 )
@@ -90,7 +90,7 @@ testthat::test_that(
 
     testthat::expect_error(
       interpolate_acs(df, target_geoid_column = "target", weight = "nonexistent"),
-      "not found in .data"
+      "not found in `\\.data`"
     )
   }
 )
@@ -120,7 +120,7 @@ testthat::test_that(
     testthat::expect_error(
       interpolate_acs(df, crosswalk = bad_xwalk,
                       target_geoid_column = "tgt", weight = "w"),
-      "not found in crosswalk"
+      "not found in `crosswalk`"
     )
   }
 )
@@ -511,12 +511,10 @@ testthat::test_that(
     df_with_xwalk = df %>%
       dplyr::left_join(xwalk, by = "GEOID")
 
-    testthat::expect_message(
-      suppressWarnings(
-        interpolate_acs(df_with_xwalk,
-                        target_geoid_column = "target", weight = "w")),
-      "NA values"
-    )
+    warns = testthat::capture_warnings(
+      interpolate_acs(df_with_xwalk,
+                      target_geoid_column = "target", weight = "w"))
+    testthat::expect_true(any(grepl("NA values", warns)))
   }
 )
 
@@ -633,10 +631,9 @@ testthat::test_that(
 
     df$custom_group = c("A", "A", NA, "B", "B")
 
-    testthat::expect_message(
-      interpolate_acs(df, target_geoid_column = "custom_group"),
-      "NA values"
-    )
+    warns = testthat::capture_warnings(
+      interpolate_acs(df, target_geoid_column = "custom_group"))
+    testthat::expect_true(any(grepl("NA values", warns)))
   }
 )
 
