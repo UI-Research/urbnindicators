@@ -17,6 +17,28 @@ test_codebook_path = test_path("fixtures", "codebook_2026-02-08.rds")
 
       testthat::expect_equal(results_missingness, 0) } )
 
+## Universe statements
+  testthat::test_that(
+    "Codebook includes ACS universe statements.",
+    {
+      testthat::skip_if_not(file.exists(test_codebook_path), "Test fixture not available")
+      codebook = readRDS(test_codebook_path)
+
+      testthat::expect_true("universe" %in% colnames(codebook))
+      testthat::expect_equal(
+        codebook$universe[codebook$calculated_variable == "snap_received_percent"],
+        "Households")
+      testthat::expect_equal(
+        codebook$universe[codebook$calculated_variable == "employment_civilian_labor_force_employed_percent"],
+        "Population 16 years and over")
+      ## complements inherit the universe of their source variable
+      testthat::expect_equal(
+        codebook$universe[codebook$calculated_variable == "ability_speak_english_less_than_very_well_percent"],
+        "Population 5 years and over")
+      ## metadata fields have no ACS universe
+      testthat::expect_true(all(
+        codebook$universe[codebook$variable_type == "Metadata"] == "Not applicable")) } )
+
 ## No transcribed function calls
   testthat::test_that(
     "No transcribed functions included in codebook output.",

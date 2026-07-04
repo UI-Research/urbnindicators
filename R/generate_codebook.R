@@ -217,6 +217,44 @@ generate_codebook = function(.data, resolved_tables = NULL, auto_table_entries =
         TRUE ~ "unknown")) %>%
     ensure_aggregation_strategy()
 
+  ####----Universe----####
+  ## Attach each ACS table's published universe statement (e.g., "Households",
+  ## "Population 25 years and over"). Raw variables resolve through the
+  ## variable crosswalk; derived variables inherit the universe of their first
+  ## numerator variable; a second pass lets derived-from-derived variables
+  ## (e.g., complements of percentages) inherit from their source variable.
+  ## The Census API publishes universes for vintages 2020+; earlier vintages
+  ## yield NA.
+  groups_metadata = load_acs_groups(year = year, dataset = "acs5")
+  universe_by_clean_name = variable_name_crosswalk %>%
+    dplyr::mutate(acs_table = stringr::str_remove(raw_name, "_[0-9]{3}$")) %>%
+    dplyr::left_join(groups_metadata, by = "acs_table")
+  universe_lookup = stats::setNames(universe_by_clean_name$universe,
+                                    universe_by_clean_name$clean_name)
+
+  lookup_first_universe = function(source_vars, lookup) {
+    purrr::map_chr(source_vars, function(vars) {
+      matched = lookup[vars]
+      matched = matched[!is.na(matched)]
+      if (length(matched) > 0) matched[[1]] else NA_character_
+    })
+  }
+
+  result1 = result1 %>%
+    dplyr::mutate(universe = dplyr::coalesce(
+      unname(universe_lookup[calculated_variable]),
+      lookup_first_universe(numerator_vars, universe_lookup)))
+
+  self_lookup = stats::setNames(result1$universe, result1$calculated_variable)
+  result1 = result1 %>%
+    dplyr::mutate(
+      universe = dplyr::coalesce(
+        universe, lookup_first_universe(numerator_vars, self_lookup)),
+      ## metadata fields (GEOID, areas, etc.) have no ACS universe
+      universe = dplyr::if_else(
+        is.na(universe) & variable_type == "Metadata",
+        "Not applicable", universe))
+
   return(result1)
 }
 
@@ -238,4 +276,5 @@ utils::globalVariables(c(
   "calculated_variable", "clean_name", "definition", "variable_type",
   "numerator_vars", "numerator_subtract_vars",
   "denominator_vars", "denominator_subtract_vars",
-  "se_calculation_type", "aggregation_strategy"))
+  "se_calculation_type", "aggregation_strategy",
+  "raw_name", "acs_table", "universe"))

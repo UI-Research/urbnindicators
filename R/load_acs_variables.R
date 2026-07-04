@@ -94,3 +94,51 @@ load_acs_variables = function(year, dataset = "acs5") {
   .variables_cache[[cache_key]] = result
   result
 }
+
+## Internal: keyed, cached fetch of the Census ACS groups metadata, mapping
+## each ACS table code to its published universe statement (e.g.,
+## "Households", "Population 25 years and over"). The groups.json endpoint
+## does not require an API key. Universe statements are published for
+## vintages 2020 and later; earlier vintages yield NA universes.
+load_acs_groups = function(year, dataset = "acs5") {
+  if (!identical(dataset, "acs5")) {
+    cli::cli_abort(c(
+      "Only {.val acs5} is supported for {.arg dataset}.",
+      "i" = "Got {.val {dataset}}."))
+  }
+
+  cache_key = paste("groups", dataset, year, sep = "_")
+  if (!is.null(.variables_cache[[cache_key]])) {
+    return(.variables_cache[[cache_key]])
+  }
+
+  url = paste0("https://api.census.gov/data/", year, "/acs/acs5/groups.json")
+
+  response = httr::GET(url)
+  if (httr::status_code(response) == 404L) {
+    cli::cli_abort(c(
+      "Census API endpoint not found.",
+      "i" = "Does the dataset exist for the specified year? See {.url https://api.census.gov/data.html}."))
+  }
+  if (httr::http_status(response)$category != "Success") {
+    cli::cli_abort("Census API request failed: {httr::http_status(response)$message}")
+  }
+
+  parsed = httr::content(response, as = "text", encoding = "UTF-8") %>%
+    jsonlite::fromJSON(simplifyVector = FALSE)
+
+  result = purrr::map(parsed$groups, function(group_meta) {
+    ## the API returns the universe field name with a trailing space
+    ## ("universe "); accept either spelling
+    universe = group_meta[["universe "]]
+    if (is.null(universe)) universe = group_meta[["universe"]]
+    tibble::tibble(
+      acs_table = group_meta[["name"]],
+      universe = if (is.null(universe)) NA_character_ else universe)
+  }) %>%
+    purrr::list_rbind() %>%
+    dplyr::distinct(acs_table, .keep_all = TRUE)
+
+  .variables_cache[[cache_key]] = result
+  result
+}

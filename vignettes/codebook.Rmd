@@ -59,7 +59,13 @@ The codebook's three primary columns are:
     `"Numerator = snap_received (B22003_002). Denominator = snap_universe (B22003_001)."`
     Subtracted components appear after a `-`.
 
-The codebook also carries supporting columns used for margin-of-error
+The codebook also carries a `universe` column giving the Census
+Bureau's published universe statement for each variable--the
+population the variable describes, e.g., `Households` or
+`Population 25 years and over`. Derived variables inherit the
+universe of their numerator. (The Census API publishes universe
+statements for the 2020 and later vintages; earlier vintages yield
+`NA`.) Supporting columns are used for margin-of-error
 calculation and re-aggregation--list-columns naming each variable's
 numerator/denominator components (`numerator_vars`,
 `denominator_vars`, and their `_subtract_` counterparts), an
