@@ -2,7 +2,7 @@
 title: "The urbnindicators Codebook"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{codebook}
+  %\VignetteIndexEntry{The urbnindicators Codebook}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 editor_options:
@@ -41,33 +41,37 @@ codebook = attr(df, "codebook")
 
 ## Understanding the columns
 
-The codebook has three columns:
+The codebook's three primary columns are:
 
--   **Variable**: The variable name as it appears in the dataframe
-    (e.g., `snap_received_percent`).
+-   **calculated_variable**: The variable name as it appears in the
+    dataframe (e.g., `snap_received_percent`).
 
--   **Type**: The kind of variable. Common types include:
-    -   `count` -- a raw ACS estimate directly from the API
-    -   `percent` -- a derived ratio, typically a count divided by a
-        universe variable
-    -   `metadata` -- a non-computed variable such as a median or
-        geographic identifier
+-   **variable_type**: The kind of variable. Values include `Count`
+    (a raw ACS estimate directly from the API), `Percent` (a derived
+    ratio), `Sum` (a derived count), `Median`, `Median ($)`,
+    `Average`, `Quintile ($)`, `Index`, and `Metadata` (a
+    non-computed field such as a geographic identifier).
 
--   **Definition**: A formula describing how the variable was
-    calculated. For raw ACS variables, this is the original Census
-    Bureau variable code (e.g., `B22003_002`). For derived variables,
-    this is an expression like `snap_received / snap_universe` that
-    shows the numerator and denominator. More complex definitions may
-    reference multiple raw variables joined with `+` in the numerator
-    or denominator.
+-   **definition**: A description of how the variable was calculated.
+    Raw ACS variables read `"This is a raw ACS estimate."`; derived
+    variables spell out their inputs alongside the original Census
+    Bureau variable codes, e.g.,
+    `"Numerator = snap_received (B22003_002). Denominator = snap_universe (B22003_001)."`
+    Subtracted components appear after a `-`.
 
-These definition strings are also used internally to calculate
-margins of error for derived variables, so their accuracy is
-critical.
+The codebook also carries supporting columns used for margin-of-error
+calculation and re-aggregation--list-columns naming each variable's
+numerator/denominator components (`numerator_vars`,
+`denominator_vars`, and their `_subtract_` counterparts), an
+`se_calculation_type`, and an `aggregation_strategy` (how
+`interpolate_acs()` treats the variable). Because margins of error
+for derived variables are computed from these components, their
+accuracy is critical.
 
 ## Browse the codebook
 
-Use the search box below to filter by variable name, type, or
+The interactive table below shows the three primary columns. Use the
+search box to filter by variable name, type, or
 definition text. Note that this codebook reflects all variables from
 the tables returned by `list_tables()`, but if you were to specify
 different tables in your `compile_acs_data()` call, your codebook

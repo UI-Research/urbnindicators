@@ -32,7 +32,7 @@ library(tidycensus)
 ```
 
 For many ACS-supported geographies and variables, sample sizes can lead to problematically large margins of error (MOEs). For example, block groups are useful geographic units because they reveal spatial nuance, but in many cases, their MOEs
-are larger than the actual estimates they accompany. (Note that similar issues arise with tracts and small-population places and counties, among many other geographies.) While it's easy to simply ignore these MOEs, estimates with large MOEs can offer a very misleading sense of precision, leading to incorrect inferences and decisionmaking. And for more  analyses that look for statistically significant differences, large MOEs at, for example, the tract level, make it difficult to detect meaningful differences between areas---even when real differences exist.
+are larger than the actual estimates they accompany. (Note that similar issues arise with tracts and small-population places and counties, among many other geographies.) While it's easy to simply ignore these MOEs, estimates with large MOEs can offer a very misleading sense of precision, leading to incorrect inferences and decisionmaking. And for analyses that look for statistically significant differences, large MOEs at, for example, the tract level, make it difficult to detect meaningful differences between areas---even when real differences exist.
 
 Another challenge is that much decisionmaking occurs at geographies that are not
 supported directly by the ACS. Think, for example, of school districts, political wards, a city's neighborhoods, or the unincorporated area governed by a county. To translate (or "interpolate") data to these geographies can require significant work, and the process of accurately interpolating not just estimates but also their MOEs is both error-prone and time-intensive to the point where very few analysts do so. But MOEs are as fundamental to interpreting ACS data as are the estimates themselves.
@@ -170,7 +170,10 @@ observations.
 dc_snap_rate = sum(dc_tracts$snap_received, na.rm = TRUE) /
                sum(dc_tracts$snap_universe, na.rm = TRUE)
 
-# Test significance at tract level
+# Test significance at tract level. The city-wide rate pools every
+# tract in DC, so its MOE is far smaller than any single tract's; we
+# assign it a conservative +/-0.5 percentage-point MOE rather than
+# deriving it exactly.
 tracts_sig = dc_tracts %>%
   mutate(
     significant = tidycensus::significance(
@@ -239,7 +242,7 @@ targets, you can use a crosswalk with weights to allocate
 data from source geographies to target geographies proportionally. For example.
 a common use-case is aligning 2010-vintage tracts and 2020-vintage tracts. Because 
 the Census Bureau redefines tract boundaries as part of the decennial census process,
-a given tract in 2010 frequently does not map 1:1 to a single tract in 2020 (even when there is a 2020 tract with the same GEOID!) This scenario, among many others,
+a given tract in 2010 frequently does not map 1:1 to a single tract in 2020 (even when there is a 2020 tract with the same GEOID!). This scenario, among many others,
 requires some form of proportional allocation.
 
 We'll demonstrate using the
@@ -249,9 +252,10 @@ other sources. We'll pull tract-level SNAP data for both 2019 (which uses
 2010-vintage tract boundaries) and 2024 (which uses 2020-vintage
 boundaries), crosswalk the 2019 data to 2020-vintage tracts, and then
 map the change in SNAP receipt---all expressed in a consistent set of
-tract boundaries.
+tract boundaries. (This chunk runs only when the GitHub-only
+`crosswalk` package is installed.)
 
-```{r, fig.height = 5}
+```{r, fig.height = 5, eval = requireNamespace("crosswalk", quietly = TRUE)}
 # renv::install("UI-Research/crosswalk")
 
 # Pull 2019 ACS data (2010-vintage tracts) and 2024 ACS data (2020-vintage tracts)
@@ -299,7 +303,8 @@ snap_change = dc_tracts %>%
   mutate(
     snap_ppt_change = (snap_received_percent - snap_received_percent_2019) * 100,
     snap_ppt_change_M = sqrt(snap_received_percent_M^2 + snap_received_percent_2019_M^2) * 100,
-    significant = abs(snap_ppt_change) > snap_ppt_change_M * 1.645 / 1.645,
+    ## a difference is significant at the 90% level when it exceeds its 90% MOE
+    significant = abs(snap_ppt_change) > snap_ppt_change_M,
     change_category = case_when(
       !significant ~ "Not significant",
       snap_ppt_change > 0 ~ "Significant increase",

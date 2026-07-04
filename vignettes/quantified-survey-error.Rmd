@@ -86,14 +86,14 @@ measures of error.
     have no access to a car." (And then we should include, either as a
     footnote or in the body of the document, that this and other MOEs
     are calculated at the 90% confidence level). What this means in
-    practice is that if we were to repeat 100 times–-using exactly the
-    same methods–-our approach to calculating this estimate, 90 of those
-    times we would produce a parallel estimate between 15% and 25%,
-    while 10 of those times, our estimate would fall outside this range.
+    practice is that if the survey were repeated many times--using
+    exactly the same methods--and an interval like this one were
+    constructed each time, about 90 in 100 of those intervals would
+    contain the true population value (and about 10 in 100 would not).
 
--   **Standard Errors (SE)** are derived from MOEs by dividing the MOE
-    against a confidence level-related value. 90% SEs are calculated by
-    dividing an MOE by 1.645.
+-   **Standard Errors (SE)** are derived from MOEs by dividing by a
+    value tied to the MOE's confidence level: for the ACS's 90%-level
+    MOEs, SE = MOE / 1.645.
 
 -   **Coefficients of Variation (CV)** relate error to the size of the
     estimate. They are calculated by dividing the SE by the estimate and
@@ -194,7 +194,7 @@ Statistical significance testing is critical to understanding whether
 estimates are meaningfully different. Estimates that may appear
 substantially different in isolation are frequently, especially at
 smaller geographies, not statistically significantly different because
-their margines of error are so significant.
+their margins of error are so large.
 
 We'll illustrate this numerically and demonstrate the impacts of
 accounting for error when visualizing data, leveraging
@@ -262,7 +262,6 @@ plot_data %>%
 significance_test_data = plot_data %>%
   filter(GEOID %in% c("34001011901", "34001001900"))
 
-## TRUE
 significant_difference = significance(
   est1 = significance_test_data %>%
     filter(GEOID == "34001001900") %>%
@@ -277,6 +276,8 @@ significant_difference = significance(
     filter(GEOID == "34001011901") %>%
     pull(age_over_64_percent_M))
 
+significant_difference
+
 plot_data %>%
   filter(GEOID %in% c("34001011901", "34001001900")) %>%
   ggplot(aes(y = GEOID, x = age_over_64_percent, color = GEOID)) +
@@ -290,7 +291,14 @@ plot_data %>%
   labs(
     x = "Share of population over 64",
     y = "Tract",
-    title = "One Tract Estimate Doubles That of the Other, But There is No Statistically Significant Difference" %>% str_wrap(100),
+    ## derive the title from the test so prose and data cannot disagree
+    title = paste(
+      "One Tract Estimate Doubles That of the Other,",
+      if_else(
+        significant_difference,
+        "and the Difference is Statistically Significant",
+        "But There is No Statistically Significant Difference")) %>%
+      str_wrap(100),
     subtitle = "Share of population over the age of 64, point estimates and margins of error")
 ```
 
@@ -365,7 +373,7 @@ small subset of all ACS tables, and the VRE tables are large and
 non-trivial to work with.
 
 A similar option that may be appropriate for some use-cases is to work
-with the the individual-level data, which is often referred to as the
+with the individual-level data, which is often referred to as the
 "Public Use Microdata". These data comprise respondent-level ACS data as
 well as a large set of survey replicate weights that can be used to
 calculate more accurate margins of error and related error statistics.
