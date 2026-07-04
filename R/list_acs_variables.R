@@ -27,33 +27,6 @@ filter_variables = function(variable_vector, match_string, match_type = "positiv
     cli::cli_abort("{.arg match_type} must be {.val positive} or {.val negative}.") }
 }
 
-#' @title Return ACS variables codes and names
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' Use [list_variables()] instead to see available variables, or pass
-#' `tables` to [compile_acs_data()].
-#' @param year The year for which variable names should be selected.
-#' @param tables An optional character vector of table names from the table
-#'   registry (e.g., \code{c("race", "snap")}). When provided, only variables
-#'   for the specified tables are returned. Use \code{list_tables()} to see
-#'   available table names.
-#' @returns `NULL`, invisibly. Previously returned a named vector of variable codes.
-#' @examples
-#' \dontrun{
-#' list_acs_variables()
-#' }
-#' @export
-list_acs_variables = function(year = "2022", tables = NULL) {
-  lifecycle::deprecate_warn(
-    when = "0.1.0",
-    what = "list_acs_variables()",
-    with = "list_variables()",
-    details = "Use `list_variables()` to see available variables, or pass `tables` to `compile_acs_data()`."
-  )
-  invisible(NULL)
-}
-
 #' @title Browse the ACS codebook with clean variable names
 #' @description Returns a tibble of ACS variables for the given year, with the
 #'   parent table code, raw variable code, and a cleaned snake_case name.
