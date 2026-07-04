@@ -11,3 +11,6 @@
 ^doc$
 ^Meta$
 ^codecov\.yml$
+^\.claude$
+^CLAUDE\.md$
+^dev$

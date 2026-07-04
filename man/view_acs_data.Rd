@@ -95,8 +95,8 @@ its values are set to \code{NA} (rendered in neutral grey) and a warning is show
 in the app.
 
 A "Download" section in the sidebar offers two downloads. "Download data"
-opens a dialog to pick a file format — CSV, GeoPackage (\code{.gpkg}), GeoJSON,
-GeoParquet (\code{.parquet}), or non-spatial Parquet (\code{.parquet}) — and, when an
+opens a dialog to pick a file format -- CSV, GeoPackage (\code{.gpkg}), GeoJSON,
+GeoParquet (\code{.parquet}), or non-spatial Parquet (\code{.parquet}) -- and, when an
 interpolated (target) dataset exists, whether to export the interpolated
 geographies only or those plus the source geographies (distinguished by a
 \code{geography_type} column). The spatial formats retain geometry (and, in Target
@@ -108,14 +108,14 @@ significance category for the selected variable. GeoParquet requires the
 format's packages aren't installed, the data is written to CSV instead.
 "Download figure" opens a dialog for choosing an
 export resolution (1x-4x the on-screen size), then saves the live map exactly
-as displayed — basemap, active layer, current zoom and pan, and any drawn
-areas — as a \code{.png}. The capture is performed in the browser, so it works
+as displayed -- basemap, active layer, current zoom and pan, and any drawn
+areas -- as a \code{.png}. The capture is performed in the browser, so it works
 only in an interactive (locally-run) session.
 
-The sidebar is organized into collapsible sections — "Data" (variable, year,
+The sidebar is organized into collapsible sections -- "Data" (variable, year,
 statistical benchmark, and the data-distribution histogram), "Interpolate"
 (the source/target toggle and custom-geography drawing/naming), "Visual
-parameters", and "Download" — with only "Data" open at launch. The
+parameters", and "Download" -- with only "Data" open at launch. The
 "Interpolate" section auto-expands whenever a polygon is drawn.
 
 The "Visual parameters" section exposes display controls that don't change the

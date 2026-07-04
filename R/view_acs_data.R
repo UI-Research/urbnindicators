@@ -47,8 +47,8 @@
 #' in the app.
 #'
 #' A "Download" section in the sidebar offers two downloads. "Download data"
-#' opens a dialog to pick a file format — CSV, GeoPackage (`.gpkg`), GeoJSON,
-#' GeoParquet (`.parquet`), or non-spatial Parquet (`.parquet`) — and, when an
+#' opens a dialog to pick a file format -- CSV, GeoPackage (`.gpkg`), GeoJSON,
+#' GeoParquet (`.parquet`), or non-spatial Parquet (`.parquet`) -- and, when an
 #' interpolated (target) dataset exists, whether to export the interpolated
 #' geographies only or those plus the source geographies (distinguished by a
 #' `geography_type` column). The spatial formats retain geometry (and, in Target
@@ -60,14 +60,14 @@
 #' format's packages aren't installed, the data is written to CSV instead.
 #' "Download figure" opens a dialog for choosing an
 #' export resolution (1x-4x the on-screen size), then saves the live map exactly
-#' as displayed — basemap, active layer, current zoom and pan, and any drawn
-#' areas — as a `.png`. The capture is performed in the browser, so it works
+#' as displayed -- basemap, active layer, current zoom and pan, and any drawn
+#' areas -- as a `.png`. The capture is performed in the browser, so it works
 #' only in an interactive (locally-run) session.
 #'
-#' The sidebar is organized into collapsible sections — "Data" (variable, year,
+#' The sidebar is organized into collapsible sections -- "Data" (variable, year,
 #' statistical benchmark, and the data-distribution histogram), "Interpolate"
 #' (the source/target toggle and custom-geography drawing/naming), "Visual
-#' parameters", and "Download" — with only "Data" open at launch. The
+#' parameters", and "Download" -- with only "Data" open at launch. The
 #' "Interpolate" section auto-expands whenever a polygon is drawn.
 #'
 #' The "Visual parameters" section exposes display controls that don't change the
@@ -421,7 +421,7 @@ build_spatial_crosswalk = function(source_sf, target_sf,
       "i" = "Data from those areas will be partially or wholly excluded from the interpolated result."))
   }
 
-  ## Renormalize shares so each source's allocations sum to 1 — interpolate_acs
+  ## Renormalize shares so each source's allocations sum to 1 -- interpolate_acs
   ## warns otherwise. This treats the source-area outside the targets as
   ## non-existent (the warning above already surfaced the data drop).
   out1 = out1 %>%
@@ -432,8 +432,8 @@ build_spatial_crosswalk = function(source_sf, target_sf,
   ## Target-side coverage: a target polygon that extends beyond the union of the
   ## source geographies can't be accurately interpolated (the uncovered area
   ## contributes nothing, silently biasing counts and rates). Flag any target
-  ## whose area is not nearly fully covered by source polygons — including
-  ## targets with no overlap at all — and attach them so interpolate_to_targets()
+  ## whose area is not nearly fully covered by source polygons -- including
+  ## targets with no overlap at all -- and attach them so interpolate_to_targets()
   ## can set those rows to NA and warn the user.
   target_areas = tibble::tibble(
     target_geoid = sf::st_drop_geometry(tgt1)[["target_geoid"]],
@@ -487,7 +487,7 @@ compute_target_parent_map = function(crosswalk, benchmark_levels) {
 ## already be a validated `sf` object carrying a unique `GEOID` column (and,
 ## optionally, a `NAME` column used in popups). Returns a list with `data`
 ## (an sf object with the codebook attached as an attribute) and
-## `parent_lookup` (the target→parent map for benchmarking).
+## `parent_lookup` (the target->parent map for benchmarking).
 interpolate_to_targets = function(source_sf, target_sf, benchmark_levels) {
   crosswalk1 = build_spatial_crosswalk(source_sf, target_sf)
   incomplete_targets = attr(crosswalk1, "incomplete_targets")
@@ -503,7 +503,7 @@ interpolate_to_targets = function(source_sf, target_sf, benchmark_levels) {
       share        = .data$share)
 
   ## Drop geometry but carry the compile_acs_data() attributes onto the frame
-  ## interpolate_acs() reads — it needs the codebook plus the registry/auto/user
+  ## interpolate_acs() reads -- it needs the codebook plus the registry/auto/user
   ## definitions to recompute every derived variable (not just registry ones).
   source_no_geom = sf::st_drop_geometry(source_sf)
   for (a1 in c("codebook", "resolved_tables", "auto_table_entries",
@@ -526,7 +526,7 @@ interpolate_to_targets = function(source_sf, target_sf, benchmark_levels) {
     sf::st_transform(4326)
 
   ## left_join (not inner_join) so targets with no source overlap are retained
-  ## as all-NA rows rather than silently dropped — these extend beyond the
+  ## as all-NA rows rather than silently dropped -- these extend beyond the
   ## source data and must surface as NA. left_join preserves sf-ness on the LHS;
   ## the geometry side goes first so the result remains sf. dplyr's sf join
   ## methods strip non-codebook attrs, so the codebook is re-attached below.
@@ -618,7 +618,7 @@ compute_benchmark_data = function(.data, target_level) {
     error = function(e) NULL)
   if (is.null(res1)) return(NULL)
 
-  ## interpolate_acs renames target_geoid_column → GEOID; surface it as
+  ## interpolate_acs renames target_geoid_column -> GEOID; surface it as
   ## parent_geoid so it doesn't collide with the source data's GEOID on join.
   res1 = sf::st_drop_geometry(res1) %>%
     dplyr::rename(parent_geoid = "GEOID")
@@ -667,7 +667,7 @@ make_popup_html = function(data1, var1, moe_var, fmt, label1,
   ## `{geography name}: {value}` (with margin of error when one is available).
   value_line = if (!is.null(moe_var) && moe_var %in% colnames(data1)) {
     moe_s = format_value(data1[[moe_var]], fmt)
-    paste0(htmltools_escape(name1), ": ", value_s, " (± ", moe_s, ")")
+    paste0(htmltools_escape(name1), ": ", value_s, " (\u00b1 ", moe_s, ")")
   } else {
     paste0(htmltools_escape(name1), ": ", value_s)
   }
@@ -744,7 +744,7 @@ htmltools_escape = function(x) {
 ##
 ## With `quantile = TRUE` and a `values` vector, the stops are placed at the
 ## empirical quantiles of the in-range values rather than at equal intervals,
-## so the (quintile) palette reflects the data's distribution — a true quantile
+## so the (quintile) palette reflects the data's distribution -- a true quantile
 ## classification instead of an equal-interval one. Ties can collapse adjacent
 ## stops; the palette is truncated to match. Falls back to equal spacing when
 ## there aren't enough finite values to define one stop per color.
@@ -805,10 +805,10 @@ basemap_style = function(name) {
   switch(name %||% "positron",
     satellite = raster_style(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      "Tiles © Esri"),
+      "Tiles \u00a9 Esri"),
     topographic = raster_style(
       "https://a.tile.opentopomap.org/{z}/{x}/{y}.png",
-      "© OpenTopoMap (CC-BY-SA)", maxzoom = 17),
+      "\u00a9 OpenTopoMap (CC-BY-SA)", maxzoom = 17),
     mapgl::carto_style(name))
 }
 
@@ -890,7 +890,7 @@ draw_type_label = function(geom_type) {
 
       bslib::accordion_panel(
         "Interpolate",
-        ## The Source/Target toggle appears once a target exists — either supplied
+        ## The Source/Target toggle appears once a target exists -- either supplied
         ## at launch via `target_geographies` or drawn in-app. `has_target_flag`
         ## is a server-side reactive that tracks this.
         shiny::conditionalPanel(
@@ -958,12 +958,12 @@ draw_type_label = function(geom_type) {
 }
 
 ## Let long legend titles wrap and give the legend a touch more breathing room.
-## Note: do NOT set background-color on `[class*='legend']` here — that selector
+## Note: do NOT set background-color on `[class*='legend']` here -- that selector
 ## also matches the color-swatch elements inside categorical legends and would
 ## paint them white, hiding the colors entirely.
 ##
 ## mapgl scopes the legend title as `#<legend-id> h2 { white-space: nowrap;
-## text-overflow: ellipsis }` — an id selector that out-specifies a class
+## text-overflow: ellipsis }` -- an id selector that out-specifies a class
 ## selector, so the on-screen title truncates rather than wraps. Override it with
 ## `!important` (which beats specificity) so the title wraps for both continuous
 ## and categorical (statistical-significance) legends.
@@ -1423,8 +1423,8 @@ draw_type_label = function(geom_type) {
 })();
 "
 
-## While a draw tool is active, clicks are for placing vertices — not for
-## inspecting the choropleth — so suppress the layer's click popups. mapbox-gl-draw
+## While a draw tool is active, clicks are for placing vertices -- not for
+## inspecting the choropleth -- so suppress the layer's click popups. mapbox-gl-draw
 ## fires `draw.modechange` on the map whenever the active mode changes; any mode
 ## whose name starts with `draw_` (draw_point / draw_line_string / draw_polygon)
 ## is an active-drawing mode. We toggle an `acs-drawing` class on the map
@@ -1668,7 +1668,7 @@ draw_type_label = function(geom_type) {
     })
 
     ## Benchmark aggregation result, cached per (level, year). Always derived
-    ## from the source dataset, even when the map is showing target view —
+    ## from the source dataset, even when the map is showing target view --
     ## the user's choice was to keep using the source-data benchmark.
     ## Returns a tibble keyed by parent_geoid.
     benchmark_table = shiny::reactive({
@@ -1679,7 +1679,7 @@ draw_type_label = function(geom_type) {
 
     ## Per-row benchmark info for the active variable against an arbitrary
     ## dataset `df`: a list of `values`, `moes`, and `category` aligned to df's
-    ## row order. `lookup` is the target→parent map in Target view (NULL for
+    ## row order. `lookup` is the target->parent map in Target view (NULL for
     ## source-coded GEOIDs). NULL when benchmarking is inactive/unavailable.
     row_benchmark_for = function(df, lookup) {
       st1 = benchmark_state()
@@ -1797,8 +1797,8 @@ draw_type_label = function(geom_type) {
              geoparquet = "parquet", parquet = "parquet", "csv")
     }
 
-    ## "Download data" opens a dialog for the file format and — only when an
-    ## interpolated (target) dataset exists — whether to include the source
+    ## "Download data" opens a dialog for the file format and -- only when an
+    ## interpolated (target) dataset exists -- whether to include the source
     ## geographies too.
     shiny::observeEvent(input$data_options, {
       shiny::showModal(shiny::modalDialog(
@@ -1906,7 +1906,7 @@ draw_type_label = function(geom_type) {
 
     ## "Download figure" opens a modal for the export resolution. The capture
     ## itself happens client-side (see .export_js), so the PNG is the live
-    ## MapLibre map exactly as shown — basemap, the active layer, current
+    ## MapLibre map exactly as shown -- basemap, the active layer, current
     ## zoom/pan, and any drawn areas.
     shiny::observeEvent(input$figure_options, {
       shiny::showModal(shiny::modalDialog(
@@ -1918,8 +1918,8 @@ draw_type_label = function(geom_type) {
           paste("Save the current map view as a PNG, including the basemap,",
                 "the active layer, your zoom and pan, and any drawn areas.")),
         shiny::radioButtons("fig_scale", "Resolution",
-          choices  = c("1× (screen)" = "1", "2×" = "2",
-                       "3×" = "3", "4×" = "4"),
+          choices  = c("1\u00d7 (screen)" = "1", "2\u00d7" = "2",
+                       "3\u00d7" = "3", "4\u00d7" = "4"),
           selected = "2", inline = TRUE),
         footer = shiny::tagList(
           shiny::modalButton("Cancel"),
@@ -2198,7 +2198,7 @@ draw_type_label = function(geom_type) {
         })
       if (is.null(res1)) return()
 
-      ## Drawn outlines are now redundant with the target choropleth — clear them.
+      ## Drawn outlines are now redundant with the target choropleth -- clear them.
       mapgl::clear_drawn_features(proxy1)
 
       target_state(list(
@@ -2206,11 +2206,11 @@ draw_type_label = function(geom_type) {
         codebook      = attr(res1$data, "codebook"),
         parent_lookup = res1$parent_lookup))
       shiny::updateSelectInput(session, "geo_view", selected = "Target")
-      ## No success toast — the map switching to the interpolated Target view is
+      ## No success toast -- the map switching to the interpolated Target view is
       ## its own confirmation.
 
       ## Drawn areas that extend beyond the source data can't be accurately
-      ## interpolated and were set to NA — flag them so the grey polygons read
+      ## interpolated and were set to NA -- flag them so the grey polygons read
       ## as "no data" rather than a value.
       n_incomplete1 = length(res1$incomplete)
       if (n_incomplete1 > 0) {
