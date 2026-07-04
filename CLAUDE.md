@@ -112,7 +112,7 @@ Note: don't hard-code a list of block-group tables — derive it from the codebo
 2. **`R/compile_acs_data.R`** - `compile_acs_data()` (entry point), `fetch_acs()` (per-year/per-state tidycensus calls + ZCTA-style "super-state" geographies), `safe_divide()`.
 3. **`R/auto_percent.R`** - Auto-table support for raw ACS table codes: `is_raw_acs_code()`, `resolve_to_acs_table()`, `build_auto_table_entry()`, `generate_auto_definitions()`.
 4. **`R/interpolate_acs.R`** - `interpolate_acs()` plus internal aggregation helpers; uses codebook attributes to dispatch per-variable aggregation strategy.
-5. **`R/list_acs_variables.R`** - `list_acs_variables()` (exported), and internal helpers `select_variables_by_name()` and `filter_variables()` used by the registry's `"select_variables"` path.
+5. **`R/list_acs_variables.R`** - `get_acs_codebook()` (exported), and internal helpers `select_variables_by_name()` and `filter_variables()` used by the registry's `"select_variables"` path. (The deprecated `list_acs_variables()` stub was removed before 0.1.0.)
 6. **`R/load_acs_variables.R`** - Session-cached fetch of the Census `variables.json` metadata. Workaround for the API now requiring a key on the variables endpoint, which `tidycensus::load_variables()` doesn't send. Requires `CENSUS_API_KEY`.
 7. **`R/generate_codebook.R`** - `generate_codebook()` builds the codebook tibble from registered + auto + user definitions.
 8. **`R/calculate_cvs.R`** - Computes margins of error for derived variables (standard errors used internally). Drives off the codebook's `se_calculation_type` column; no per-table changes needed when adding new tables.
@@ -126,7 +126,6 @@ Note: don't hard-code a list of block-group tables — derive it from the codebo
 - `define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()` - DSL constructors for derived variables. Use inside `register_table(definitions = list(...))` or pass directly to `compile_acs_data(tables = list(...))`.
 - `list_tables()` - Available registered table names for the `tables` parameter (construct-level names).
 - `list_variables(year)` - Tibble mapping all variables (raw + computed) to their table name.
-- `list_acs_variables(year, tables)` - Named vector of ACS variable codes for the given tables.
 - `get_acs_codebook(year, table)` - Browse ACS variables with clean names and table codes.
 - `make_pretty_names(.data, .case)` - Publication-ready variable names.
 - `safe_divide(x, y)` - Safe division (0 instead of NaN; NA when denominator is 0 and numerator is non-zero).

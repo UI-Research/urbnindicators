@@ -18,7 +18,17 @@ package's API and internals.
   interpreted as regular expressions.
 * `select_variables_by_name()` and `filter_variables()` are no longer
   exported; use `get_acs_codebook()` for variable discovery.
-* `list_acs_variables()` is deprecated; use `list_variables()`.
+* `list_acs_variables()` was removed; use `list_variables()`.
+* Literal `$` characters are now stripped from generated variable names, so
+  income- and rent-band columns (e.g., from B25074/B25106) are syntactic:
+  `household_income_..._less_than_$10000` becomes
+  `household_income_..._less_than_10000`.
+* Two variables were renamed for accuracy and consistency:
+  `employment_civilian_labor_force_percent` is now
+  `employment_civilian_labor_force_employed_percent` (it is the employment
+  rate — employed persons over the civilian labor force), and
+  `median_household_income_nhpi` is now `median_household_income_nhpi_alone`,
+  matching its sibling race-iteration names.
 * A **Census API key is now required** for all functions that read the ACS
   variable dictionary (including `list_variables()` and
   `get_acs_codebook()`), because the Census Bureau's variables metadata
