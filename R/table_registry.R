@@ -1663,7 +1663,10 @@ register_table(list(
   raw_variables = c(
     mortgage_status_universe_ = "B25081_001",
     mortgage_status_housing_units_with_mortgage_ = "B25081_002"),
-  definitions = list()
+  definitions = list(
+    define_percent("^mortgage_status_housing_units_with_mortgage$",
+                   denominator = "^mortgage_status_universe$",
+                   output = "mortgage_status_housing_units_with_mortgage_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: TRANSPORTATION----####
@@ -1722,7 +1725,13 @@ register_table(list(
     calls = list(
       list(pattern = "B25044_"))),
   raw_variables = NULL,
-  definitions = list()
+  definitions = list(
+    define_percent("tenure_by_vehicles_available.*no_vehicle_available$",
+                   denominator = "^tenure_by_vehicles_available_universe$",
+                   output = "vehicles_available_none_percent"),
+    define_percent("^tenure_by_vehicles_available_renter_occupied_no_vehicle_available$",
+                   denominator = "^tenure_by_vehicles_available_renter_occupied$",
+                   output = "vehicles_available_none_renteroccupied_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: EDUCATION----####
@@ -1781,11 +1790,10 @@ register_table(list(
     define_percent(c("school_enrollment_universe"),
                    denominator = "school_enrollment_universe",
                    output = "educational_enrollment_grades_1thru12_percent",
-                   subtract_from_numerator = "school_enrollment.*[^(_universe)]"),
-    define_percent("school_enrollment.*[^(_universe)]",
+                   subtract_from_numerator = "^school_enrollment_(prek|kindergarten|undergraduate|graduate|notenrolled)$"),
+    define_percent("^school_enrollment_(prek|kindergarten|undergraduate|graduate|notenrolled)$",
                    denominator = "school_enrollment_universe",
-                   each = TRUE,
-                   exclude = "percent"))
+                   each = TRUE))
 ))
 
 ####----TABLE REGISTRATIONS: NATIVITY AND LANGUAGE----####
@@ -1890,7 +1898,13 @@ register_table(list(
     internet_subscription_household_universe_ = "B28002_001",
     internet_subscription_household_with_subscription_ = "B28002_002",
     internet_subscription_household_with_subscription_broadband_ = "B28002_004"),
-  definitions = list()
+  definitions = list(
+    define_percent("^internet_subscription_household_with_subscription$",
+                   denominator = "^internet_subscription_household_universe$",
+                   output = "internet_subscription_household_with_subscription_percent"),
+    define_percent("^internet_subscription_household_with_subscription_broadband$",
+                   denominator = "^internet_subscription_household_universe$",
+                   output = "internet_subscription_household_with_subscription_broadband_percent"))
 ))
 
 register_table(list(
@@ -1904,7 +1918,10 @@ register_table(list(
     types_of_computing_devices_household_with_any_device_ = "B28001_002",
     types_of_computing_devices_household_with_computer_laptop_ = "B28001_003",
     types_of_computing_devices_household_with_smartphone_ = "B28001_005"),
-  definitions = list()
+  definitions = list(
+    define_percent("^types_of_computing_devices_household_with_",
+                   denominator = "types_of_computing_devices_household_universe",
+                   each = TRUE))
 ))
 
 ####----TABLE REGISTRATIONS: POPULATION DENSITY----####
