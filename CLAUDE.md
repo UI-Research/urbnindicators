@@ -58,7 +58,7 @@ The table registry is the central data structure that defines all ACS tables the
 - `raw_variables` - named vector of ACS variable codes (for manual sources)
 - `definitions` - list of DSL objects (`define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`) describing derived variables. Codebook entries and MOE-propagation strategy are derived from each object's `type`.
 
-There are 33 registered internal tables.
+There are 34 registered internal tables.
 
 ### Table selection API
 
