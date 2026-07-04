@@ -156,6 +156,11 @@ fetch_acs = function(geography, variables, years, states, counties,
 #'    }
 #'    The resolved tables are also attached as a \code{"resolved_tables"}
 #'    attribute (used by \code{interpolate_acs()}).
+#'
+#'    Margins of error for derived variables (suffixed \code{_M}) are
+#'    approximations calculated per Census Bureau guidance for derived
+#'    estimates; they are an experimental feature and should be interpreted
+#'    with care.
 #' @examples
 #' \dontrun{
 #' ## Pull all tables (default, backward-compatible)
@@ -669,6 +674,14 @@ compile_acs_data = function(
     df_moes = calculate_moes(df_calculated_estimates) %>%
       {if (!needs_tigris || spatial == FALSE) . else dplyr::right_join(., geometries %>% dplyr::select(GEOID, data_source_year), by = c("GEOID", "data_source_year"), relationship = "many-to-one")}
   })})
+
+  ## surfaced outside the suppression wrapper, once per session
+  cli::cli_inform(
+    c("i" = "Margins of error for derived variables (suffixed {.code _M}) are
+      approximations that follow Census Bureau guidance and are an experimental
+      feature; interpret them with care."),
+    .frequency = "once",
+    .frequency_id = "urbnindicators_derived_moe_experimental")
 
   ## attach the codebook and resolved tables as attributes to the returned dataset
   attr(df_moes, "codebook") = codebook %>%

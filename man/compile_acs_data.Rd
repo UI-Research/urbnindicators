@@ -102,6 +102,11 @@ indicates which MOE-propagation formula is appropriate
 }
 The resolved tables are also attached as a \code{"resolved_tables"}
 attribute (used by \code{interpolate_acs()}).
+
+Margins of error for derived variables (suffixed \code{_M}) are
+approximations calculated per Census Bureau guidance for derived
+estimates; they are an experimental feature and should be interpreted
+with care.
 }
 \description{
 Construct measures frequently used in social sciences
