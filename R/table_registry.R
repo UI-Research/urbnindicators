@@ -1296,7 +1296,7 @@ register_table(list(
     median_household_income_black_alone_ = "B19013B_001",
     median_household_income_aian_alone_ = "B19013C_001",
     median_household_income_asian_alone_ = "B19013D_001",
-    median_household_income_nhpi_ = "B19013E_001",
+    median_household_income_nhpi_alone_ = "B19013E_001",
     median_household_income_otherrace_alone_ = "B19013F_001",
     median_household_income_twoormore_ = "B19013G_001",
     median_household_income_hispanic_ = "B19013I_001"),
@@ -1842,7 +1842,7 @@ register_table(list(
     employment_civilian_labor_force_employed_ = "B23025_004"),
   definitions = list(
     define_percent("employment_civilian_labor_force_employed", "employment_civilian_labor_force_universe",
-                   output = "employment_civilian_labor_force_percent"))
+                   output = "employment_civilian_labor_force_employed_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: HOUSEHOLD COMPOSITION----####
