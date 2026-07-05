@@ -2,7 +2,7 @@
 % Please edit documentation in R/compile_acs_data.R
 \name{compile_acs_data}
 \alias{compile_acs_data}
-\title{Analysis-ready social science measures}
+\title{Get analysis-ready estimates and errors from the ACS}
 \usage{
 compile_acs_data(
   tables = NULL,
@@ -12,6 +12,7 @@ compile_acs_data(
   counties = NULL,
   spatial = FALSE,
   denominator = "parent",
+  cache = FALSE,
   ...
 )
 }
@@ -21,26 +22,26 @@ include. Three kinds of elements are accepted and can be mixed freely
 inside a \code{list()}:
 \itemize{
 \item \strong{Registered table names} (e.g., \code{"race"}, \code{"snap"}).
-These are pre-built tables with curated variable definitions. Use
+These are pre-built tables with non-standard variable definitions. Use
 \code{list_tables()} to see all available registered tables.
 \item \strong{Raw ACS table codes} (e.g., \code{"B25070"}, \code{"C15002B"}).
 Any valid ACS Detailed or Collapsed table code can be passed directly.
-These are auto-processed at runtime: raw variables are fetched, the
-label hierarchy is parsed, and percentages are computed automatically.
-Use the \code{denominator} parameter to control how percentages are
-calculated for these tables.
-\item \strong{DSL definition objects} created with \code{\link{define_percent}},
+These return the full table along with percentage-based measures that are
+calculated on the fly. Use the \code{denominator} parameter to control how
+percentages are calculated.
+\item \strong{Custom data specifications} created with \code{\link{define_percent}},
 \code{\link{define_sum}}, \code{\link{define_complement}}, or
 \code{\link{define_metadata}}. These let you compute custom derived
-variables from the columns produced by the tables you request. User
-definitions are executed after all registered and auto-table
-definitions, and their results appear in the codebook and have MOEs
-computed automatically.
+variables from the columns produced by the tables you request.
 }
 When mixing strings and definitions, wrap everything in \code{list()}
 (e.g., \code{list("snap", define_percent(...))}).
-If an ACS code corresponds to an already-registered table, the registered
-version is used automatically.
+Raw ACS codes are always auto-processed, even when a registered table
+covers the same code (e.g., \code{"B22003"} returns the auto-processed
+table, not the registered \code{"snap"} table); registered tables are
+returned only when requested by name. If a requested code overlaps a
+registered table included in the same call, the registered version is
+returned and the auto-processed version is dropped with a warning.
 When NULL (default), all registered tables are included (unregistered ACS
 tables must be requested explicitly).}
 
@@ -71,6 +72,16 @@ the ACS label hierarchy. \code{"total"} uses the table total (variable
 \code{_001}). A specific ACS variable code (e.g., \code{"B25070_001"}) uses
 that variable. Only affects unregistered (auto) tables; registered tables
 always use their predefined definitions.}
+
+\item{cache}{Boolean. When \code{TRUE}, raw ACS query results are cached on
+disk and reused across calls and R sessions. Results are cached one file
+per geography-year-state-table combination, so subsequent calls
+re-download only what is not already cached -- including when the
+\code{tables} selection changes. The cache lives at
+\code{tools::R_user_dir("urbnindicators", which = "cache")} (override via
+\code{options(urbnindicators.cache_dir = ...)}). Entries never expire,
+because published five-year ACS estimates do not change; use
+\code{\link{clear_acs_cache}()} to delete them and reclaim disk space.}
 
 \item{...}{Deprecated arguments. If \code{variables} is passed, a deprecation
 warning is issued and the value is ignored.}
@@ -109,9 +120,8 @@ estimates; they are an experimental feature and should be interpreted
 with care.
 }
 \description{
-Construct measures frequently used in social sciences
-research, leveraging \code{tidycensus::get_acs()} to acquire raw estimates from
-the Census Bureau API.
+Obtain raw and construct derived measures (primarily percentages)
+from the ACS, along with appropriately-pooled margins of error.
 }
 \examples{
 \dontrun{

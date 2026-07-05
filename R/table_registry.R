@@ -794,6 +794,31 @@ collect_raw_variables = function(resolved_tables, year = latest_acs_year(), geog
   return(all_variables)
 }
 
+## Build per-table named ACS variable vectors for resolved tables (internal)
+## Returns a named list mapping each table name to the variable subvector that
+## collect_raw_variables() would contribute for it; tables with no raw
+## variables of their own (e.g., population_density) are omitted. Concatenating
+## the list in order reproduces the collect_raw_variables() vector exactly,
+## which the cache = TRUE fetch path relies on to match single-call column
+## order. Used to cache raw estimates one entry per table.
+collect_raw_variables_by_table = function(resolved_tables, year = latest_acs_year(), geography = NULL, census_codebook = NULL) {
+  if (is.null(census_codebook)) {
+    census_codebook = load_acs_variables(year = year, dataset = "acs5")
+  }
+
+  table_variables = purrr::map(resolved_tables, function(table_name) {
+    collect_table_variables(get_table(table_name), census_codebook)
+  }) %>% purrr::set_names(resolved_tables)
+
+  ## at the block-group level, retain only variables published at that geography
+  if (!is.null(geography) && tolower(geography) == "block group") {
+    bg_variables = census_codebook$name[census_codebook$geography == "block group"]
+    table_variables = purrr::map(table_variables, ~ .x[.x %in% bg_variables])
+  }
+
+  purrr::compact(table_variables) %>% purrr::discard(~ length(.x) == 0)
+}
+
 ## Partition resolved tables by block-group availability (internal)
 ## Reads the codebook `geography` column (each variable's lowest published
 ## geography). Returns a list with:

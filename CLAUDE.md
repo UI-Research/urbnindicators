@@ -82,7 +82,7 @@ Both construct names and internal names are accepted by `compile_acs_data(tables
 
 `tables` can contain three kinds of elements (mix freely inside a `list()`):
 - **Registered table names** (e.g., `"race"`, `"snap"`) — use `list_tables()` to see them all.
-- **Raw ACS table codes** (e.g., `"B25070"`, `"C15002B"`) — any valid Detailed/Collapsed code is auto-processed at runtime: raw variables are fetched, the label hierarchy is parsed, and percentages are computed automatically. The `denominator` parameter controls the percentage denominator (`"parent"` for nearest subtotal, `"total"` for `_001`, or a specific code like `"B25070_001"`). If a raw code is already covered by a registered table, the registered version is used.
+- **Raw ACS table codes** (e.g., `"B25070"`, `"C15002B"`) — any valid Detailed/Collapsed code is auto-processed at runtime: raw variables are fetched, the label hierarchy is parsed, and percentages are computed automatically. The `denominator` parameter controls the percentage denominator (`"parent"` for nearest subtotal, `"total"` for `_001`, or a specific code like `"B25070_001"`). Raw codes are always auto-processed, even when a registered table covers the same code (`"B22003"` returns the auto-processed table; `"snap"` returns the registered one). If a requested code overlaps a registered table included in the same call, the registered version wins and the auto entry is dropped with a warning.
 - **DSL definition objects** from `define_percent()`/`define_sum()`/`define_complement()`/`define_metadata()` — let users layer custom derived variables on top of the requested tables; results land in the returned data frame and the codebook with MOEs computed automatically.
 
 When `tables` are specified:
@@ -110,6 +110,7 @@ Note: don't hard-code a list of block-group tables — derive it from the codebo
 
 1. **`R/table_registry.R`** - Central registry, DSL constructors (`define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`), `validate_definition()`, `execute_definitions()`, `resolve_tables()`, `collect_raw_variables()`, `expand_codebook_entry()`, `list_tables()`, and all `register_table()` calls.
 2. **`R/compile_acs_data.R`** - `compile_acs_data()` (entry point), `fetch_acs()` (per-year/per-state tidycensus calls + ZCTA-style "super-state" geographies), `safe_divide()`.
+   **`R/cache.R`** - Opt-in disk cache of raw ACS query results (`cache = TRUE`): `acs_cache_dir()`, `acs_query()` (mockable seam around `tidycensus::get_acs()`), `cached_get_acs()` (one entry per geography × year × state × table, keyed by `rlang::hash()`; no expiry — published ACS estimates are immutable), and exported `clear_acs_cache()`. Cache dir is `tools::R_user_dir("urbnindicators", "cache")`, overridable via `options(urbnindicators.cache_dir = ...)` (tests use this). The per-table variable map comes from `collect_raw_variables_by_table()` in `R/table_registry.R`; the `cache = FALSE` path is unchanged (single combined query per state × year).
 3. **`R/auto_percent.R`** - Auto-table support for raw ACS table codes: `is_raw_acs_code()`, `resolve_to_acs_table()`, `build_auto_table_entry()`, `generate_auto_definitions()`.
 4. **`R/interpolate_acs.R`** - `interpolate_acs()` plus internal aggregation helpers; uses codebook attributes to dispatch per-variable aggregation strategy.
 5. **`R/list_acs_variables.R`** - `get_acs_codebook()` (exported), and internal helpers `select_variables_by_name()` and `filter_variables()` used by the registry's `"select_variables"` path. (The deprecated `list_acs_variables()` stub was removed before 0.1.0.)
@@ -121,7 +122,8 @@ Note: don't hard-code a list of block-group tables — derive it from the codebo
 
 ### Exported functions
 
-- `compile_acs_data(tables, years, geography, states, counties, spatial, denominator, ...)` - Pull and compute ACS data.
+- `compile_acs_data(tables, years, geography, states, counties, spatial, denominator, cache, ...)` - Pull and compute ACS data. `cache = TRUE` reuses raw ACS query results from the on-disk cache.
+- `clear_acs_cache()` - Delete cached raw ACS query files.
 - `interpolate_acs(.data, target_geoid_column, weight = NULL, crosswalk = NULL, source_geoid = "GEOID", weight_variable = "total_population_universe")` - Aggregate or interpolate ACS data to custom geographies. `weight = NULL` for complete nesting (direct aggregation); pass a weight column name for fractional allocation via crosswalk.
 - `define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()` - DSL constructors for derived variables. Use inside `register_table(definitions = list(...))` or pass directly to `compile_acs_data(tables = list(...))`.
 - `list_tables()` - Available registered table names for the `tables` parameter (construct-level names).

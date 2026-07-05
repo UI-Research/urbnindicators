@@ -41,6 +41,13 @@ package's API and internals.
   `tidycensus::census_api_key("YOUR_KEY", install = TRUE)`.
 * `safe_divide()` now returns `NA` (not `0`) when a nonzero numerator is
   divided by zero; `0/0` still returns `0`.
+* Raw ACS table codes are now **always auto-processed**, even when a
+  registered table covers the same code: `tables = "B22003"` returns the
+  auto-processed table with label-derived names, while `tables = "snap"`
+  returns the registered version (previously the raw code was silently
+  upgraded to the registered table). Requesting both in one call returns
+  the registered version and drops the auto-processed one with a warning,
+  since the two would fetch duplicate variables.
 
 ## New features
 
@@ -60,6 +67,12 @@ package's API and internals.
   map results, interpolate to uploaded or hand-drawn target geographies,
   benchmark differences for statistical significance, and export data and
   images.
+* **Caching**: `compile_acs_data(cache = TRUE)` caches raw ACS query results
+  on disk (one entry per geography-year-state-table) and reuses them across
+  calls and R sessions, so repeat and overlapping requests -- including
+  changed `tables` selections -- re-download only what is missing. Entries
+  never expire (published five-year ACS estimates do not change); a new
+  `clear_acs_cache()` deletes them to reclaim disk space.
 * **Universe statements in the codebook.** The codebook gains a `universe`
   column carrying the Census Bureau's published universe statement for each
   variable (e.g., "Households", "Population 25 years and over"); derived
@@ -97,6 +110,15 @@ package's API and internals.
   installed `tidycensus` geography lookup.
 * Margin-of-error calculations were vectorized (orders-of-magnitude faster
   on tract-level, multi-state pulls).
+* The auto-table classifier now matches its skip keywords on word
+  boundaries, so tables whose concept contains "Means" (e.g., B08301,
+  Means of Transportation to Work) are no longer misclassified as
+  non-count tables ("mean") and receive auto-computed percentages.
+* The auto-table classifier now requires a table's `_001` label to end
+  with `:` (or be exactly `Estimate!!Total`) to compute percentages, so
+  dollar-valued tables like B19080 (Household Income Quintile Upper
+  Limits) no longer produce nonsense percentages of one quintile limit
+  over another.
 * Fixed a typo in `make_pretty_names()` output ("renter-occuiped").
 
 ## Infrastructure
