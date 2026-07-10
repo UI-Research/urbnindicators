@@ -175,10 +175,13 @@ df_multi %>%
 ```
 
 Alternately, you can pass the name of a variable or table from `get_acs_codebook()`
-to `compile_acs_data()`. The equivalent of the first call above would be:
+to `compile_acs_data()`. Unlike registered tables, these are auto-processed: the
+full raw table is returned along with percentages calculated on the fly (see the
+`denominator` parameter), rather than the curated measures a registered table
+provides. A close analog of the first call above would be:
 
 ```{r}
-df_urbnindicators = compile_acs_data(
+df_auto = compile_acs_data(
   years = 2024,
   tables = c("sex_by_age_by_disability_status_universe", "B08301"),
   geography = "county",
