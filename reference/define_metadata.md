@@ -6,7 +6,7 @@ codebook entry.
 ## Usage
 
 ``` r
-define_metadata(output, definition_text)
+define_metadata(output, definition)
 ```
 
 ## Arguments
@@ -15,7 +15,7 @@ define_metadata(output, definition_text)
 
   A string. The name of the metadata column.
 
-- definition_text:
+- definition:
 
   A string. Human-readable description for the codebook.
 

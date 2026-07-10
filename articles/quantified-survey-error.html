@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Drawing Inferences while Accounting for Survey Error • urbnindicators</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Drawing Inferences while Accounting for Survey Error">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9401</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,13 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
+<li><a class="dropdown-item" href="../articles/acs-background.html">ACS Background and Best Practices</a></li>
+    <li><a class="dropdown-item" href="../articles/acs-table-structures.html">ACS Table Structures</a></li>
+    <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
     <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
     <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
-    <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
+    <li><a class="dropdown-item" href="../articles/view_acs_data.html">Explore ACS Data Interactively</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -47,6 +49,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/UI-Research/urbnindicators/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -63,7 +66,7 @@
       <h1>Drawing Inferences while Accounting for Survey Error</h1>
             
       
-
+      <small class="dont-index">Source: <a href="https://github.com/UI-Research/urbnindicators/blob/main/vignettes/quantified-survey-error.Rmd" class="external-link"><code>vignettes/quantified-survey-error.Rmd</code></a></small>
       <div class="d-none name"><code>quantified-survey-error.Rmd</code></div>
     </div>
 
@@ -127,13 +130,13 @@ which enables us to say something like: “20% (±5%) of households in the
 neighborhood have no access to a car.” (And then we should include,
 either as a footnote or in the body of the document, that this and other
 MOEs are calculated at the 90% confidence level). What this means in
-practice is that if we were to repeat 100 times–-using exactly the same
-methods–-our approach to calculating this estimate, 90 of those times we
-would produce a parallel estimate between 15% and 25%, while 10 of those
-times, our estimate would fall outside this range.</p></li>
+practice is that if the survey were repeated many times–using exactly
+the same methods–and an interval like this one were constructed each
+time, about 90 in 100 of those intervals would contain the true
+population value (and about 10 in 100 would not).</p></li>
 <li><p><strong>Standard Errors (SE)</strong> are derived from MOEs by
-dividing the MOE against a confidence level-related value. 90% SEs are
-calculated by dividing an MOE by 1.645.</p></li>
+dividing by a value tied to the MOE’s confidence level: for the ACS’s
+90%-level MOEs, SE = MOE / 1.645.</p></li>
 <li><p><strong>Coefficients of Variation (CV)</strong> relate error to
 the size of the estimate. They are calculated by dividing the SE by the
 estimate and then multiplying by 100. CVs are helpful because they
@@ -231,7 +234,7 @@ while properly propagating margins of error. See
 estimates are meaningfully different. Estimates that may appear
 substantially different in isolation are frequently, especially at
 smaller geographies, not statistically significantly different because
-their errors are so significant.</p>
+their margins of error are so large.</p>
 <p>We’ll illustrate this numerically and demonstrate the impacts of
 accounting for error when visualizing data, leveraging
 <code><a href="https://walker-data.com/tidycensus/reference/significance.html" class="external-link">tidycensus::significance()</a></code> to conduct our actual tests.
@@ -295,7 +298,6 @@ that of the corresponding county.</p>
 <code class="sourceCode R"><span><span class="va">significance_test_data</span> <span class="op">=</span> <span class="va">plot_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">GEOID</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"34001011901"</span>, <span class="st">"34001001900"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co">## TRUE</span></span>
 <span><span class="va">significant_difference</span> <span class="op">=</span> <span class="fu"><a href="https://walker-data.com/tidycensus/reference/significance.html" class="external-link">significance</a></span><span class="op">(</span></span>
 <span>  est1 <span class="op">=</span> <span class="va">significance_test_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">GEOID</span> <span class="op">==</span> <span class="st">"34001001900"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
@@ -310,6 +312,9 @@ that of the corresponding county.</p>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">GEOID</span> <span class="op">==</span> <span class="st">"34001011901"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">age_over_64_percent_M</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
+<span><span class="va">significant_difference</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span></span>
 <span><span class="va">plot_data</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">GEOID</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"34001011901"</span>, <span class="st">"34001001900"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">GEOID</span>, x <span class="op">=</span> <span class="va">age_over_64_percent</span>, color <span class="op">=</span> <span class="va">GEOID</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -323,7 +328,14 @@ that of the corresponding county.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
 <span>    x <span class="op">=</span> <span class="st">"Share of population over 64"</span>,</span>
 <span>    y <span class="op">=</span> <span class="st">"Tract"</span>,</span>
-<span>    title <span class="op">=</span> <span class="st">"One Tract Estimate Doubles That of the Other, But There is No Statistically Significant Difference"</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_wrap.html" class="external-link">str_wrap</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>,</span>
+<span>    <span class="co">## derive the title from the test so prose and data cannot disagree</span></span>
+<span>    title <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
+<span>      <span class="st">"One Tract Estimate Doubles That of the Other,"</span>,</span>
+<span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">if_else</a></span><span class="op">(</span></span>
+<span>        <span class="va">significant_difference</span>,</span>
+<span>        <span class="st">"and the Difference is Statistically Significant"</span>,</span>
+<span>        <span class="st">"But There is No Statistically Significant Difference"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>      <span class="fu"><a href="https://stringr.tidyverse.org/reference/str_wrap.html" class="external-link">str_wrap</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>,</span>
 <span>    subtitle <span class="op">=</span> <span class="st">"Share of population over the age of 64, point estimates and margins of error"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="quantified-survey-error_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="4200"></p>
 </div>
@@ -364,13 +376,13 @@ common approach.</p>
 <div class="section level2">
 <h2 id="limitations-of-calculated-errors">Limitations of Calculated Errors<a class="anchor" aria-label="anchor" href="#limitations-of-calculated-errors"></a>
 </h2>
-<p>MOEs for raw ACS estimates–i.e., those that are directly reported by
-the Census Bureau–should be accurate measurements of survey error. This
+<p>MOEs for raw ACS estimates––i.e., those that are directly reported by
+the Census Bureau––should be accurate measurements of survey error. This
 is because these errors are calculated after accounting for estimate
 covariance using individual-level responses (see footnote 1). However,
-the calculations of error for derived estimates–that is, estimates that
+the calculations of error for derived estimates––that is, estimates that
 <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> calculates behind the scenes using
-two or more raw ACS estimates are imperfect for at least two
+two or more raw ACS estimates—are imperfect for at least two
 reasons:</p>
 <ol style="list-style-type: decimal">
 <li><p>Errors for derived estimates do not account for
@@ -395,17 +407,16 @@ whether these VRE tables are appropriate for their needs. Unfortunately,
 these tables are only produced for a small subset of all ACS tables, and
 the VRE tables are large and non-trivial to work with.</p>
 <p>A similar option that may be appropriate for some use-cases is to
-work with the the individual-level data, which is often referred to as
-the “Public Use Microdata”. These data comprise respondent-level ACS
-data as well as large set of survey replicate weights that can be used
-to calculate more accurate margins of error and related error
-statistics. However, these data are much more cumbersome to work with
-than the tabulated estimates tables returned by
-<code>urbnindicators</code>, and in order to protect respondent
-anonymity, the microdata can only produce estimates at geographies of
-~100,000 people or more (mid-sized cities and counties, as well as
-special statistical geographies called Public Use Microdata Areas, or
-PUMAs).</p>
+work with the individual-level data, which is often referred to as the
+“Public Use Microdata”. These data comprise respondent-level ACS data as
+well as a large set of survey replicate weights that can be used to
+calculate more accurate margins of error and related error statistics.
+However, these data are much more cumbersome to work with than the
+tabulated estimates tables returned by <code>urbnindicators</code>, and
+in order to protect respondent anonymity, the microdata can only produce
+estimates at geographies of ~100,000 people or more (mid-sized cities
+and counties, as well as special statistical geographies called Public
+Use Microdata Areas, or PUMAs).</p>
 <p>If the tabulated estimates remain the best solution for your use
 case, the codebook that is returned alongside the data from
 <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code> can inform users’ understandings of the
@@ -425,7 +436,7 @@ imprecision of associated errors.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

@@ -9,14 +9,18 @@ point is
 which pulls hundreds of standardized variables (raw counts + calculated
 percentages), generates a codebook, and computes margins of error.
 
-- Five-year ACS estimates only; tract-level geography and up (no block
-  groups)
+- Five-year ACS estimates only; block-group geography and up. Block
+  groups are supported for 2013+ and require an explicit `states`
+  argument; only the subset of tables the ACS publishes at the
+  block-group level is returned (others are dropped with a warning). See
+  “Block-group geography” below.
 - Lifecycle stage: experimental
 - Repository: <https://github.com/UI-Research/urbnindicators>
 
 ## Build and test
 
 ``` r
+
 # Load package for interactive development
 devtools::load_all()
 
@@ -33,8 +37,15 @@ devtools::check()
 devtools::document()
 ```
 
-Tests use pre-saved `.rds` files in `inst/test-data/` for
-reproducibility and speed. The test framework is testthat edition 3.
+Tests use pre-saved `.rds` fixtures (compiled output + codebook) in
+`tests/testthat/fixtures/`, which are committed to the repository so
+fixture-gated tests run on CI and fresh clones. Regeneration recipes
+live in the header comments of the test files that use them (regenerate
+after changing any table definition, then re-run the suite). Tests that
+hit the live Census API are gated on `skip_if_no_census_key()` (see
+`tests/testthat/helper-skips.R`); the variables metadata endpoint
+requires a `CENSUS_API_KEY` even for discovery functions. The test
+framework is testthat edition 3.
 
 CI runs on GitHub Actions: `test-coverage.yaml` (push/PR to main) and
 `pkgdown.yaml` (site deployment).
@@ -75,22 +86,29 @@ is a list containing:
   `population_density` depends on `total_population`)
 - `constructs` - (optional) list of construct definitions for
   multi-construct tables; each has `name` and `variable_pattern`
-- `raw_variable_source` - how raw variables are obtained: `"manual"`
-  (listed explicitly) or `"select_variables"` (resolved at runtime via
-  [`select_variables_by_name()`](https://ui-research.github.io/urbnindicators/reference/select_variables_by_name.md))
+- `raw_variable_source` - how raw variables are obtained:
+  `list(type = "manual")` (listed explicitly) or
+  `list(type = "select_variables", calls = list(...))` (resolved at
+  runtime by pattern). All currently-registered tables use the manual
+  form.
 - `raw_variables` - named vector of ACS variable codes (for manual
   sources)
-- `compute_fn` - function that takes `.data` and returns `.data` with
-  derived columns added
-- `codebook_entries` - structured metadata for codebook generation
+- `definitions` - list of DSL objects
+  ([`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md),
+  [`define_sum()`](https://ui-research.github.io/urbnindicators/reference/define_sum.md),
+  [`define_complement()`](https://ui-research.github.io/urbnindicators/reference/define_complement.md),
+  [`define_metadata()`](https://ui-research.github.io/urbnindicators/reference/define_metadata.md))
+  describing derived variables. Codebook entries and MOE-propagation
+  strategy are derived from each object’s `type`.
 
-There are 30+ registered internal tables.
+There are 34 registered internal tables.
 
 ### Table selection API
 
 Users can request specific subsets of data:
 
 ``` r
+
 # Pull specific tables (using construct-level names)
 compile_acs_data(tables = c("race", "snap"), years = 2022, geography = "county", states = "NJ")
 
@@ -108,103 +126,236 @@ constructs. These are split into separate user-facing tables: -
 Both construct names and internal names are accepted by
 `compile_acs_data(tables = ...)` and `resolve_tables()`.
 
+`tables` can contain three kinds of elements (mix freely inside a
+[`list()`](https://rdrr.io/r/base/list.html)): - **Registered table
+names** (e.g., `"race"`, `"snap"`) — use
+[`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
+to see them all. - **Raw ACS table codes** (e.g., `"B25070"`,
+`"C15002B"`) — any valid Detailed/Collapsed code is auto-processed at
+runtime: raw variables are fetched, the label hierarchy is parsed, and
+percentages are computed automatically. The `denominator` parameter
+controls the percentage denominator (`"parent"` for nearest subtotal,
+`"total"` for `_001`, or a specific code like `"B25070_001"`). Raw codes
+are always auto-processed, even when a registered table covers the same
+code (`"B22003"` returns the auto-processed table; `"snap"` returns the
+registered one). If a requested code overlaps a registered table
+included in the same call, the registered version wins and the auto
+entry is dropped with a warning. - **DSL definition objects** from
+[`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md)/[`define_sum()`](https://ui-research.github.io/urbnindicators/reference/define_sum.md)/[`define_complement()`](https://ui-research.github.io/urbnindicators/reference/define_complement.md)/[`define_metadata()`](https://ui-research.github.io/urbnindicators/reference/define_metadata.md)
+— let users layer custom derived variables on top of the requested
+tables; results land in the returned data frame and the codebook with
+MOEs computed automatically.
+
 When `tables` are specified: 1. `resolve_tables()` determines which
-tables are needed (always includes `total_population`) 2.
+registered tables are needed (always includes `total_population`). 2.
 `collect_raw_variables()` builds the named ACS variable vector for those
-tables 3. Only those tables’ `compute_fn` functions are called 4.
-Codebook and CVs are generated only for returned variables 5. Tigris
-geometry is fetched only when `spatial = TRUE` or `"population_density"`
-is in the resolved tables
+tables. 3. `build_auto_table_entry()` synthesizes registry-like entries
+for any raw ACS codes. 4. `execute_definitions()` runs each table’s
+`definitions` list (registered, then auto, then user) against the
+fetched data. 5. Codebook and MOEs are generated only for returned
+variables. 6. Tigris geometry is fetched only when `spatial = TRUE` or
+`"population_density"` is in the resolved tables.
+
+### Block-group geography
+
+`geography = "block group"` is supported for years **2013+** (the floor
+for `tigris::block_groups(cb = TRUE)`) and **requires an explicit
+`states` argument** (national block-group pulls are disallowed). Queries
+iterate county-by-county within each state.
+
+The ACS publishes only a subset of detailed tables at the block-group
+level. **Availability is read from the codebook, not by querying data**:
+`tidycensus::load_variables(year, "acs5")` includes a `geography` column
+giving each variable’s *lowest published geography*; a variable is
+block-group-available iff `geography == "block group"`. This is
+authoritative, year-specific, and free (the codebook is already loaded).
+
+- `bg_partition_tables()` (in `R/table_registry.R`) classifies resolved
+  tables into `keep` / `dropped` / `partial` using that column. Derived
+  tables with no raw variables of their own (e.g., `population_density`)
+  are always kept.
+- In
+  [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md),
+  the partition runs *before* querying: dropped tables and partial-table
+  sub-variables are warned about as early as possible; the function
+  errors only if **none** of the user’s requested tables are available.
+  Auto/raw ACS codes are checked the same way (tidycensus returns an
+  uninformative error for these, so we drop them with a clear message
+  instead).
+- `collect_raw_variables(geography = "block group")` filters the
+  variable vector to block-group-available codes (this is what drops a
+  partial table’s unavailable lines, e.g., the `B19013A–I` race
+  iterations of median household income).
+- `list_tables(geography = "block group")` returns the available subset.
+
+Note: don’t hard-code a list of block-group tables — derive it from the
+codebook so it stays correct across vintages.
 
 ### Key source files
 
-1.  **`R/table_registry.R`** - Central registry: table definitions,
-    [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md),
+1.  **`R/table_registry.R`** - Central registry, DSL constructors
+    ([`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md),
+    [`define_sum()`](https://ui-research.github.io/urbnindicators/reference/define_sum.md),
+    [`define_complement()`](https://ui-research.github.io/urbnindicators/reference/define_complement.md),
+    [`define_metadata()`](https://ui-research.github.io/urbnindicators/reference/define_metadata.md)),
+    `validate_definition()`, `execute_definitions()`,
     `resolve_tables()`, `collect_raw_variables()`,
-    `expand_codebook_entry()`, and all `register_table()` calls.
-2.  **`R/list_acs_variables.R`** -
-    [`list_acs_variables()`](https://ui-research.github.io/urbnindicators/reference/list_acs_variables.md)
-    (supports optional `tables` param),
-    [`select_variables_by_name()`](https://ui-research.github.io/urbnindicators/reference/select_variables_by_name.md),
-    [`filter_variables()`](https://ui-research.github.io/urbnindicators/reference/filter_variables.md),
-    [`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md).
-3.  **`R/compile_acs_data.R`** -
+    `expand_codebook_entry()`,
+    [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md),
+    and all `register_table()` calls.
+2.  **`R/compile_acs_data.R`** -
     [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
-    (with `tables`, deprecated `variables`),
-    `internal_compute_acs_variables()` (legacy),
+    (entry point), `fetch_acs()` (per-year/per-state tidycensus calls +
+    ZCTA-style “super-state” geographies),
     [`safe_divide()`](https://ui-research.github.io/urbnindicators/reference/safe_divide.md).
-4.  **`R/generate_codebook.R`** -
+    **`R/cache.R`** - Opt-in disk cache of raw ACS query results
+    (`cache = TRUE`): `acs_cache_dir()`, `acs_query()` (mockable seam
+    around
+    [`tidycensus::get_acs()`](https://walker-data.com/tidycensus/reference/get_acs.html)),
+    `cached_get_acs()` (one entry per geography × year × state × table,
+    keyed by
+    [`rlang::hash()`](https://rlang.r-lib.org/reference/hash.html); no
+    expiry — published ACS estimates are immutable), and exported
+    [`clear_acs_cache()`](https://ui-research.github.io/urbnindicators/reference/clear_acs_cache.md).
+    Cache dir is `tools::R_user_dir("urbnindicators", "cache")`,
+    overridable via `options(urbnindicators.cache_dir = ...)` (tests use
+    this). The per-table variable map comes from
+    `collect_raw_variables_by_table()` in `R/table_registry.R`; the
+    `cache = FALSE` path is unchanged (single combined query per state ×
+    year).
+3.  **`R/auto_percent.R`** - Auto-table support for raw ACS table codes:
+    `is_raw_acs_code()`, `resolve_to_acs_table()`,
+    `build_auto_table_entry()`, `generate_auto_definitions()`.
+4.  **`R/interpolate_acs.R`** -
+    [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
+    plus internal aggregation helpers; uses codebook attributes to
+    dispatch per-variable aggregation strategy.
+5.  **`R/list_acs_variables.R`** -
+    [`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md)
+    (exported), and internal helpers `select_variables_by_name()` and
+    `filter_variables()` used by the registry’s `"select_variables"`
+    path. (The deprecated `list_acs_variables()` stub was removed before
+    0.1.0.)
+6.  **`R/load_acs_variables.R`** - Session-cached fetch of the Census
+    `variables.json` metadata. Workaround for the API now requiring a
+    key on the variables endpoint, which
+    [`tidycensus::load_variables()`](https://walker-data.com/tidycensus/reference/load_variables.html)
+    doesn’t send. Requires `CENSUS_API_KEY`.
+7.  **`R/generate_codebook.R`** -
     [`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)
-    (registry-based) and `generate_codebook_legacy()` (AST-based, for
-    deprecated `variables` path).
-5.  **`R/calculate_cvs.R`** - Computes margins of error for derived
-    variables (uses standard errors as intermediates internally). Parses
-    codebook definition text strings. No changes needed when adding
-    tables.
-6.  **`R/make_pretty_names.R`** - Converts variable names to
+    builds the codebook tibble from registered + auto + user
+    definitions.
+8.  **`R/calculate_cvs.R`** - Computes margins of error for derived
+    variables (standard errors used internally). Drives off the
+    codebook’s `se_calculation_type` column; no per-table changes needed
+    when adding new tables.
+9.  **`R/make_pretty_names.R`** - Converts variable names to
     publication-ready labels.
-7.  **`R/utils-pipe.R`** - Re-exports `%>%`.
+10. **`R/utils-clean-names.R`**, **`R/utils-pipe.R`** - Shared helpers;
+    the latter re-exports `%>%`.
 
 ### Exported functions
 
-- `compile_acs_data(tables, ...)` - Pull and compute ACS data
-- `interpolate_acs(.data, target_geoid, weight, ...)` - Aggregate or
-  interpolate ACS data to custom geographies. `weight = NULL` for
-  complete nesting (direct aggregation); `weight = "col"` for fractional
-  allocation via crosswalk.
+- `compile_acs_data(tables, years, geography, states, counties, spatial, denominator, cache, ...)` -
+  Pull and compute ACS data. `cache = TRUE` reuses raw ACS query results
+  from the on-disk cache.
+- [`clear_acs_cache()`](https://ui-research.github.io/urbnindicators/reference/clear_acs_cache.md) -
+  Delete cached raw ACS query files.
+- `interpolate_acs(.data, target_geoid_column, weight = NULL, crosswalk = NULL, source_geoid = "GEOID", weight_variable = "total_population_universe")` -
+  Aggregate or interpolate ACS data to custom geographies.
+  `weight = NULL` for complete nesting (direct aggregation); pass a
+  weight column name for fractional allocation via crosswalk.
+- [`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md),
+  [`define_sum()`](https://ui-research.github.io/urbnindicators/reference/define_sum.md),
+  [`define_complement()`](https://ui-research.github.io/urbnindicators/reference/define_complement.md),
+  [`define_metadata()`](https://ui-research.github.io/urbnindicators/reference/define_metadata.md) -
+  DSL constructors for derived variables. Use inside
+  `register_table(definitions = list(...))` or pass directly to
+  `compile_acs_data(tables = list(...))`.
 - [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md) -
-  Available table names for the `tables` parameter (construct-level
-  names)
-- `get_acs_codebook(year, table)` - Browse ACS variables with clean
-  names and table codes
+  Available registered table names for the `tables` parameter
+  (construct-level names).
 - `list_variables(year)` - Tibble mapping all variables (raw + computed)
-  to their table name
-- `list_acs_variables(year, tables)` - Named vector of ACS variable
-  codes
-- `select_variables_by_name(variable_name, census_codebook)` - Filter
-  variables by pattern
-- `filter_variables(variable_vector, match_string, match_type)` -
-  Further filter variables
-- `make_pretty_names(.data, .case)` - Publication-ready variable names
-- `safe_divide(x, y)` - Safe division (0 instead of NaN)
+  to their table name.
+- `get_acs_codebook(year, table)` - Browse ACS variables with clean
+  names and table codes.
+- `make_pretty_names(.data, .case)` - Publication-ready variable names.
+- `safe_divide(x, y)` - Safe division (0 instead of NaN; NA when
+  denominator is 0 and numerator is non-zero).
+
+`select_variables_by_name()` and `filter_variables()` exist in
+`R/list_acs_variables.R` but are internal helpers used by the registry’s
+`"select_variables"` source type; they are not exported.
 
 ## Contributing: adding new tables
+
+Tables are defined in `R/table_registry.R`. Each table is registered via
+a `register_table(list(...))` call describing its raw ACS variables and
+the derived computations it should produce. Derived computations are
+expressed via the DSL functions
+[`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md),
+[`define_sum()`](https://ui-research.github.io/urbnindicators/reference/define_sum.md),
+[`define_complement()`](https://ui-research.github.io/urbnindicators/reference/define_complement.md),
+and
+[`define_metadata()`](https://ui-research.github.io/urbnindicators/reference/define_metadata.md)
+(see the next section). Most of the codebook, MOE propagation, and
+aggregation behavior is driven by these structured definitions, so
+adding a new table usually means: write the registry entry, run
+`devtools::load_all()`, confirm
+[`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
+shows it, and confirm `compile_acs_data(tables = "your_table")` returns
+the expected columns.
 
 To add a new ACS table to the package:
 
 1.  **Add a `register_table()` call in `R/table_registry.R`** with:
-    - `raw_variables` (manual) or `raw_variable_source`
-      (select_variables) for raw ACS variables
-    - `compute_fn` that calculates derived indicators using
-      [`safe_divide()`](https://ui-research.github.io/urbnindicators/reference/safe_divide.md)
-      and
-      [`dplyr::across()`](https://dplyr.tidyverse.org/reference/across.html)
-    - `codebook_entries` with structured entries (types:
-      `simple_percent`, `across_percent`, `across_sum`, `complex`,
-      `one_minus`, `metadata`)
-2.  **Add any new global variables** to the
-    [`utils::globalVariables()`](https://rdrr.io/r/utils/globalVariables.html)
-    call at the bottom of `R/table_registry.R`
-3.  **Verify**: `devtools::load_all()` then
+    - `name` — table identifier (e.g., `"snap"`)
+    - `description` — human-readable description
+    - `acs_tables` — ACS table codes (e.g., `"B22003"`)
+    - `depends_on` — other registered tables this one needs (often
+      `character(0)`)
+    - `raw_variable_source` — `list(type = "manual")` for an explicit
+      list of variables, or
+      `list(type = "select_variables", calls = list(list(pattern = "B22003_", filter = ...)))`
+      for pattern-based selection
+    - `raw_variables` — named character vector mapping `clean_name_` →
+      `"BNNNNN_NNN"` (when source is manual)
+    - `definitions` — a [`list()`](https://rdrr.io/r/base/list.html) of
+      DSL objects produced by
+      [`define_percent()`](https://ui-research.github.io/urbnindicators/reference/define_percent.md),
+      [`define_sum()`](https://ui-research.github.io/urbnindicators/reference/define_sum.md),
+      [`define_complement()`](https://ui-research.github.io/urbnindicators/reference/define_complement.md),
+      [`define_metadata()`](https://ui-research.github.io/urbnindicators/reference/define_metadata.md)
+2.  **Verify**: `devtools::load_all()`, then check
     [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
-    shows your table
-4.  **Verify codebook**: the codebook auto-generates from
-    `codebook_entries` – no changes to `R/generate_codebook.R` needed
-5.  **Verify MOEs**: `R/calculate_cvs.R` parses codebook definition
-    strings – no changes needed if definitions follow standard patterns
-6.  **Update pretty names** if needed (`R/make_pretty_names.R` – rarely
-    needed)
+    and
+    `list_variables(year = ...) |> dplyr::filter(table == "<your_table>")`.
+3.  **Codebook and MOEs are automatic.** `expand_codebook_entry()` (in
+    `R/table_registry.R`) sets `se_calculation_type` directly from each
+    DSL object’s `type`, so
+    [`calculate_moes()`](https://ui-research.github.io/urbnindicators/reference/calculate_moes.md)
+    and
+    [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
+    need no per-table changes when definitions follow the DSL.
+4.  **Pretty names**: update `R/make_pretty_names.R` only if your
+    variable names need new title-case fixups.
 
-### Codebook entry types
+### DSL functions for definitions
 
-| Type             | Use case                                                                                          | Key fields                                                                                                                                               |
-|------------------|---------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `simple_percent` | Single numerator / denominator                                                                    | `output`, `numerator`, `denominator`                                                                                                                     |
-| `across_percent` | [`dplyr::across()`](https://dplyr.tidyverse.org/reference/across.html) percentages                | `input_regex`, `exclude_regex`, `output_suffix`, `denominator` or `denominator_fn`                                                                       |
-| `across_sum`     | [`dplyr::across()`](https://dplyr.tidyverse.org/reference/across.html) sums (e.g., male + female) | `input_regex`, `addend_fn`, `output_naming_fn`                                                                                                           |
-| `complex`        | Multi-variable numerator/denominator                                                              | `output`, `numerator_regex` or `numerator_variables`, `denominator_variables`, optional `subtract_*` (denominator) or `numerator_subtract_*` (numerator) |
-| `one_minus`      | Complement (1 - x)                                                                                | `output`, `source_variable`                                                                                                                              |
-| `metadata`       | Non-computed variables                                                                            | `output`, `definition_text`                                                                                                                              |
+| Function | Use case | Key params |
+|----|----|----|
+| `define_percent(numerator, denominator)` | Single percentage; `output` is inferred as `<numerator>_percent` when `numerator` is a plain (non-regex) string | `numerator`, `denominator`, `output`, `subtract_from_numerator`, `subtract_from_denominator`, `exclude` |
+| `define_percent(numerator, denominator, each = TRUE)` | Batch percentages — one output per column matching `numerator` regex; `output` is ignored (a warning is emitted if set) | `numerator` (regex), `denominator` or `denominator_replace`, `exclude` |
+| `define_sum(columns, output)` | Sum columns into a single output | `columns` (character vector), `output` |
+| `define_sum(columns, each = TRUE, add_replace, output_replace)` | Batch pairwise sums (e.g., female+male) | `columns` (regex), `add_replace`, `output_replace`, `exclude` |
+| `define_complement(source, output)` | Complement (1 - x) | `source`, `output` |
+| `define_metadata(output, definition)` | Non-computed variables (placeholder codebook entry only) | `output`, `definition` |
+
+Each DSL function returns a list with a `type` field.
+[`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
+accepts these objects directly in the `tables` argument (mixed with
+strings) so users can also define custom derived variables on top of the
+registered set.
 
 ### Quality checks for new variables
 
@@ -220,10 +371,8 @@ The `variables` parameter on
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
 is deprecated (with
 [`lifecycle::deprecate_warn()`](https://lifecycle.r-lib.org/reference/deprecate_soft.html)).
-When used, it triggers the legacy code path:
-`internal_compute_acs_variables()` for computation and
-`generate_codebook_legacy()` for AST-based codebook generation. Both are
-preserved for backward compatibility.
+Passing it now emits a deprecation warning and the value is ignored; use
+`tables` instead.
 
 ## Search strategy
 

@@ -1,6 +1,7 @@
 # Translating ACS Data to Custom Geographies
 
 ``` r
+
 library(dplyr)
 library(ggplot2)
 library(scales)
@@ -12,14 +13,14 @@ library(tidycensus)
 ```
 
 For many ACS-supported geographies and variables, sample sizes can lead
-to problematically large margins of error (MOEs). For example, census
-tracts are useful geographic units because they reveal spatial nuance,
+to problematically large margins of error (MOEs). For example, block
+groups are useful geographic units because they reveal spatial nuance,
 but in many cases, their MOEs are larger than the actual estimates they
-accompany. (Note that similar issues arise with small-population places
-and counties, among many other geographies.) While it’s easy to simply
-ignore these MOEs, estimates with large MOEs can offer a very misleading
-sense of nuance and precision, leading to incorrect inferences and
-decisionmaking. And for more rigorous analysis that looks for
+accompany. (Note that similar issues arise with tracts and
+small-population places and counties, among many other geographies.)
+While it’s easy to simply ignore these MOEs, estimates with large MOEs
+can offer a very misleading sense of precision, leading to incorrect
+inferences and decisionmaking. And for analyses that look for
 statistically significant differences, large MOEs at, for example, the
 tract level, make it difficult to detect meaningful differences between
 areas—even when real differences exist.
@@ -32,7 +33,7 @@ unincorporated area governed by a county. To translate (or
 and the process of accurately interpolating not just estimates but also
 their MOEs is both error-prone and time-intensive to the point where
 very few analysts do so. But MOEs are as fundamental to interpreting ACS
-data as are ACS estimates themselves.
+data as are the estimates themselves.
 
 [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
 addresses some of these challenges by supporting users in interpolating
@@ -59,6 +60,7 @@ case of interpolation where every source geography maps to one and only
 one target geography. We address the more complex case later.
 
 ``` r
+
 dc_tracts = compile_acs_data(
   years = 2024,
   tables = "snap",
@@ -73,6 +75,7 @@ For illustration, we’ll create four quadrants of DC by assigning tracts
 to a quadrant based on their centroid coordinates.
 
 ``` r
+
 # Calculate tract centroids and assign to quadrants
 dc_tracts = dc_tracts %>%
   mutate(
@@ -93,6 +96,7 @@ Next, dissolve the tract geometries into quadrant boundaries. We do this
 because the function drops geometry from its output.
 
 ``` r
+
 # Dissolve tract boundaries into quadrant polygons
 quadrant_geometry = dc_tracts %>%
   group_by(quadrant) %>%
@@ -106,16 +110,18 @@ recalculates percentages from the summed components, and propagates
 margins of error.
 
 ``` r
+
 # Aggregate to quadrants
 dc_quadrants = interpolate_acs(
   .data = dc_tracts,
-  target_geoid = "quadrant")
+  target_geoid_column = "quadrant")
 ```
 
 Finally, rejoin the dissolved geometry to the aggregated data for
 mapping.
 
 ``` r
+
 # Rejoin quadrant geometry for mapping
 dc_quadrants_sf = quadrant_geometry %>%
   left_join(dc_quadrants, by = c("quadrant" = "GEOID"))
@@ -128,6 +134,7 @@ Notice how aggregating to quadrants produces more precise estimates with
 smaller margins of error.
 
 ``` r
+
 map_tracts = dc_tracts %>%
   ggplot() +
   geom_sf(aes(fill = snap_received_percent), color = "white", linewidth = 0.1) +
@@ -157,6 +164,7 @@ exceeds 30—a common upper bound for “reliable” estimates—while
 quadrant-level CVs are substantially lower.
 
 ``` r
+
 cv_tracts = dc_tracts %>%
   st_drop_geometry() %>%
   mutate(
@@ -183,11 +191,15 @@ policy-relevant areas and helps mitigate shortcomings associated with
 high measures of error for smaller-population observations.
 
 ``` r
+
 # Calculate DC-wide SNAP rate for comparison
 dc_snap_rate = sum(dc_tracts$snap_received, na.rm = TRUE) /
                sum(dc_tracts$snap_universe, na.rm = TRUE)
 
-# Test significance at tract level
+# Test significance at tract level. The city-wide rate pools every
+# tract in DC, so its MOE is far smaller than any single tract's; we
+# assign it a conservative +/-0.5 percentage-point MOE rather than
+# deriving it exactly.
 tracts_sig = dc_tracts %>%
   mutate(
     significant = tidycensus::significance(
@@ -260,7 +272,7 @@ example. a common use-case is aligning 2010-vintage tracts and
 2020-vintage tracts. Because the Census Bureau redefines tract
 boundaries as part of the decennial census process, a given tract in
 2010 frequently does not map 1:1 to a single tract in 2020 (even when
-there is a 2020 tract with the same GEOID!) This scenario, among many
+there is a 2020 tract with the same GEOID!). This scenario, among many
 others, requires some form of proportional allocation.
 
 We’ll demonstrate using the
@@ -270,9 +282,11 @@ other sources. We’ll pull tract-level SNAP data for both 2019 (which
 uses 2010-vintage tract boundaries) and 2024 (which uses 2020-vintage
 boundaries), crosswalk the 2019 data to 2020-vintage tracts, and then
 map the change in SNAP receipt—all expressed in a consistent set of
-tract boundaries.
+tract boundaries. (This chunk runs only when the GitHub-only `crosswalk`
+package is installed.)
 
 ``` r
+
 # renv::install("UI-Research/crosswalk")
 
 # Pull 2019 ACS data (2010-vintage tracts) and 2024 ACS data (2020-vintage tracts)
@@ -302,7 +316,7 @@ tract_xwalk = tract_crosswalk$crosswalks$step_1 %>%
 # Interpolate 2019 data to 2020-vintage tract boundaries
 dc_2019_in_2020_tracts = interpolate_acs(
   .data = dc_tracts %>% filter(data_source_year == 2019) %>% st_drop_geometry(),
-  target_geoid = "target_tract",
+  target_geoid_column = "target_tract",
   weight = "weight",
   crosswalk = tract_xwalk)
 
@@ -320,7 +334,8 @@ snap_change = dc_tracts %>%
   mutate(
     snap_ppt_change = (snap_received_percent - snap_received_percent_2019) * 100,
     snap_ppt_change_M = sqrt(snap_received_percent_M^2 + snap_received_percent_2019_M^2) * 100,
-    significant = abs(snap_ppt_change) > snap_ppt_change_M * 1.645 / 1.645,
+    ## a difference is significant at the 90% level when it exceeds its 90% MOE
+    significant = abs(snap_ppt_change) > snap_ppt_change_M,
     change_category = case_when(
       !significant ~ "Not significant",
       snap_ppt_change > 0 ~ "Significant increase",
@@ -363,29 +378,22 @@ gridExtra::grid.arrange(
 
 ![](custom-geographies_files/figure-html/unnamed-chunk-10-1.png)
 
-With `weight = NULL` (the default used in the quadrant example),
-[`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
-assumes perfect nesting—each source geography’s values are entirely
-attributed to the target geography. Providing a `weight` column enables
-proportional allocation for partial-overlap crosswalks. Count variables
-and their MOEs are multiplied by the crosswalk weight before summing;
-percentages are then recalculated from the allocated components.
-
 ## Key Takeaways
 
 [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
-helps make your analysis more precise:
+helps make your analysis more precise and relevant to decisionmaking
+contexts:
 
 1.  **Aggregation improves precision**: Combining geographies into
     larger geographies reduces margins of error. Got some
-    very-small-population tracts or counties? Aggregate these with
-    adjacent geographies to get estimates with smaller (relative) MOEs.
+    very-small-population areas? Aggregate adjacent geographies to get
+    estimates with smaller (relative) MOEs.
 
 2.  **Better inference**: More precise estimates–those with smaller
-    relative MOES–enable detection of statistically significant
+    relative MOEs–enable detection of statistically significant
     differences that would otherwise be obscured by sampling error.
 
 3.  **Flexible target geographies**: The ACS reports estimates at many
     geographies, but there are many others that are not supported.
-    Provide a crosswalk and you can interpolate both estimates and MOES
+    Provide a crosswalk and you can interpolate both estimates and MOEs
     to any geography you want–wards, school districts, etc.

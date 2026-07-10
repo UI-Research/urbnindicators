@@ -11,14 +11,15 @@ auto-generated at runtime.
 ## Usage
 
 ``` r
-list_variables(year = 2022)
+list_variables(year = latest_acs_year())
 ```
 
 ## Arguments
 
 - year:
 
-  The ACS year used to resolve variable names (default 2022).
+  The ACS year used to resolve variable names. Defaults to the most
+  recent ACS five-year vintage expected to be available.
 
 ## Value
 

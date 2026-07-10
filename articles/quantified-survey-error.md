@@ -1,6 +1,7 @@
 # Drawing Inferences while Accounting for Survey Error
 
 ``` r
+
 library(dplyr)
 library(ggplot2)
 library(tidyr)
@@ -16,10 +17,10 @@ Because data from the American Community **Survey** are–you guessed
 it–survey data, they are subject to sampling error. Sampling error
 means, in brief, that when we extrapolate from our sample–say, 200
 households out of a neighborhood population of 1,000 households–we make
-assumptions that the sample is representative of the
-population.[¹](#fn1) These assumptions are inherently imperfect, and so
-the estimates we use based on sample responses have a quantifiable
-amount of error associated with them.
+assumptions that the sample is representative of the population.[^1]
+These assumptions are inherently imperfect, and so the estimates we use
+based on sample responses have a quantifiable amount of error associated
+with them.
 
 Using the known error around an estimate allows us to better say what we
 do and do not know about the population. Without this information, we
@@ -56,14 +57,14 @@ measures of error.
   access to a car.” (And then we should include, either as a footnote or
   in the body of the document, that this and other MOEs are calculated
   at the 90% confidence level). What this means in practice is that if
-  we were to repeat 100 times–-using exactly the same methods–-our
-  approach to calculating this estimate, 90 of those times we would
-  produce a parallel estimate between 15% and 25%, while 10 of those
-  times, our estimate would fall outside this range.
+  the survey were repeated many times–using exactly the same methods–and
+  an interval like this one were constructed each time, about 90 in 100
+  of those intervals would contain the true population value (and about
+  10 in 100 would not).
 
-- **Standard Errors (SE)** are derived from MOEs by dividing the MOE
-  against a confidence level-related value. 90% SEs are calculated by
-  dividing an MOE by 1.645.
+- **Standard Errors (SE)** are derived from MOEs by dividing by a value
+  tied to the MOE’s confidence level: for the ACS’s 90%-level MOEs, SE =
+  MOE / 1.645.
 
 - **Coefficients of Variation (CV)** relate error to the size of the
   estimate. They are calculated by dividing the SE by the estimate and
@@ -93,6 +94,7 @@ of error. See
 for a worked example.
 
 ``` r
+
 acs_df_county = compile_acs_data(
   years = c(2024),
   tables = "age",
@@ -108,6 +110,7 @@ acs_df_tract = compile_acs_data(
 ```
 
 ``` r
+
 ## derive CVs from MOEs for quality evaluation
 plot_df = bind_rows(
       acs_df_county %>% mutate(geography = "County"),
@@ -168,7 +171,7 @@ Statistical significance testing is critical to understanding whether
 estimates are meaningfully different. Estimates that may appear
 substantially different in isolation are frequently, especially at
 smaller geographies, not statistically significantly different because
-their errors are so significant.
+their margins of error are so large.
 
 We’ll illustrate this numerically and demonstrate the impacts of
 accounting for error when visualizing data, leveraging
@@ -177,6 +180,7 @@ to conduct our actual tests. Here, we’ll compare each tract-level value
 within a single county to that of the corresponding county.
 
 ``` r
+
 plot_data = acs_df_tract %>%
   filter(str_detect(NAME, "Atlantic")) %>%
   select(GEOID, matches("age_over_64_percent")) %>%
@@ -234,10 +238,10 @@ plot_data %>%
 ![](quantified-survey-error_files/figure-html/unnamed-chunk-4-1.png)
 
 ``` r
+
 significance_test_data = plot_data %>%
   filter(GEOID %in% c("34001011901", "34001001900"))
 
-## TRUE
 significant_difference = significance(
   est1 = significance_test_data %>%
     filter(GEOID == "34001001900") %>%
@@ -252,6 +256,9 @@ significant_difference = significance(
     filter(GEOID == "34001011901") %>%
     pull(age_over_64_percent_M))
 
+significant_difference
+#> [1] TRUE
+
 plot_data %>%
   filter(GEOID %in% c("34001011901", "34001001900")) %>%
   ggplot(aes(y = GEOID, x = age_over_64_percent, color = GEOID)) +
@@ -265,7 +272,14 @@ plot_data %>%
   labs(
     x = "Share of population over 64",
     y = "Tract",
-    title = "One Tract Estimate Doubles That of the Other, But There is No Statistically Significant Difference" %>% str_wrap(100),
+    ## derive the title from the test so prose and data cannot disagree
+    title = paste(
+      "One Tract Estimate Doubles That of the Other,",
+      if_else(
+        significant_difference,
+        "and the Difference is Statistically Significant",
+        "But There is No Statistically Significant Difference")) %>%
+      str_wrap(100),
     subtitle = "Share of population over the age of 64, point estimates and margins of error")
 ```
 
@@ -309,13 +323,13 @@ map above) is another common approach.
 
 ## Limitations of Calculated Errors
 
-MOEs for raw ACS estimates–i.e., those that are directly reported by the
-Census Bureau–should be accurate measurements of survey error. This is
-because these errors are calculated after accounting for estimate
+MOEs for raw ACS estimates––i.e., those that are directly reported by
+the Census Bureau––should be accurate measurements of survey error. This
+is because these errors are calculated after accounting for estimate
 covariance using individual-level responses (see footnote 1). However,
-the calculations of error for derived estimates–that is, estimates that
+the calculations of error for derived estimates––that is, estimates that
 [`library(urbnindicators)`](https://ui-research.github.io/urbnindicators/)
-calculates behind the scenes using two or more raw ACS estimates are
+calculates behind the scenes using two or more raw ACS estimates—are
 imperfect for at least two reasons:
 
 1.  Errors for derived estimates do not account for covariance;
@@ -344,9 +358,9 @@ small subset of all ACS tables, and the VRE tables are large and
 non-trivial to work with.
 
 A similar option that may be appropriate for some use-cases is to work
-with the the individual-level data, which is often referred to as the
+with the individual-level data, which is often referred to as the
 “Public Use Microdata”. These data comprise respondent-level ACS data as
-well as large set of survey replicate weights that can be used to
+well as a large set of survey replicate weights that can be used to
 calculate more accurate margins of error and related error statistics.
 However, these data are much more cumbersome to work with than the
 tabulated estimates tables returned by `urbnindicators`, and in order to
@@ -362,9 +376,7 @@ can inform users’ understandings of the number of raw estimates used to
 calculate a given variable, which in turn can shape their thinking
 around the precision or possible imprecision of associated errors.
 
-------------------------------------------------------------------------
-
-1.  In reality, the “assumptions” used by the Census Bureau to
+[^1]: In reality, the “assumptions” used by the Census Bureau to
     extrapolate from survey responses to population estimates are very
     sophisticated. When working with individual-level data via the ACS
     Public Use Microdata Sample (PUMS), the error generated by these

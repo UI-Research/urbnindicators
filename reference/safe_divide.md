@@ -1,6 +1,7 @@
-# Division without NAs
+# Division without NaNs
 
-Return 0 when the divisor is 0.
+A division operation that distinguishes structurally-zero ratios from
+undefined ones.
 
 ## Usage
 
@@ -12,27 +13,37 @@ safe_divide(x, y)
 
 - x:
 
-  A numeric scalar.
+  A numeric vector or scalar.
 
 - y:
 
-  A numeric scalar.
+  A numeric vector or scalar.
 
 ## Value
 
-The traditional dividend in all cases except where `y == 0`, in which
-case it returns 0.
+A numeric vector. See `Details` for the behavior at `y == 0`.
 
 ## Details
 
-A modified division operation that returns zero when the divisor is zero
-rather than returning NA. Otherwise returns the quotient.
+Returns the quotient `x / y` except in two cases:
+
+- When both `x` and `y` are `0`, returns `0` (treating `0 / 0` as a
+  structurally-zero ratio rather than NaN).
+
+- When `y` is `0` and `x` is non-zero (positive or negative), returns
+  `NA_real_` (the ratio is undefined).
+
+When `x` or `y` is `NA`, the result is `NA`.
 
 ## Examples
 
 ``` r
-safe_divide(1, 2)
+safe_divide(1, 2)   # 0.5
 #> [1] 0.5
-safe_divide(3, 0)
+safe_divide(0, 0)   # 0
 #> [1] 0
+safe_divide(3, 0)   # NA
+#> [1] NA
+safe_divide(3, NA)  # NA
+#> [1] NA
 ```

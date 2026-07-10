@@ -1,6 +1,7 @@
 # urbnindicators
 
 ``` r
+
 library(urbnindicators)
 library(tidycensus)
 library(dplyr)
@@ -10,10 +11,13 @@ library(scales)
 library(urbnthemes) # install from https://github.com/UrbanInstitute/urbnthemes
 ```
 
+If you’re new to the ACS or want to understand how 5-year estimates,
+geographies, and universe variables work, see [ACS Background and Best
+Practices](https://ui-research.github.io/urbnindicators/articles/acs-background.md).
+
 This vignette is organized into three parts:
 
-1.  We illustrate a typical workflow for obtaining American Community
-    Survey (ACS) data using
+1.  We illustrate a typical workflow for obtaining ACS data using
     [`library(tidycensus)`](https://walker-data.com/tidycensus/).
 
 2.  We show how
@@ -39,6 +43,7 @@ We load the built-in codebook and search for our construct of interest
 (disability). This leaves us 500 variables to choose from.
 
 ``` r
+
 acs_codebook = load_variables(dataset = "acs5", year = 2022)
 
 acs_codebook %>%
@@ -71,6 +76,7 @@ and age. We then pass this to
 [`library(tidycensus)`](https://walker-data.com/tidycensus/) as:
 
 ``` r
+
 df_disability = get_acs(
   geography = "county",
   state = "NJ", 
@@ -81,7 +87,7 @@ df_disability = get_acs(
 ```
 
 This returns us 21 observations–one for each county in NJ–along with an
-intimidating 80 columns with unintelligble names along the lines of
+intimidating 80 columns with unintelligible names along the lines of
 `B18101_039E`.
 
 ### Calculating our measure of interest
@@ -119,20 +125,12 @@ as the share of all individuals who are disabled).
 
 ### Acquire data
 
-It’s as simple as the call below. Note that you can provide a vector of
-years and/or states if you want data over different time periods or
-geographies.
-
-Note that selecting more tables or more geographic units–either by
-selecting a `geography` option comprising more units, by selecting more
-states, or selecting more years–can significantly increase the query
-time.
-
 Use
 [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md)
 to see some of the most commonly-used tables:
 
 ``` r
+
 list_tables() |> head(10)
 #>  [1] "age"                    "computing_devices"      "cost_burden"           
 #>  [4] "disability"             "educational_attainment" "employment"            
@@ -145,6 +143,7 @@ Or use
 to see every table supported by the Census Bureau API:
 
 ``` r
+
 get_acs_codebook() |>
   filter(str_detect(variable_clean, "snap")) |>
   head(10)
@@ -163,10 +162,11 @@ get_acs_codebook() |>
 #> 10 B09010 B09010_010   receipt_supplemental_security_income_ssi_cash_public_ass…
 ```
 
-Here we request just two tables–`disability` and
+Here we request just two tables—`disability` and
 `transportation_to_work`.
 
 ``` r
+
 df_urbnindicators = compile_acs_data(
   years = 2024,
   tables = c("disability", "transportation_to_work"),
@@ -176,9 +176,13 @@ df_urbnindicators = compile_acs_data(
 ```
 
 You can also pass vectors of years and/or states to pull data across
-multiple time periods or geographies in a single call:
+multiple time periods or geographies in a single call. Note that
+selecting more tables or more geographic units–either by selecting a
+`geography` option comprising more units, by selecting more states, or
+selecting more years–can significantly increase the query time.
 
 ``` r
+
 df_multi = compile_acs_data(
   years = c(2019, 2024),
   tables = "disability",
@@ -198,10 +202,14 @@ Alternately, you can pass the name of a variable or table from
 [`get_acs_codebook()`](https://ui-research.github.io/urbnindicators/reference/get_acs_codebook.md)
 to
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
-The equivalent of the first call above would be:
+Unlike registered tables, these are auto-processed: the full raw table
+is returned along with percentages calculated on the fly (see the
+`denominator` parameter), rather than the curated measures a registered
+table provides. A close analog of the first call above would be:
 
 ``` r
-df_urbnindicators = compile_acs_data(
+
+df_auto = compile_acs_data(
   years = 2024,
   tables = c("sex_by_age_by_disability_status_universe", "B08301"),
   geography = "county",
@@ -214,6 +222,7 @@ df_urbnindicators = compile_acs_data(
 And now we’re ready to analyze or plot our data. Simplistically:
 
 ``` r
+
 df_urbnindicators %>%
   ggplot() +
     geom_sf(aes(fill = disability_percent)) +
@@ -240,11 +249,12 @@ here](https://ui-research.github.io/urbnindicators/articles/codebook.md).
 Access the codebook with [`attr()`](https://rdrr.io/r/base/attr.html):
 
 ``` r
+
 codebook = attr(df_urbnindicators, "codebook")
 
 codebook %>%
   head(5)
-#> # A tibble: 5 × 9
+#> # A tibble: 5 × 10
 #>   calculated_variable                    variable_type definition numerator_vars
 #>   <chr>                                  <chr>         <chr>      <list>        
 #> 1 total_population_universe              Count         This is a… <chr [0]>     
@@ -252,25 +262,28 @@ codebook %>%
 #> 3 means_transportation_work_car_truck_v… Count         This is a… <chr [0]>     
 #> 4 means_transportation_work_car_truck_v… Count         This is a… <chr [0]>     
 #> 5 means_transportation_work_car_truck_v… Count         This is a… <chr [0]>     
-#> # ℹ 5 more variables: numerator_subtract_vars <list>, denominator_vars <list>,
+#> # ℹ 6 more variables: numerator_subtract_vars <list>, denominator_vars <list>,
 #> #   denominator_subtract_vars <list>, se_calculation_type <chr>,
-#> #   aggregation_strategy <chr>
+#> #   aggregation_strategy <chr>, universe <chr>
 ```
 
-The codebook has three columns:
+The codebook’s three primary columns are:
 
 - **calculated_variable** – the variable name as it appears in the
   dataframe.
-- **variable_type** – whether the variable is a `count` (raw ACS
-  estimate), a `percent` (derived ratio), or `metadata` (e.g., a median
-  or geographic identifier).
-- **definition** – a formula showing how the variable was calculated.
-  For raw ACS variables, this is the original Census Bureau variable
-  code (e.g., `B22003_002`). For derived variables, this is an
-  expression like `snap_received / snap_universe`.
+- **variable_type** – the kind of variable: `Count` (raw ACS estimate),
+  `Percent` or `Sum` (derived), `Median`/`Median ($)`/
+  `Average`/`Quintile ($)`/`Index`, or `Metadata` (e.g., a geographic
+  identifier).
+- **definition** – a description of how the variable was calculated. Raw
+  ACS variables read `"This is a raw ACS estimate."`; derived variables
+  spell out their numerator and denominator alongside the original
+  Census Bureau codes, e.g.,
+  `"Numerator = snap_received (B22003_002). Denominator = snap_universe (B22003_001)."`
 
-These definition strings are also used internally to calculate margins
-of error for derived variables (see [Quantifying Survey
+The codebook’s remaining columns record each derived variable’s
+numerator/denominator components; margins of error are computed from
+these (see [Quantifying Survey
 Error](https://ui-research.github.io/urbnindicators/articles/quantified-survey-error.md)),
 so their accuracy is critical.
 
@@ -279,6 +292,7 @@ the sum of all of the sex-by-age groupings for people with disabilities
 (numerator) divided by the table universe:
 
 ``` r
+
 codebook %>%
   filter(calculated_variable == "disability_percent") %>%
   pull(definition)
@@ -297,15 +311,20 @@ you may want alternate or additional derived variables. `urbnindicators`
 provides a suite of helper functions (`define_*()`) that allow you to
 specify how you want to create these derived variables; these helper
 functions abstract away the actual calculations and ensure that you get
-an updated codeboook and correctly-pooled margins of error for each of
+an updated codebook and correctly-pooled margins of error for each of
 your newly-derived variables. See [Custom Derived
 Variables](https://ui-research.github.io/urbnindicators/articles/custom-derived-variables.md)
 for more.
 
+To learn more about how ACS tables are structured, how `urbnindicators`
+selects and renames variables, and how percentages are calculated, see
+[ACS Table
+Structures](https://ui-research.github.io/urbnindicators/articles/acs-table-structures.md).
+
 ### Interpolate data to custom geographies
 
 ACS data are available for many statistical and political geographies,
-but many analyses rfocus on other geographies like neighborhoods or
+but many analyses focus on other geographies like neighborhoods or
 planning districts.
 [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
 translates data from ACS-supported geographies to any user-defined

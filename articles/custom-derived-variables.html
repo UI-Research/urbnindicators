@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Custom Derived Variables • urbnindicators</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Custom Derived Variables">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9401</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,13 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
+<li><a class="dropdown-item" href="../articles/acs-background.html">ACS Background and Best Practices</a></li>
+    <li><a class="dropdown-item" href="../articles/acs-table-structures.html">ACS Table Structures</a></li>
+    <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
     <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
     <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
-    <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
+    <li><a class="dropdown-item" href="../articles/view_acs_data.html">Explore ACS Data Interactively</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -47,6 +49,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/UI-Research/urbnindicators/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -63,7 +66,7 @@
       <h1>Custom Derived Variables</h1>
             
       
-
+      <small class="dont-index">Source: <a href="https://github.com/UI-Research/urbnindicators/blob/main/vignettes/custom-derived-variables.Rmd" class="external-link"><code>vignettes/custom-derived-variables.Rmd</code></a></small>
       <div class="d-none name"><code>custom-derived-variables.Rmd</code></div>
     </div>
 
@@ -76,15 +79,16 @@
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ui-research.github.io/urbnindicators/">urbnindicators</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://walker-data.com/tidycensus/" class="external-link">tidycensus</a></span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code> supports a large set of pre-built
-derived variables (percentages, complements, etc.) from the package’s
-registered tables. But you can also define your own derived variables
-using the <code>define_*()</code> helpers and pass them directly to
+derived variables (percentages, complements, etc.). But you can also
+define your own derived variables using the <code>define_*()</code>
+helpers and then pass these definitions directly to
 <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code> via the <code>tables</code> parameter.
 Your custom variables automatically get codebook entries and margins of
 error, just like the built-in ones.</p>
 <p>This vignette walks through the process of identifying variables,
-choosing denominators, and writing definitions, using household type
-data (ACS table B11001) as a running example.</p>
+choosing denominators, and writing definitions, using sex-by-age data
+for the White-alone population (ACS table B01001A) as a running
+example.</p>
 <div class="section level2">
 <h2 id="the-define_-helpers">The <code>define_*()</code> Helpers<a class="anchor" aria-label="anchor" href="#the-define_-helpers"></a>
 </h2>
@@ -104,39 +108,47 @@ data (ACS table B11001) as a running example.</p>
 <td><code><a href="../reference/define_percent.html">define_percent()</a></code></td>
 <td>Single output: numerator / denominator</td>
 <td>
-<code>output</code>, <code>numerator</code>,
-<code>denominator</code> (simple) or <code>numerator_variables</code>,
-<code>denominator_variables</code>, regex variants (complex)</td>
+<code>numerator</code>, <code>denominator</code>,
+<code>output</code>, optional <code>subtract_from_numerator</code>,
+<code>subtract_from_denominator</code>, <code>exclude</code>
+</td>
 </tr>
 <tr class="even">
-<td><code><a href="../reference/define_across_percent.html">define_across_percent()</a></code></td>
-<td>Percentages across a regex-matched set of columns</td>
+<td><code>define_percent(..., each = TRUE)</code></td>
+<td>Percentages across a regex-matched set of columns (one output per
+match, named <code>&lt;matched_column&gt;_percent</code>)</td>
 <td>
-<code>input_regex</code>, <code>output_suffix</code>,
-<code>denominator</code> or <code>denominator_function</code>, optional
-<code>exclude_regex</code>
+<code>numerator</code> (regex), <code>denominator</code> or
+<code>denominator_replace</code>, <code>exclude</code>
 </td>
 </tr>
 <tr class="odd">
-<td><code><a href="../reference/define_across_sum.html">define_across_sum()</a></code></td>
-<td>Summing paired columns (e.g., male + female)</td>
+<td><code><a href="../reference/define_sum.html">define_sum()</a></code></td>
+<td>Sum one or more columns into a single output</td>
 <td>
-<code>input_regex</code>, <code>addend_function</code>,
-<code>output_naming_function</code>
+<code>columns</code>, <code>output</code>
 </td>
 </tr>
 <tr class="even">
-<td><code><a href="../reference/define_one_minus.html">define_one_minus()</a></code></td>
+<td><code>define_sum(..., each = TRUE)</code></td>
+<td>Summing paired columns (e.g., male + female) for each match</td>
+<td>
+<code>columns</code> (regex), <code>add_replace</code>,
+<code>output_replace</code>, <code>exclude</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../reference/define_complement.html">define_complement()</a></code></td>
 <td>Complement of an existing percentage (1 - x)</td>
 <td>
-<code>output</code>, <code>source_variable</code>
+<code>source</code>, <code>output</code>
 </td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code><a href="../reference/define_metadata.html">define_metadata()</a></code></td>
 <td>Non-computed variables (e.g., medians)</td>
 <td>
-<code>output</code>, <code>definition_text</code>
+<code>output</code>, <code>definition</code>
 </td>
 </tr>
 </tbody>
@@ -149,9 +161,10 @@ whose variables your definitions reference.</p>
 <div class="section level2">
 <h2 id="step-1-identify-the-raw-variables">Step 1: Identify the Raw Variables<a class="anchor" aria-label="anchor" href="#step-1-identify-the-raw-variables"></a>
 </h2>
-<p>We’re going to create a variable describing the share of white men
-between the ages of 18 and 44. The needed raw variables are from ACS
-table B01001A, as described in the codebook</p>
+<p>We’re going to create a variable describing White-alone men aged 18
+to 44 as a share of the total White-alone population (the table
+universe). The needed raw variables are from ACS table B01001A, as
+described in the codebook.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">codebook</span> <span class="op">=</span> <span class="fu"><a href="../reference/get_acs_codebook.html">get_acs_codebook</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -182,12 +195,12 @@ simplicity, we just use the table universe here.</p>
 <p>We express the new variable(s) using <code>define_*()</code> helpers
 and pass the definitions directly to
 <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>.</p>
-<p>Our target variable–the share of white men aged 18-44–requires
-summing several age-group columns (18-19, 20, 21, 22-24, 25-29, 30-34,
-35-39, 40-44) and dividing by the table universe.
-<code><a href="../reference/define_percent.html">define_percent()</a></code> with <code>numerator_regex</code> handles
-this: it matches all columns fitting a pattern and sums them into the
-numerator.</p>
+<p>Our target variable requires summing several male age-group columns
+(in B01001A these are collapsed brackets: 18-19, 20-24, 25-29, 30-34,
+and 35-44) and dividing by the table universe.
+<code><a href="../reference/define_percent.html">define_percent()</a></code> handles this: when its
+<code>numerator</code> is a regex, it matches all columns fitting the
+pattern and sums them into the numerator.</p>
 <p>The auto-processed column names from B01001A follow the pattern
 <code>sex_by_age_white_alone_male_{age_range}_years</code>, so we can
 target the 18-44 age groups with a regex that matches the leading digits
@@ -197,10 +210,10 @@ of each range:</p>
 <span>  tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    <span class="st">"B01001A"</span>,</span>
 <span>    <span class="fu"><a href="../reference/define_percent.html">define_percent</a></span><span class="op">(</span></span>
-<span>      <span class="st">"white_male_18_44_percent"</span>,</span>
-<span>      numerator_regex <span class="op">=</span> <span class="st">"sex_by_age_white_alone_male_(1[89]|2[0-9]|3[0-9]|4[0-4])"</span>,</span>
-<span>      numerator_exclude_regex <span class="op">=</span> <span class="st">"percent"</span>,</span>
-<span>      denominator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sex_by_age_white_alone_universe"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      numerator <span class="op">=</span> <span class="st">"sex_by_age_white_alone_male_(1[89]|2[0-9]|3[0-9]|4[0-4])"</span>,</span>
+<span>      denominator <span class="op">=</span> <span class="st">"sex_by_age_white_alone_universe"</span>,</span>
+<span>      output <span class="op">=</span> <span class="st">"white_male_18_44_percent"</span>,</span>
+<span>      exclude <span class="op">=</span> <span class="st">"percent"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"NJ"</span><span class="op">)</span></span>
@@ -256,57 +269,60 @@ calculated margins of error:</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 3 variables: builtin &lt;dbl&gt;, manual &lt;dbl&gt;, match &lt;lgl&gt;</span></span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="across-percent-with-a-complement">Across-percent with a complement<a class="anchor" aria-label="anchor" href="#across-percent-with-a-complement"></a>
+<h3 id="batch-percentages-with-a-complement">Batch percentages with a complement<a class="anchor" aria-label="anchor" href="#batch-percentages-with-a-complement"></a>
 </h3>
 <p>Percentages for all race categories, plus a person-of-color
 complement. This is how the built-in <code>race</code> table works
-internally.</p>
+internally. Passing <code>each = TRUE</code> switches
+<code><a href="../reference/define_percent.html">define_percent()</a></code> into batch mode: the
+<code>numerator</code> is a regex, and one percentage is produced per
+matched column (each named
+<code>&lt;matched_column&gt;_percent</code>).</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    <span class="st">"race"</span>,</span>
-<span>    <span class="fu"><a href="../reference/define_across_percent.html">define_across_percent</a></span><span class="op">(</span></span>
-<span>      input_regex <span class="op">=</span> <span class="st">"^race_nonhispanic|^race_hispanic"</span>,</span>
-<span>      output_suffix <span class="op">=</span> <span class="st">"_percent"</span>,</span>
-<span>      denominator <span class="op">=</span> <span class="st">"race_universe"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="../reference/define_percent.html">define_percent</a></span><span class="op">(</span></span>
+<span>      <span class="st">"^race_nonhispanic|^race_hispanic"</span>,</span>
+<span>      denominator <span class="op">=</span> <span class="st">"race_universe"</span>,</span>
+<span>      each <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,</span>
 <span>    <span class="co">## race_personofcolor_percent is the share of all individuals who are not</span></span>
 <span>    <span class="co">## non-Hispanic, White alone, i.e., the complement</span></span>
-<span>    <span class="fu"><a href="../reference/define_one_minus.html">define_one_minus</a></span><span class="op">(</span></span>
-<span>      <span class="st">"race_personofcolor_percent"</span>,</span>
-<span>      source_variable <span class="op">=</span> <span class="st">"race_nonhispanic_white_alone_percent"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="../reference/define_complement.html">define_complement</a></span><span class="op">(</span></span>
+<span>      source <span class="op">=</span> <span class="st">"race_nonhispanic_white_alone_percent"</span>,</span>
+<span>      output <span class="op">=</span> <span class="st">"race_personofcolor_percent"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="across-sum-followed-by-across-percent">Across-sum followed by across-percent<a class="anchor" aria-label="anchor" href="#across-sum-followed-by-across-percent"></a>
+<h3 id="batch-sum-followed-by-batch-percent">Batch sum followed by batch percent<a class="anchor" aria-label="anchor" href="#batch-sum-followed-by-batch-percent"></a>
 </h3>
 <p>Sum male + female counts into combined age variables, then calculate
 percentages. This is how the built-in <code>sex_by_age</code> table
 works internally.</p>
 <p>This one is a bit tricky–the source table includes variables for each
 age group, split by sex. To get age groups, we have to add the two
-sex-specific estimates for the given age group. This requires us to
-specify an <code>input_regex</code>, which selects, in this case, all
-female-specific age variables. The <code>addend_function</code> then
-programmatically identifies the same-named, male-specific variables. The
-<code>output_naming_function</code> simplifies the resulting combined
-variable, removing the sex category and other extraneous words.</p>
+sex-specific estimates for the given age group. We pass a regex to
+<code>define_sum(..., each = TRUE)</code> that selects all
+female-specific age variables. <code>add_replace</code> programmatically
+identifies the same-named, male-specific variables via string
+substitution. <code>output_replace</code> simplifies the resulting
+combined variable name, removing the sex category and other extraneous
+words.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    <span class="st">"sex_by_age"</span>,</span>
-<span>    <span class="fu"><a href="../reference/define_across_sum.html">define_across_sum</a></span><span class="op">(</span></span>
-<span>      input_regex <span class="op">=</span> <span class="st">"sex_by_age_female_.*years($|_over$)"</span>,</span>
-<span>      addend_function <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">column</span><span class="op">)</span> <span class="op">{</span></span>
-<span>        <span class="va">column</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_replace.html" class="external-link">str_replace</a></span><span class="op">(</span><span class="st">"female"</span>, <span class="st">"male"</span><span class="op">)</span><span class="op">}</span>,</span>
-<span>      output_naming_function <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">column</span><span class="op">)</span> <span class="op">{</span></span>
-<span>        <span class="va">column</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_replace.html" class="external-link">str_replace</a></span><span class="op">(</span><span class="st">"sex_by_age_female_"</span>, <span class="st">"age_"</span><span class="op">)</span></span>
-<span>      <span class="op">}</span><span class="op">)</span>,</span>
-<span>    <span class="fu"><a href="../reference/define_across_percent.html">define_across_percent</a></span><span class="op">(</span></span>
-<span>      input_regex <span class="op">=</span> <span class="st">"^age.*years($|_over$)"</span>,</span>
-<span>      output_suffix <span class="op">=</span> <span class="st">"_percent"</span>,</span>
-<span>      denominator <span class="op">=</span> <span class="st">"sex_by_age_universe"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="../reference/define_sum.html">define_sum</a></span><span class="op">(</span></span>
+<span>      <span class="st">"sex_by_age_female_.*years($|_over$)"</span>,</span>
+<span>      each <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>      add_replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"female"</span> <span class="op">=</span> <span class="st">"male"</span><span class="op">)</span>,</span>
+<span>      output_replace <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sex_by_age_female_"</span> <span class="op">=</span> <span class="st">"age_"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="../reference/define_percent.html">define_percent</a></span><span class="op">(</span></span>
+<span>      <span class="st">"^age.*years($|_over$)"</span>,</span>
+<span>      denominator <span class="op">=</span> <span class="st">"sex_by_age_universe"</span>,</span>
+<span>      each <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span></code></pre></div>
@@ -315,18 +331,19 @@ variable, removing the sex category and other extraneous words.</p>
 <h3 id="complex-percentage-with-subtraction">Complex percentage with subtraction<a class="anchor" aria-label="anchor" href="#complex-percentage-with-subtraction"></a>
 </h3>
 <p>For cases where the numerator or denominator requires summing or
-subtracting multiple variables, use the
-<code>numerator_variables</code>, <code>denominator_variables</code>,
-and optional <code>*_subtract_*</code> arguments:</p>
+subtracting multiple variables, pass character vectors to
+<code>numerator</code> / <code>denominator</code> and use the
+<code>subtract_from_numerator</code> /
+<code>subtract_from_denominator</code> arguments:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_complex</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    <span class="st">"snap"</span>,</span>
 <span>    <span class="fu"><a href="../reference/define_percent.html">define_percent</a></span><span class="op">(</span></span>
-<span>      <span class="st">"snap_not_received_pct_complex"</span>,</span>
-<span>      numerator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span><span class="op">)</span>,</span>
-<span>      numerator_subtract_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_received"</span><span class="op">)</span>,</span>
-<span>      denominator_variables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"snap_universe"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      numerator <span class="op">=</span> <span class="st">"snap_universe"</span>,</span>
+<span>      denominator <span class="op">=</span> <span class="st">"snap_universe"</span>,</span>
+<span>      subtract_from_numerator <span class="op">=</span> <span class="st">"snap_received"</span>,</span>
+<span>      output <span class="op">=</span> <span class="st">"snap_not_received_pct_complex"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
 <span>  states <span class="op">=</span> <span class="st">"DC"</span><span class="op">)</span></span>
@@ -389,7 +406,7 @@ calculation, so errors there will propagate to MOEs.</p></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

@@ -1,6 +1,7 @@
 # The urbnindicators Codebook
 
 ``` r
+
 library(urbnindicators)
 library(dplyr)
 library(reactable)
@@ -18,42 +19,52 @@ The codebook is stored as an attribute of the dataframe and can be
 retrieved with [`attr()`](https://rdrr.io/r/base/attr.html):
 
 ``` r
-df = compile_acs_data(year = 2024, geography = "us")
-#>   |                                                                              |                                                                      |   0%  |                                                                              |============                                                          |  16%  |                                                                              |============                                                          |  17%  |                                                                              |==============                                                        |  20%  |                                                                              |=================                                                     |  24%  |                                                                              |========================                                              |  34%  |                                                                              |===========================                                           |  38%  |                                                                              |==================================                                    |  48%  |                                                                              |==================================                                    |  49%  |                                                                              |=======================================                               |  56%  |                                                                              |==================================================                    |  71%  |                                                                              |==========================================================            |  83%  |                                                                              |==================================================================    |  94%  |                                                                              |======================================================================| 100%
+
+df = compile_acs_data(years = 2024, geography = "us")
+#>   |                                                                              |                                                                      |   0%  |                                                                              |====                                                                  |   6%  |                                                                              |======                                                                |   8%  |                                                                              |=======                                                               |  10%  |                                                                              |=======                                                               |  11%  |                                                                              |==========                                                            |  14%  |                                                                              |============                                                          |  17%  |                                                                              |=============                                                         |  18%  |                                                                              |=============                                                         |  19%  |                                                                              |==============                                                        |  20%  |                                                                              |===============                                                       |  21%  |                                                                              |==================                                                    |  25%  |                                                                              |==================                                                    |  26%  |                                                                              |===================                                                   |  27%  |                                                                              |====================                                                  |  29%  |                                                                              |=====================                                                 |  30%  |                                                                              |=======================                                               |  33%  |                                                                              |=========================                                             |  36%  |                                                                              |==========================                                            |  37%  |                                                                              |==========================                                            |  38%  |                                                                              |================================                                      |  46%  |                                                                              |===================================================                   |  73%  |                                                                              |======================================================                |  77%  |                                                                              |========================================================              |  81%  |                                                                              |==============================================================        |  88%  |                                                                              |================================================================      |  92%  |                                                                              |======================================================================| 100%
 codebook = attr(df, "codebook")
 ```
 
 ## Understanding the columns
 
-The codebook has three columns:
+The codebook’s three primary columns are:
 
-- **Variable**: The variable name as it appears in the dataframe (e.g.,
-  `snap_received_percent`).
+- **calculated_variable**: The variable name as it appears in the
+  dataframe (e.g., `snap_received_percent`).
 
-- **Type**: The kind of variable. Common types include:
+- **variable_type**: The kind of variable. Values include `Count` (a raw
+  ACS estimate directly from the API), `Percent` (a derived ratio),
+  `Sum` (a derived count), `Median`, `Median ($)`, `Average`,
+  `Quintile ($)`, `Index`, and `Metadata` (a non-computed field such as
+  a geographic identifier).
 
-  - `count` – a raw ACS estimate directly from the API
-  - `percent` – a derived ratio, typically a count divided by a universe
-    variable
-  - `metadata` – a non-computed variable such as a median or geographic
-    identifier
+- **definition**: A description of how the variable was calculated. Raw
+  ACS variables read `"This is a raw ACS estimate."`; derived variables
+  spell out their inputs alongside the original Census Bureau variable
+  codes, e.g.,
+  `"Numerator = snap_received (B22003_002). Denominator = snap_universe (B22003_001)."`
+  Subtracted components appear after a `-`.
 
-- **Definition**: A formula describing how the variable was calculated.
-  For raw ACS variables, this is the original Census Bureau variable
-  code (e.g., `B22003_002`). For derived variables, this is an
-  expression like `snap_received / snap_universe` that shows the
-  numerator and denominator. More complex definitions may reference
-  multiple raw variables joined with `+` in the numerator or
-  denominator.
-
-These definition strings are also used internally to calculate margins
-of error for derived variables, so their accuracy is critical.
+The codebook also carries a `universe` column giving the Census Bureau’s
+published universe statement for each variable–the population the
+variable describes, e.g., `Households` or
+`Population 25 years and over`. Derived variables inherit the universe
+of their numerator. (The Census API publishes universe statements for
+the 2020 and later vintages; earlier vintages yield `NA`.) Supporting
+columns are used for margin-of-error calculation and
+re-aggregation–list-columns naming each variable’s numerator/denominator
+components (`numerator_vars`, `denominator_vars`, and their `_subtract_`
+counterparts), an `se_calculation_type`, and an `aggregation_strategy`
+(how
+[`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
+treats the variable). Because margins of error for derived variables are
+computed from these components, their accuracy is critical.
 
 ## Browse the codebook
 
-Use the search box below to filter by variable name, type, or definition
-text. Note that this codebook reflects all variables from the tables
-returned by
+The interactive table below shows the three primary columns. Use the
+search box to filter by variable name, type, or definition text. Note
+that this codebook reflects all variables from the tables returned by
 [`list_tables()`](https://ui-research.github.io/urbnindicators/reference/list_tables.md),
 but if you were to specify different tables in your
 [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)

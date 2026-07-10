@@ -7,14 +7,15 @@ finding the table code to pass to `compile_acs_data(tables = ...)`.
 ## Usage
 
 ``` r
-get_acs_codebook(year = 2024, table = NULL)
+get_acs_codebook(year = latest_acs_year(), table = NULL)
 ```
 
 ## Arguments
 
 - year:
 
-  A four-digit year for the five-year ACS estimates (default 2022).
+  A four-digit year for the five-year ACS estimates. Defaults to the
+  most recent ACS five-year vintage expected to be available.
 
 - table:
 

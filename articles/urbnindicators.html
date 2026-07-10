@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>urbnindicators • urbnindicators</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="urbnindicators">
 </head>
@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">urbnindicators</a>
 
-    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9401</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.1.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,11 +34,13 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
+<li><a class="dropdown-item" href="../articles/acs-background.html">ACS Background and Best Practices</a></li>
+    <li><a class="dropdown-item" href="../articles/acs-table-structures.html">ACS Table Structures</a></li>
+    <li><a class="dropdown-item" href="../articles/codebook.html">The urbnindicators Codebook</a></li>
     <li><a class="dropdown-item" href="../articles/custom-derived-variables.html">Custom Derived Variables</a></li>
     <li><a class="dropdown-item" href="../articles/custom-geographies.html">Translating ACS Data to Custom Geographies</a></li>
-    <li><a class="dropdown-item" href="../articles/design-philosophy.html">Design Philosophy</a></li>
     <li><a class="dropdown-item" href="../articles/quantified-survey-error.html">Drawing Inferences while Accounting for Survey Error</a></li>
+    <li><a class="dropdown-item" href="../articles/view_acs_data.html">Explore ACS Data Interactively</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -47,6 +49,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/UI-Research/urbnindicators/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -64,7 +67,7 @@
       <h1>urbnindicators</h1>
             
       
-
+      <small class="dont-index">Source: <a href="https://github.com/UI-Research/urbnindicators/blob/main/vignettes/urbnindicators.Rmd" class="external-link"><code>vignettes/urbnindicators.Rmd</code></a></small>
       <div class="d-none name"><code>urbnindicators.Rmd</code></div>
     </div>
 
@@ -78,10 +81,12 @@
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://scales.r-lib.org" class="external-link">scales</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/UrbanInstitute/urbnthemes" class="external-link">urbnthemes</a></span><span class="op">)</span> <span class="co"># install from https://github.com/UrbanInstitute/urbnthemes</span></span></code></pre></div>
+<p>If you’re new to the ACS or want to understand how 5-year estimates,
+geographies, and universe variables work, see <a href="acs-background.html">ACS Background and Best Practices</a>.</p>
 <p>This vignette is organized into three parts:</p>
 <ol style="list-style-type: decimal">
-<li><p>We illustrate a typical workflow for obtaining American Community
-Survey (ACS) data using <code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code>.</p></li>
+<li><p>We illustrate a typical workflow for obtaining ACS data using
+<code><a href="https://walker-data.com/tidycensus/" class="external-link">library(tidycensus)</a></code>.</p></li>
 <li><p>We show how <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> can produce
 similar outputs, but with much less code and effort.</p></li>
 <li><p>We highlight how <code><a href="https://ui-research.github.io/urbnindicators/">library(urbnindicators)</a></code> provides
@@ -139,7 +144,7 @@ and age. We then pass this to <code><a href="https://walker-data.com/tidycensus/
 <span>  survey <span class="op">=</span> <span class="st">"acs5"</span>,</span>
 <span>  table <span class="op">=</span> <span class="st">"B18101"</span><span class="op">)</span></span></code></pre></div>
 <p>This returns us 21 observations–one for each county in NJ–along with
-an intimidating 80 columns with unintelligble names along the lines of
+an intimidating 80 columns with unintelligible names along the lines of
 <code>B18101_039E</code>.</p>
 </div>
 <div class="section level3">
@@ -174,13 +179,6 @@ individuals who are disabled).</p>
 <div class="section level3">
 <h3 id="acquire-data">Acquire data<a class="anchor" aria-label="anchor" href="#acquire-data"></a>
 </h3>
-<p>It’s as simple as the call below. Note that you can provide a vector
-of years and/or states if you want data over different time periods or
-geographies.</p>
-<p>Note that selecting more tables or more geographic units–either by
-selecting a <code>geography</code> option comprising more units, by
-selecting more states, or selecting more years–can significantly
-increase the query time.</p>
 <p>Use <code><a href="../reference/list_tables.html">list_tables()</a></code> to see some of the most commonly-used
 tables:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -208,7 +206,7 @@ by the Census Bureau API:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> B09010 B09010_008   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> B09010 B09010_009   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> B09010 B09010_010   receipt_supplemental_security_income_ssi_cash_public_ass…</span></span></code></pre></div>
-<p>Here we request just two tables–<code>disability</code> and
+<p>Here we request just two tables—<code>disability</code> and
 <code>transportation_to_work</code>.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
@@ -218,7 +216,11 @@ by the Census Bureau API:</p>
 <span>  states <span class="op">=</span> <span class="st">"NJ"</span>,</span>
 <span>  spatial <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>You can also pass vectors of years and/or states to pull data across
-multiple time periods or geographies in a single call:</p>
+multiple time periods or geographies in a single call. Note that
+selecting more tables or more geographic units–either by selecting a
+<code>geography</code> option comprising more units, by selecting more
+states, or selecting more years–can significantly increase the query
+time.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df_multi</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  years <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2019</span>, <span class="fl">2024</span><span class="op">)</span>,</span>
@@ -234,10 +236,14 @@ multiple time periods or geographies in a single call:</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>             <span style="text-decoration: underline;">2</span>019    83</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span>             <span style="text-decoration: underline;">2</span>024    83</span></span></code></pre></div>
 <p>Alternately, you can pass the name of a variable or table from
-<code><a href="../reference/get_acs_codebook.html">get_acs_codebook()</a></code> to <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>. The
-equivalent of the first call above would be:</p>
+<code><a href="../reference/get_acs_codebook.html">get_acs_codebook()</a></code> to <code><a href="../reference/compile_acs_data.html">compile_acs_data()</a></code>.
+Unlike registered tables, these are auto-processed: the full raw table
+is returned along with percentages calculated on the fly (see the
+<code>denominator</code> parameter), rather than the curated measures a
+registered table provides. A close analog of the first call above would
+be:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df_urbnindicators</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">df_auto</span> <span class="op">=</span> <span class="fu"><a href="../reference/compile_acs_data.html">compile_acs_data</a></span><span class="op">(</span></span>
 <span>  years <span class="op">=</span> <span class="fl">2024</span>,</span>
 <span>  tables <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sex_by_age_by_disability_status_universe"</span>, <span class="st">"B08301"</span><span class="op">)</span>,</span>
 <span>  geography <span class="op">=</span> <span class="st">"county"</span>,</span>
@@ -274,7 +280,7 @@ navigate through the <a href="codebook.html">full codebook here</a>.</p>
 <span></span>
 <span><span class="va">codebook</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 9</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 10</span></span></span>
 <span><span class="co">#&gt;   calculated_variable                    variable_type definition numerator_vars</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;list&gt;</span>        </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> total_population_universe              Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
@@ -282,29 +288,33 @@ navigate through the <a href="codebook.html">full codebook here</a>.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> means_transportation_work_car_truck_v… Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> means_transportation_work_car_truck_v… Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> means_transportation_work_car_truck_v… Count         This is a… <span style="color: #949494;">&lt;chr [0]&gt;</span>     </span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 5 more variables: numerator_subtract_vars &lt;list&gt;, denominator_vars &lt;list&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 6 more variables: numerator_subtract_vars &lt;list&gt;, denominator_vars &lt;list&gt;,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   denominator_subtract_vars &lt;list&gt;, se_calculation_type &lt;chr&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   aggregation_strategy &lt;chr&gt;</span></span></span></code></pre></div>
-<p>The codebook has three columns:</p>
+<span><span class="co">#&gt; <span style="color: #949494;">#   aggregation_strategy &lt;chr&gt;, universe &lt;chr&gt;</span></span></span></code></pre></div>
+<p>The codebook’s three primary columns are:</p>
 <ul>
 <li>
 <strong>calculated_variable</strong> – the variable name as it
 appears in the dataframe.</li>
 <li>
-<strong>variable_type</strong> – whether the variable is a
-<code>count</code> (raw ACS estimate), a <code>percent</code> (derived
-ratio), or <code>metadata</code> (e.g., a median or geographic
-identifier).</li>
+<strong>variable_type</strong> – the kind of variable:
+<code>Count</code> (raw ACS estimate), <code>Percent</code> or
+<code>Sum</code> (derived), <code>Median</code>/<code>Median ($)</code>/
+<code>Average</code>/<code>Quintile ($)</code>/<code>Index</code>, or
+<code>Metadata</code> (e.g., a geographic identifier).</li>
 <li>
-<strong>definition</strong> – a formula showing how the variable was
-calculated. For raw ACS variables, this is the original Census Bureau
-variable code (e.g., <code>B22003_002</code>). For derived variables,
-this is an expression like
-<code>snap_received / snap_universe</code>.</li>
+<strong>definition</strong> – a description of how the variable was
+calculated. Raw ACS variables read
+<code>"This is a raw ACS estimate."</code>; derived variables spell out
+their numerator and denominator alongside the original Census Bureau
+codes, e.g.,
+<code>"Numerator = snap_received (B22003_002). Denominator = snap_universe (B22003_001)."</code>
+</li>
 </ul>
-<p>These definition strings are also used internally to calculate
-margins of error for derived variables (see <a href="quantified-survey-error.html">Quantifying Survey Error</a>), so
-their accuracy is critical.</p>
+<p>The codebook’s remaining columns record each derived variable’s
+numerator/denominator components; margins of error are computed from
+these (see <a href="quantified-survey-error.html">Quantifying Survey
+Error</a>), so their accuracy is critical.</p>
 <p>Some definitions are quite complex. For example,
 <code>disability_percent</code> is the sum of all of the sex-by-age
 groupings for people with disabilities (numerator) divided by the table
@@ -326,16 +336,20 @@ you may want alternate or additional derived variables.
 <code>urbnindicators</code> provides a suite of helper functions
 (<code>define_*()</code>) that allow you to specify how you want to
 create these derived variables; these helper functions abstract away the
-actual calculations and ensure that you get an updated codeboook and
+actual calculations and ensure that you get an updated codebook and
 correctly-pooled margins of error for each of your newly-derived
 variables. See <a href="custom-derived-variables.html">Custom Derived
 Variables</a> for more.</p>
+<p>To learn more about how ACS tables are structured, how
+<code>urbnindicators</code> selects and renames variables, and how
+percentages are calculated, see <a href="acs-table-structures.html">ACS
+Table Structures</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="interpolate-data-to-custom-geographies">Interpolate data to custom geographies<a class="anchor" aria-label="anchor" href="#interpolate-data-to-custom-geographies"></a>
 </h3>
 <p>ACS data are available for many statistical and political
-geographies, but many analyses rfocus on other geographies like
+geographies, but many analyses focus on other geographies like
 neighborhoods or planning districts. <code><a href="../reference/interpolate_acs.html">interpolate_acs()</a></code>
 translates data from ACS-supported geographies to any user-defined
 geography, properly re-deriving percentages and propagating margins of
@@ -354,7 +368,7 @@ Custom Geographies</a> for a worked example.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>
