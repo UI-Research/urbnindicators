@@ -19,7 +19,6 @@ reference:
   contents:
   - list_tables
   - list_variables
-  - list_acs_variables
   - get_acs_codebook
   - make_pretty_names
   - safe_divide

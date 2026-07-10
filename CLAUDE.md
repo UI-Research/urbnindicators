@@ -58,7 +58,7 @@ The table registry is the central data structure that defines all ACS tables the
 - `raw_variables` - named vector of ACS variable codes (for manual sources)
 - `definitions` - list of DSL objects (`define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`) describing derived variables. Codebook entries and MOE-propagation strategy are derived from each object's `type`.
 
-There are 33 registered internal tables.
+There are 34 registered internal tables.
 
 ### Table selection API
 
@@ -82,7 +82,7 @@ Both construct names and internal names are accepted by `compile_acs_data(tables
 
 `tables` can contain three kinds of elements (mix freely inside a `list()`):
 - **Registered table names** (e.g., `"race"`, `"snap"`) — use `list_tables()` to see them all.
-- **Raw ACS table codes** (e.g., `"B25070"`, `"C15002B"`) — any valid Detailed/Collapsed code is auto-processed at runtime: raw variables are fetched, the label hierarchy is parsed, and percentages are computed automatically. The `denominator` parameter controls the percentage denominator (`"parent"` for nearest subtotal, `"total"` for `_001`, or a specific code like `"B25070_001"`). If a raw code is already covered by a registered table, the registered version is used.
+- **Raw ACS table codes** (e.g., `"B25070"`, `"C15002B"`) — any valid Detailed/Collapsed code is auto-processed at runtime: raw variables are fetched, the label hierarchy is parsed, and percentages are computed automatically. The `denominator` parameter controls the percentage denominator (`"parent"` for nearest subtotal, `"total"` for `_001`, or a specific code like `"B25070_001"`). Raw codes are always auto-processed, even when a registered table covers the same code (`"B22003"` returns the auto-processed table; `"snap"` returns the registered one). If a requested code overlaps a registered table included in the same call, the registered version wins and the auto entry is dropped with a warning.
 - **DSL definition objects** from `define_percent()`/`define_sum()`/`define_complement()`/`define_metadata()` — let users layer custom derived variables on top of the requested tables; results land in the returned data frame and the codebook with MOEs computed automatically.
 
 When `tables` are specified:
@@ -110,9 +110,10 @@ Note: don't hard-code a list of block-group tables — derive it from the codebo
 
 1. **`R/table_registry.R`** - Central registry, DSL constructors (`define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()`), `validate_definition()`, `execute_definitions()`, `resolve_tables()`, `collect_raw_variables()`, `expand_codebook_entry()`, `list_tables()`, and all `register_table()` calls.
 2. **`R/compile_acs_data.R`** - `compile_acs_data()` (entry point), `fetch_acs()` (per-year/per-state tidycensus calls + ZCTA-style "super-state" geographies), `safe_divide()`.
+   **`R/cache.R`** - Opt-in disk cache of raw ACS query results (`cache = TRUE`): `acs_cache_dir()`, `acs_query()` (mockable seam around `tidycensus::get_acs()`), `cached_get_acs()` (one entry per geography × year × state × table, keyed by `rlang::hash()`; no expiry — published ACS estimates are immutable), and exported `clear_acs_cache()`. Cache dir is `tools::R_user_dir("urbnindicators", "cache")`, overridable via `options(urbnindicators.cache_dir = ...)` (tests use this). The per-table variable map comes from `collect_raw_variables_by_table()` in `R/table_registry.R`; the `cache = FALSE` path is unchanged (single combined query per state × year).
 3. **`R/auto_percent.R`** - Auto-table support for raw ACS table codes: `is_raw_acs_code()`, `resolve_to_acs_table()`, `build_auto_table_entry()`, `generate_auto_definitions()`.
 4. **`R/interpolate_acs.R`** - `interpolate_acs()` plus internal aggregation helpers; uses codebook attributes to dispatch per-variable aggregation strategy.
-5. **`R/list_acs_variables.R`** - `list_acs_variables()` (exported), and internal helpers `select_variables_by_name()` and `filter_variables()` used by the registry's `"select_variables"` path.
+5. **`R/list_acs_variables.R`** - `get_acs_codebook()` (exported), and internal helpers `select_variables_by_name()` and `filter_variables()` used by the registry's `"select_variables"` path. (The deprecated `list_acs_variables()` stub was removed before 0.1.0.)
 6. **`R/load_acs_variables.R`** - Session-cached fetch of the Census `variables.json` metadata. Workaround for the API now requiring a key on the variables endpoint, which `tidycensus::load_variables()` doesn't send. Requires `CENSUS_API_KEY`.
 7. **`R/generate_codebook.R`** - `generate_codebook()` builds the codebook tibble from registered + auto + user definitions.
 8. **`R/calculate_cvs.R`** - Computes margins of error for derived variables (standard errors used internally). Drives off the codebook's `se_calculation_type` column; no per-table changes needed when adding new tables.
@@ -121,12 +122,12 @@ Note: don't hard-code a list of block-group tables — derive it from the codebo
 
 ### Exported functions
 
-- `compile_acs_data(tables, years, geography, states, counties, spatial, denominator, ...)` - Pull and compute ACS data.
+- `compile_acs_data(tables, years, geography, states, counties, spatial, denominator, cache, ...)` - Pull and compute ACS data. `cache = TRUE` reuses raw ACS query results from the on-disk cache.
+- `clear_acs_cache()` - Delete cached raw ACS query files.
 - `interpolate_acs(.data, target_geoid_column, weight = NULL, crosswalk = NULL, source_geoid = "GEOID", weight_variable = "total_population_universe")` - Aggregate or interpolate ACS data to custom geographies. `weight = NULL` for complete nesting (direct aggregation); pass a weight column name for fractional allocation via crosswalk.
 - `define_percent()`, `define_sum()`, `define_complement()`, `define_metadata()` - DSL constructors for derived variables. Use inside `register_table(definitions = list(...))` or pass directly to `compile_acs_data(tables = list(...))`.
 - `list_tables()` - Available registered table names for the `tables` parameter (construct-level names).
 - `list_variables(year)` - Tibble mapping all variables (raw + computed) to their table name.
-- `list_acs_variables(year, tables)` - Named vector of ACS variable codes for the given tables.
 - `get_acs_codebook(year, table)` - Browse ACS variables with clean names and table codes.
 - `make_pretty_names(.data, .case)` - Publication-ready variable names.
 - `safe_divide(x, y)` - Safe division (0 instead of NaN; NA when denominator is 0 and numerator is non-zero).

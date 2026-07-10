@@ -934,12 +934,3 @@ testthat::test_that(
       "Unknown argument.*`foo`"
     )
   })
-
-testthat::test_that(
-  "list_acs_variables() is deprecated and returns NULL",
-  {
-    lifecycle::expect_deprecated(
-      result <- list_acs_variables()
-    )
-    testthat::expect_null(result)
-  })

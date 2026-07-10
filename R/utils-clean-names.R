@@ -20,6 +20,7 @@ clean_acs_names = function(variables_df) {
           "estimate_total" = "",
           "'" = "",
           '"' = "",
+          "\\$" = "",
           "," = "",
           "_and_" = "_",
           " to " = "_",

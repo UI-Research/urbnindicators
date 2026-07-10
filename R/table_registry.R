@@ -794,6 +794,31 @@ collect_raw_variables = function(resolved_tables, year = latest_acs_year(), geog
   return(all_variables)
 }
 
+## Build per-table named ACS variable vectors for resolved tables (internal)
+## Returns a named list mapping each table name to the variable subvector that
+## collect_raw_variables() would contribute for it; tables with no raw
+## variables of their own (e.g., population_density) are omitted. Concatenating
+## the list in order reproduces the collect_raw_variables() vector exactly,
+## which the cache = TRUE fetch path relies on to match single-call column
+## order. Used to cache raw estimates one entry per table.
+collect_raw_variables_by_table = function(resolved_tables, year = latest_acs_year(), geography = NULL, census_codebook = NULL) {
+  if (is.null(census_codebook)) {
+    census_codebook = load_acs_variables(year = year, dataset = "acs5")
+  }
+
+  table_variables = purrr::map(resolved_tables, function(table_name) {
+    collect_table_variables(get_table(table_name), census_codebook)
+  }) %>% purrr::set_names(resolved_tables)
+
+  ## at the block-group level, retain only variables published at that geography
+  if (!is.null(geography) && tolower(geography) == "block group") {
+    bg_variables = census_codebook$name[census_codebook$geography == "block group"]
+    table_variables = purrr::map(table_variables, ~ .x[.x %in% bg_variables])
+  }
+
+  purrr::compact(table_variables) %>% purrr::discard(~ length(.x) == 0)
+}
+
 ## Partition resolved tables by block-group availability (internal)
 ## Reads the codebook `geography` column (each variable's lowest published
 ## geography). Returns a list with:
@@ -1296,7 +1321,7 @@ register_table(list(
     median_household_income_black_alone_ = "B19013B_001",
     median_household_income_aian_alone_ = "B19013C_001",
     median_household_income_asian_alone_ = "B19013D_001",
-    median_household_income_nhpi_ = "B19013E_001",
+    median_household_income_nhpi_alone_ = "B19013E_001",
     median_household_income_otherrace_alone_ = "B19013F_001",
     median_household_income_twoormore_ = "B19013G_001",
     median_household_income_hispanic_ = "B19013I_001"),
@@ -1594,27 +1619,27 @@ register_table(list(
   definitions = list(
     define_percent("household_income_by_gross_rent.*(30_0|35_0|40_0|50_0).*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
-                   output = "cost_burdened_30percentormore_allincomes_percent",
+                   output = "cost_burdened_renter_30percentormore_allincomes_percent",
                    subtract_from_denominator = "household_income.*not_computed"),
     define_percent("household_income_by_gross_rent.*50_0.*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*([0-9]$|100000_more$)",
-                   output = "cost_burdened_50percentormore_allincomes_percent",
+                   output = "cost_burdened_renter_50percentormore_allincomes_percent",
                    subtract_from_denominator = "household_income.*not_computed"),
     define_percent("household_income_by_gross_rent.*(10000_|19999|34999).*(30_0|35_0|40_0|50_0).*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*(10000|19999|34999)$",
-                   output = "cost_burdened_30percentormore_incomeslessthan35000_percent",
+                   output = "cost_burdened_renter_30percentormore_incomeslessthan35000_percent",
                    subtract_from_denominator = "household_income.*(10000_|19999|34999).*not_computed"),
     define_percent("household_income_by_gross_rent.*(10000_|19999|34999).*50_0.*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*(10000|19999|34999)$",
-                   output = "cost_burdened_50percentormore_incomeslessthan35000_percent",
+                   output = "cost_burdened_renter_50percentormore_incomeslessthan35000_percent",
                    subtract_from_denominator = "household_income.*(10000_|19999|34999).*not_computed"),
     define_percent("household_income_by_gross_rent.*(10000_|19999|34999|49999).*(30_0|35_0|40_0|50_0).*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
-                   output = "cost_burdened_30percentormore_incomeslessthan50000_percent",
+                   output = "cost_burdened_renter_30percentormore_incomeslessthan50000_percent",
                    subtract_from_denominator = "household_income.*(10000_|19999|34999|49999).*not_computed"),
     define_percent("household_income_by_gross_rent.*(10000_|19999|34999|49999).*50_0.*(pct|percent_more)$",
                    denominator = "household_income_by_gross_rent.*(10000|19999|34999|49999)$",
-                   output = "cost_burdened_50percentormore_incomeslessthan50000_percent",
+                   output = "cost_burdened_renter_50percentormore_incomeslessthan50000_percent",
                    subtract_from_denominator = "household_income.*(10000_|19999|34999|49999).*not_computed"))
 ))
 
@@ -1628,7 +1653,80 @@ register_table(list(
     calls = list(
       list(pattern = "B25106"))),
   raw_variables = NULL,
-  definitions = list()
+  ## Denominators exclude households for which a cost ratio is not computable
+  ## (zero/negative income; renters paying no cash rent): B25106 reports these
+  ## as standalone lines with no cost-band breakdown, so counting them in
+  ## denominators would classify all of them as un-burdened.
+  definitions = list(
+    define_percent("tenure_by_housing_costs.*owner_occupied.*30_percent_more$",
+                   denominator = "tenure_by_housing_costs.*owner_occupied_housing_units$",
+                   output = "cost_burdened_owner_30percentormore_allincomes_percent",
+                   subtract_from_denominator = "tenure_by_housing_costs.*owner_occupied.*zero_negative_income$"),
+    define_percent("tenure_by_housing_costs.*owner_occupied.*(less_than_20000|20000_34999)_30_percent_more$",
+                   denominator = "tenure_by_housing_costs.*owner_occupied.*(less_than_20000|20000_34999)$",
+                   output = "cost_burdened_owner_30percentormore_incomeslessthan35000_percent"),
+    define_percent("tenure_by_housing_costs.*owner_occupied.*(less_than_20000|20000_34999|35000_49999)_30_percent_more$",
+                   denominator = "tenure_by_housing_costs.*owner_occupied.*(less_than_20000|20000_34999|35000_49999)$",
+                   output = "cost_burdened_owner_30percentormore_incomeslessthan50000_percent"),
+    define_percent("tenure_by_housing_costs.*(owner|renter)_occupied.*30_percent_more$",
+                   denominator = "tenure_by_housing_costs.*universe$",
+                   output = "cost_burdened_alltenures_30percentormore_allincomes_percent",
+                   subtract_from_denominator = "tenure_by_housing_costs.*(zero_negative_income|no_cash_rent)$"))
+))
+
+register_table(list(
+  name = "owner_cost_burden",
+  description = "Owner cost burden by mortgage status (selected monthly owner costs as a percentage of household income)",
+  acs_tables = "B25091",
+  depends_on = character(0),
+  raw_variable_source = list(type = "manual"),
+  raw_variables = c(
+    owner_costs_universe_ = "B25091_001",
+    owner_costs_withmortgage_universe_ = "B25091_002",
+    owner_costs_withmortgage_less_than_10_0_ = "B25091_003",
+    owner_costs_withmortgage_10_0_14_9_ = "B25091_004",
+    owner_costs_withmortgage_15_0_19_9_ = "B25091_005",
+    owner_costs_withmortgage_20_0_24_9_ = "B25091_006",
+    owner_costs_withmortgage_25_0_29_9_ = "B25091_007",
+    owner_costs_withmortgage_30_0_34_9_ = "B25091_008",
+    owner_costs_withmortgage_35_0_39_9_ = "B25091_009",
+    owner_costs_withmortgage_40_0_49_9_ = "B25091_010",
+    owner_costs_withmortgage_50_0_more_ = "B25091_011",
+    owner_costs_withmortgage_not_computed_ = "B25091_012",
+    owner_costs_withoutmortgage_universe_ = "B25091_013",
+    owner_costs_withoutmortgage_less_than_10_0_ = "B25091_014",
+    owner_costs_withoutmortgage_10_0_14_9_ = "B25091_015",
+    owner_costs_withoutmortgage_15_0_19_9_ = "B25091_016",
+    owner_costs_withoutmortgage_20_0_24_9_ = "B25091_017",
+    owner_costs_withoutmortgage_25_0_29_9_ = "B25091_018",
+    owner_costs_withoutmortgage_30_0_34_9_ = "B25091_019",
+    owner_costs_withoutmortgage_35_0_39_9_ = "B25091_020",
+    owner_costs_withoutmortgage_40_0_49_9_ = "B25091_021",
+    owner_costs_withoutmortgage_50_0_more_ = "B25091_022",
+    owner_costs_withoutmortgage_not_computed_ = "B25091_023"),
+  ## "Not computed" (zero/negative income) households are excluded from
+  ## denominators, matching the treatment of B25074-based renter measures.
+  definitions = list(
+    define_percent("owner_costs_withmortgage_(30_0_34_9|35_0_39_9|40_0_49_9|50_0_more)$",
+                   denominator = "owner_costs_withmortgage_universe$",
+                   output = "cost_burdened_owner_withmortgage_30percentormore_percent",
+                   subtract_from_denominator = "owner_costs_withmortgage_not_computed$"),
+    define_percent("owner_costs_withmortgage_50_0_more$",
+                   denominator = "owner_costs_withmortgage_universe$",
+                   output = "cost_burdened_owner_withmortgage_50percentormore_percent",
+                   subtract_from_denominator = "owner_costs_withmortgage_not_computed$"),
+    define_percent("owner_costs_withoutmortgage_(30_0_34_9|35_0_39_9|40_0_49_9|50_0_more)$",
+                   denominator = "owner_costs_withoutmortgage_universe$",
+                   output = "cost_burdened_owner_withoutmortgage_30percentormore_percent",
+                   subtract_from_denominator = "owner_costs_withoutmortgage_not_computed$"),
+    define_percent("owner_costs_withoutmortgage_50_0_more$",
+                   denominator = "owner_costs_withoutmortgage_universe$",
+                   output = "cost_burdened_owner_withoutmortgage_50percentormore_percent",
+                   subtract_from_denominator = "owner_costs_withoutmortgage_not_computed$"),
+    define_percent("owner_costs_with(out)?mortgage_50_0_more$",
+                   denominator = "owner_costs_with(out)?mortgage_universe$",
+                   output = "cost_burdened_owner_50percentormore_allincomes_percent",
+                   subtract_from_denominator = "owner_costs_with(out)?mortgage_not_computed$"))
 ))
 
 register_table(list(
@@ -1842,7 +1940,7 @@ register_table(list(
     employment_civilian_labor_force_employed_ = "B23025_004"),
   definitions = list(
     define_percent("employment_civilian_labor_force_employed", "employment_civilian_labor_force_universe",
-                   output = "employment_civilian_labor_force_percent"))
+                   output = "employment_civilian_labor_force_employed_percent"))
 ))
 
 ####----TABLE REGISTRATIONS: HOUSEHOLD COMPOSITION----####

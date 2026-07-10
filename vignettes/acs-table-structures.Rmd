@@ -103,12 +103,16 @@ to fetch and how to calculate derived measures from them.
 ### Auto-processed tables
 
 Any valid ACS table code can be passed directly (e.g.,
-`tables = "B25070"`). If the code corresponds to a registered
-table, the registered version is used automatically. Otherwise,
-the table is **auto-processed**: all of its variables are fetched,
-names are generated algorithmically from the Census Bureau's
-labels, and percentages are computed based on the table's label
-hierarchy.
+`tables = "B25070"`). The table is **auto-processed**: all of its
+variables are fetched, names are generated algorithmically from
+the Census Bureau's labels, and percentages are computed based on
+the table's label hierarchy. This holds even when a registered
+table covers the same code — `tables = "B22003"` returns the
+auto-processed table, while `tables = "snap"` returns the
+registered version. (Requesting both in the same call returns the
+registered version and drops the auto-processed one with a
+warning, since the two would otherwise fetch duplicate
+variables.)
 
 Auto-processed tables are a flexible route for the
 thousands of ACS tables that `urbnindicators` doesn't have
