@@ -112,15 +112,17 @@ classify_acs_table = function(nodes) {
   concept_lower = tolower(concept)
   label_lower = tolower(total_label)
 
-  ## patterns that indicate non-percentage-amenable tables
+  ## patterns that indicate non-percentage-amenable tables; matched on word
+  ## boundaries so that, e.g., "mean" does not match "Means of Transportation"
   skip_patterns = c(
     "median", "aggregate", "average", "mean",
     "allocation of", "imputation of",
     "margin of error")
 
   has_skip_pattern = purrr::some(skip_patterns, function(pattern) {
-    stringr::str_detect(concept_lower, stringr::fixed(pattern)) ||
-      stringr::str_detect(label_lower, stringr::fixed(pattern))
+    pattern_regex = paste0("\\b", pattern, "\\b")
+    stringr::str_detect(concept_lower, pattern_regex) ||
+      stringr::str_detect(label_lower, pattern_regex)
   })
   if (has_skip_pattern) return("skip")
 
@@ -128,8 +130,12 @@ classify_acs_table = function(nodes) {
   if (nrow(nodes) <= 1) return("skip")
 
   ## tables where the total is not a count (e.g., median income tables may have
-  ## a numeric label rather than "Estimate!!Total:")
-  if (!stringr::str_detect(total_label, ":") &&
+  ## a numeric label rather than "Estimate!!Total:"). The _001 label of a count
+  ## table ends with ":" (or is exactly "Estimate!!Total" in older vintages); a
+  ## mid-label colon is not sufficient (e.g., B19080's _001 is
+  ## "Estimate!!Quintile Upper Limits:!!Lowest Quintile Upper Limit" — a dollar
+  ## value, not a total).
+  if (!stringr::str_detect(total_label, ":$") &&
       !stringr::str_detect(total_label, "^Estimate!!Total$")) {
     return("skip")
   }

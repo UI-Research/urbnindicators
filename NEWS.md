@@ -23,6 +23,11 @@ package's API and internals.
   income- and rent-band columns (e.g., from B25074/B25106) are syntactic:
   `household_income_..._less_than_$10000` becomes
   `household_income_..._less_than_10000`.
+* The renter cost-burden measures now carry an explicit tenure label:
+  `cost_burdened_30percentormore_*` and `cost_burdened_50percentormore_*`
+  are now `cost_burdened_renter_30percentormore_*` and
+  `cost_burdened_renter_50percentormore_*`, disambiguating them from the
+  new owner-side measures.
 * Two variables were renamed for accuracy and consistency:
   `employment_civilian_labor_force_percent` is now
   `employment_civilian_labor_force_employed_percent` (it is the employment
@@ -36,6 +41,13 @@ package's API and internals.
   `tidycensus::census_api_key("YOUR_KEY", install = TRUE)`.
 * `safe_divide()` now returns `NA` (not `0`) when a nonzero numerator is
   divided by zero; `0/0` still returns `0`.
+* Raw ACS table codes are now **always auto-processed**, even when a
+  registered table covers the same code: `tables = "B22003"` returns the
+  auto-processed table with label-derived names, while `tables = "snap"`
+  returns the registered version (previously the raw code was silently
+  upgraded to the registered table). Requesting both in one call returns
+  the registered version and drops the auto-processed one with a warning,
+  since the two would fetch duplicate variables.
 
 ## New features
 
@@ -55,6 +67,25 @@ package's API and internals.
   map results, interpolate to uploaded or hand-drawn target geographies,
   benchmark differences for statistical significance, and export data and
   images.
+* **Caching**: `compile_acs_data(cache = TRUE)` caches raw ACS query results
+  on disk (one entry per geography-year-state-table) and reuses them across
+  calls and R sessions, so repeat and overlapping requests -- including
+  changed `tables` selections -- re-download only what is missing. Entries
+  never expire (published five-year ACS estimates do not change); a new
+  `clear_acs_cache()` deletes them to reclaim disk space.
+* **Universe statements in the codebook.** The codebook gains a `universe`
+  column carrying the Census Bureau's published universe statement for each
+  variable (e.g., "Households", "Population 25 years and over"); derived
+  variables inherit their numerator's universe. Available for the 2020+
+  vintages (the API does not publish universes for earlier years).
+* **Owner cost-burden measures.** `tenure_by_housing_costs` (B25106) now
+  publishes owner cost-burden percentages (all incomes, incomes below
+  $35,000, incomes below $50,000) and an all-tenures headline measure; a
+  new `owner_cost_burden` table (B25091) adds 30-percent-or-more and
+  50-percent-or-more (severe) burden shares by mortgage status, plus a
+  combined all-owners severe-burden measure. Denominators exclude
+  households whose cost ratio is not computable (zero/negative income;
+  renters paying no cash rent), consistent with the renter measures.
 * Unregistered ACS tables requested by code are auto-processed: the label
   hierarchy is parsed and percentages are computed against the nearest
   parent subtotal (configurable via the `denominator` parameter).
@@ -79,6 +110,15 @@ package's API and internals.
   installed `tidycensus` geography lookup.
 * Margin-of-error calculations were vectorized (orders-of-magnitude faster
   on tract-level, multi-state pulls).
+* The auto-table classifier now matches its skip keywords on word
+  boundaries, so tables whose concept contains "Means" (e.g., B08301,
+  Means of Transportation to Work) are no longer misclassified as
+  non-count tables ("mean") and receive auto-computed percentages.
+* The auto-table classifier now requires a table's `_001` label to end
+  with `:` (or be exactly `Estimate!!Total`) to compute percentages, so
+  dollar-valued tables like B19080 (Household Income Quintile Upper
+  Limits) no longer produce nonsense percentages of one quintile limit
+  over another.
 * Fixed a typo in `make_pretty_names()` output ("renter-occuiped").
 
 ## Infrastructure

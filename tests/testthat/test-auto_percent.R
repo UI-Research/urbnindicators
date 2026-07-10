@@ -92,6 +92,28 @@ test_that("classify_acs_table correctly identifies count vs skip tables", {
     stringsAsFactors = FALSE
   )
   expect_equal(classify_acs_table(singleton_nodes), "skip")
+
+  ## skip keywords match on word boundaries: "mean" must not match "Means"
+  ## (B08301, Means of Transportation to Work, is a count table)
+  means_nodes = data.frame(
+    concept = "MEANS OF TRANSPORTATION TO WORK",
+    label = c("Estimate!!Total:", "Estimate!!Total:!!Car, truck, or van:"),
+    is_total = c(TRUE, FALSE),
+    stringsAsFactors = FALSE
+  )
+  expect_equal(classify_acs_table(means_nodes), "count")
+
+  ## a mid-label colon is not a count total: B19080's _001 is a dollar value
+  ## ("Lowest Quintile Upper Limit"), so no percentages should be computed
+  quintile_nodes = data.frame(
+    concept = "HOUSEHOLD INCOME QUINTILE UPPER LIMITS",
+    label = c(
+      "Estimate!!Quintile Upper Limits:!!Lowest Quintile Upper Limit",
+      "Estimate!!Quintile Upper Limits:!!Second Quintile Upper Limit"),
+    is_total = c(TRUE, FALSE),
+    stringsAsFactors = FALSE
+  )
+  expect_equal(classify_acs_table(quintile_nodes), "skip")
 })
 
 test_that("generate_auto_definitions produces correct definitions with parent mode", {
@@ -254,18 +276,40 @@ test_that("compile_acs_data works with race-iterated table", {
   }
 })
 
-test_that("compile_acs_data detects overlap with registered tables", {
+test_that("compile_acs_data serves the auto version for a raw code covered by a registered table", {
   skip_on_cran()
   skip_if_not(nchar(Sys.getenv("CENSUS_API_KEY")) > 0, "Census API key not available")
 
-  ## B22003 is the ACS table behind the registered "snap" table
-  ## passing the raw code should silently use the registered version
+  ## B22003 is the ACS table behind the registered "snap" table; passing the
+  ## raw code should return the auto-processed table, not the registered one
   result = compile_acs_data(
     tables = c("B22003"),
     years = 2022,
     geography = "state",
     states = "DC")
 
-  ## should have the registered snap variable
+  ## no registered snap variables
+  expect_false(any(grepl("^snap_", colnames(result))))
+  ## auto-processed B22003 variables with label-derived names, plus percentages
+  auto_cols = grep("receipt_food_stamps", colnames(result), value = TRUE)
+  expect_true(length(auto_cols) > 0)
+  expect_true(any(grepl("_percent$", auto_cols)))
+})
+
+test_that("compile_acs_data warns and keeps the registered version when a raw code overlaps it", {
+  skip_on_cran()
+  skip_if_not(nchar(Sys.getenv("CENSUS_API_KEY")) > 0, "Census API key not available")
+
+  ## requesting both the registered table and its underlying code would fetch
+  ## duplicate ACS variables; the registered version wins with a warning
+  expect_warning(
+    result <- compile_acs_data(
+      tables = c("snap", "B22003"),
+      years = 2022,
+      geography = "state",
+      states = "DC"),
+    regexp = "overlaps the registered table")
+
   expect_true("snap_received_percent" %in% colnames(result))
+  expect_false(any(grepl("receipt_food_stamps", colnames(result))))
 })

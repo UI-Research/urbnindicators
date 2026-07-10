@@ -31,7 +31,8 @@ Imports:
     tigris,
     rlang,
     tibble,
-    sf
+    sf,
+    tools
 Suggests:
     arrow,
     bslib,
@@ -49,7 +50,8 @@ Suggests:
     shiny,
     testthat (>= 3.0.0),
     scales,
-    urbnthemes (>= 0.0.2)
+    urbnthemes (>= 0.0.2),
+    withr
 Remotes:
     UI-Research/crosswalk,
     UrbanInstitute/urbnthemes

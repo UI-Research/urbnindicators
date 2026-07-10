@@ -36,14 +36,43 @@ latest_acs_year = function() {
 ## Internal helper: fetch raw ACS estimates across years, states, and counties.
 ## One tidycensus call per (state, year), with vector `county =` when the user
 ## supplied a counties subset and the geography supports county filtering.
+## When `cache = TRUE`, each (state, year) query is instead issued as one call
+## per table in `table_variable_map` via cached_get_acs(), so raw results are
+## cached and reused at the geography x year x state x table level. Chunks are
+## joined on GEOID; because tidycensus orders wide output by the input variable
+## order and the map concatenates to `variables`, the assembled columns match
+## the single-call output.
 fetch_acs = function(geography, variables, years, states, counties,
-                     county_codes, super_state_geographies) {
+                     county_codes, super_state_geographies,
+                     cache = FALSE, table_variable_map = NULL, cache_stats = NULL) {
+
+  ## issue a single combined query (cache = FALSE) or one query per table
+  ## chunk, given fully-specified get_acs() args minus `variables`
+  fetch_one = function(base_args) {
+    if (!cache) {
+      return(acs_query(c(base_args, list(variables = variables))))
+    }
+    chunks = purrr::imap(table_variable_map, function(table_variables, table_name) {
+      cached_get_acs(
+        args = c(base_args, list(variables = table_variables)),
+        table_name = table_name,
+        cache = TRUE,
+        cache_stats = cache_stats)
+    })
+    ## join chunks on GEOID, dropping shared non-key columns (NAME) from later
+    ## chunks; all chunks cover the same geography universe
+    purrr::reduce(chunks, function(x, y) {
+      y = y %>% dplyr::select(-dplyr::any_of(setdiff(intersect(colnames(x), colnames(y)), "GEOID")))
+      dplyr::full_join(x, y, by = "GEOID")
+    })
+  }
+
   if (geography %in% super_state_geographies) {
     return(
       purrr::map(years, function(year) {
-        tidycensus::get_acs(
-          geography = geography, variables = variables,
-          year = as.numeric(year), survey = "acs5", output = "wide") %>%
+        fetch_one(list(
+          geography = geography,
+          year = as.numeric(year), survey = "acs5", output = "wide")) %>%
           dplyr::mutate(data_source_year = year)
       }) %>% purrr::list_rbind())
   }
@@ -54,7 +83,7 @@ fetch_acs = function(geography, variables, years, states, counties,
   purrr::map(states, function(state) {
     purrr::map(years, function(year) {
       args = list(
-        geography = geography, variables = variables,
+        geography = geography,
         year = as.numeric(year), state = state,
         survey = "acs5", output = "wide")
 
@@ -68,41 +97,40 @@ fetch_acs = function(geography, variables, years, states, counties,
         if (length(county_vec) > 0) args$county = county_vec
       }
 
-      do.call(tidycensus::get_acs, args) %>%
+      fetch_one(args) %>%
         dplyr::mutate(data_source_year = year)
     }) %>% purrr::list_rbind()
   }) %>% purrr::list_rbind()
 }
 
-#' @title Analysis-ready social science measures
-#' @description Construct measures frequently used in social sciences
-#'    research, leveraging \code{tidycensus::get_acs()} to acquire raw estimates from
-#'    the Census Bureau API.
+#' @title Get analysis-ready estimates and errors from the ACS
+#' @description Obtain raw and construct derived measures (primarily percentages) 
+#'    from the ACS, along with appropriately-pooled margins of error.
 #' @param tables A character vector, list, or NULL specifying which data to
 #'    include. Three kinds of elements are accepted and can be mixed freely
 #'    inside a \code{list()}:
 #'    \itemize{
 #'      \item \strong{Registered table names} (e.g., \code{"race"}, \code{"snap"}).
-#'        These are pre-built tables with curated variable definitions. Use
+#'        These are pre-built tables with non-standard variable definitions. Use
 #'        \code{list_tables()} to see all available registered tables.
 #'      \item \strong{Raw ACS table codes} (e.g., \code{"B25070"}, \code{"C15002B"}).
 #'        Any valid ACS Detailed or Collapsed table code can be passed directly.
-#'        These are auto-processed at runtime: raw variables are fetched, the
-#'        label hierarchy is parsed, and percentages are computed automatically.
-#'        Use the \code{denominator} parameter to control how percentages are
-#'        calculated for these tables.
-#'      \item \strong{DSL definition objects} created with \code{\link{define_percent}},
+#'        These return the full table along with percentage-based measures that are
+#'        calculated on the fly. Use the \code{denominator} parameter to control how 
+#'        percentages are calculated.
+#'      \item \strong{Custom data specifications} created with \code{\link{define_percent}},
 #'        \code{\link{define_sum}}, \code{\link{define_complement}}, or
 #'        \code{\link{define_metadata}}. These let you compute custom derived
-#'        variables from the columns produced by the tables you request. User
-#'        definitions are executed after all registered and auto-table
-#'        definitions, and their results appear in the codebook and have MOEs
-#'        computed automatically.
+#'        variables from the columns produced by the tables you request.
 #'    }
 #'    When mixing strings and definitions, wrap everything in \code{list()}
 #'    (e.g., \code{list("snap", define_percent(...))}).
-#'    If an ACS code corresponds to an already-registered table, the registered
-#'    version is used automatically.
+#'    Raw ACS codes are always auto-processed, even when a registered table
+#'    covers the same code (e.g., \code{"B22003"} returns the auto-processed
+#'    table, not the registered \code{"snap"} table); registered tables are
+#'    returned only when requested by name. If a requested code overlaps a
+#'    registered table included in the same call, the registered version is
+#'    returned and the auto-processed version is dropped with a warning.
 #'    When NULL (default), all registered tables are included (unregistered ACS
 #'    tables must be requested explicitly).
 #' @param years A numeric vector of four-digit years for which to pull five-year
@@ -127,6 +155,15 @@ fetch_acs = function(geography, variables, years, states, counties,
 #'    \code{_001}). A specific ACS variable code (e.g., \code{"B25070_001"}) uses
 #'    that variable. Only affects unregistered (auto) tables; registered tables
 #'    always use their predefined definitions.
+#' @param cache Boolean. When \code{TRUE}, raw ACS query results are cached on
+#'    disk and reused across calls and R sessions. Results are cached one file
+#'    per geography-year-state-table combination, so subsequent calls
+#'    re-download only what is not already cached -- including when the
+#'    \code{tables} selection changes. The cache lives at
+#'    \code{tools::R_user_dir("urbnindicators", which = "cache")} (override via
+#'    \code{options(urbnindicators.cache_dir = ...)}). Entries never expire,
+#'    because published five-year ACS estimates do not change; use
+#'    \code{\link{clear_acs_cache}()} to delete them and reclaim disk space.
 #' @param ... Deprecated arguments. If \code{variables} is passed, a deprecation
 #'    warning is issued and the value is ignored.
 #' @seealso \code{tidycensus::get_acs()}, which this function wraps.
@@ -206,6 +243,7 @@ compile_acs_data = function(
     counties = NULL,
     spatial = FALSE,
     denominator = "parent",
+    cache = FALSE,
     ...) {
 
   ## handle deprecated `variables` parameter and unknown arguments
@@ -247,6 +285,11 @@ compile_acs_data = function(
     cli::cli_abort("{.arg denominator} must be {.val parent}, {.val total}, or a valid ACS variable code (e.g., {.val B25070_001}). Got: {.val {denominator}}.")
   }
 
+  ## validate cache parameter
+  if (!rlang::is_bool(cache)) {
+    cli::cli_abort("{.arg cache} must be TRUE or FALSE.")
+  }
+
   ####----Partition tables into registry vs auto vs user definitions----####
   auto_table_entries = list()
   registry_tables = tables
@@ -275,42 +318,21 @@ compile_acs_data = function(
       census_variables_for_resolve = load_acs_variables(year = max(years), dataset = "acs5")
     })})
 
-    ## collect all acs_tables from registered tables to detect overlap
-    registered_acs_codes = purrr::map(internal_names, function(tn) {
-      entry = get_table(tn)
-      if (!is.null(entry[["acs_tables"]])) entry[["acs_tables"]] else character(0)
-    }) %>% unlist() %>% unique()
-
-    ## helper: find the registered table covering a given ACS code
-    find_covering_table = function(acs_code) {
-      purrr::detect(internal_names, function(tn) {
-        entry = get_table(tn)
-        acs_code %in% entry[["acs_tables"]]
-      })
-    }
-
-    ## classify each user-supplied table name
+    ## classify each user-supplied table name. Raw ACS codes are always served
+    ## as auto-processed tables, even when a registered table covers the same
+    ## code; registered tables are returned only when requested by name.
     classified = purrr::map(tables, function(tbl) {
       if (tbl %in% internal_names || tbl %in% names(construct_map)) {
         ## known registry table or construct name
         return(list(type = "registry", value = tbl))
       }
       if (is_raw_acs_code(tbl)) {
-        ## raw ACS table code — check for overlap with registered tables
-        if (tbl %in% registered_acs_codes) {
-          covering = find_covering_table(tbl)
-          if (!is.null(covering)) return(list(type = "registry", value = covering))
-        }
         return(list(type = "auto", value = tbl))
       }
       ## try resolving as a cleaned variable name
       resolved_code = resolve_to_acs_table(tbl, year = max(years),
                                            census_variables = census_variables_for_resolve)
       if (!is.null(resolved_code)) {
-        if (resolved_code %in% registered_acs_codes) {
-          covering = find_covering_table(resolved_code)
-          if (!is.null(covering)) return(list(type = "registry", value = covering))
-        }
         return(list(type = "auto", value = resolved_code))
       }
       ## not resolvable — pass through to resolve_tables() which will error if invalid
@@ -454,11 +476,48 @@ compile_acs_data = function(
       census_codebook = bg_codebook)
   })})
 
+  ## a raw ACS code requested alongside a registered table that already pulls
+  ## (some of) its variables would duplicate ACS codes in the query; serve the
+  ## registered version and drop the auto entry with a warning
+  if (length(auto_table_entries) > 0 && length(variables) > 0) {
+    suppressWarnings({suppressMessages({
+      registry_variable_map = collect_raw_variables_by_table(
+        resolved_tables = resolved_tables, year = max(years),
+        geography = geography,
+        census_codebook = bg_codebook)
+    })})
+    auto_table_entries = purrr::imap(auto_table_entries, function(entry, code) {
+      overlapping = purrr::keep(registry_variable_map, ~ any(.x %in% entry[["raw_variables"]]))
+      if (length(overlapping) == 0) return(entry)
+      cli::cli_warn(c(
+        "ACS table {.val {code}} overlaps the registered table{?s} {.val {names(overlapping)}} included in this request; the registered version is returned.",
+        "i" = "To get the auto-processed version, request {.val {code}} without the overlapping registered table{?s}."))
+      NULL
+    }) %>% purrr::compact()
+  }
+
   ## append auto-table raw variables
   if (length(auto_table_entries) > 0) {
     auto_variables = purrr::map(auto_table_entries, ~ .x[["raw_variables"]]) %>%
       unname() %>% unlist()
     variables = c(variables, auto_variables)
+  }
+
+  ## per-table variable map for the cache = TRUE fetch path (one cache entry
+  ## per table); its concatenation reproduces `variables` exactly
+  table_variable_map = NULL
+  if (cache) {
+    suppressWarnings({suppressMessages({
+      table_variable_map = collect_raw_variables_by_table(
+        resolved_tables = resolved_tables, year = max(years),
+        geography = geography,
+        census_codebook = bg_codebook)
+    })})
+    if (length(auto_table_entries) > 0) {
+      table_variable_map = c(
+        table_variable_map,
+        purrr::map(auto_table_entries, ~ .x[["raw_variables"]]))
+    }
   }
 
   ## resolve ACS codes in user definitions to clean column names
@@ -587,6 +646,10 @@ compile_acs_data = function(
     })})
   }
 
+  cache_stats = new.env(parent = emptyenv())
+  cache_stats$hits = 0
+  cache_stats$total = 0
+
   suppressMessages({ suppressWarnings({
     df_raw_estimates = fetch_acs(
       geography = geography,
@@ -595,9 +658,16 @@ compile_acs_data = function(
       states = states_for_fetch,
       counties = counties,
       county_codes = county_codes,
-      super_state_geographies = super_state_geographies)
+      super_state_geographies = super_state_geographies,
+      cache = cache,
+      table_variable_map = table_variable_map,
+      cache_stats = cache_stats)
     moes = df_raw_estimates %>% dplyr::select(GEOID, data_source_year, dplyr::matches("_M$"))
   })})
+
+  if (cache && cache_stats$hits > 0) {
+    cli::cli_inform("Loaded {cache_stats$hits} of {cache_stats$total} ACS table quer{?y/ies} from the cache.")
+  }
 
   ####----Compute derived variables----####
   df_calculated_estimates = df_raw_estimates %>%
