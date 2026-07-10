@@ -22,3 +22,4 @@ reference:
   - get_acs_codebook
   - make_pretty_names
   - safe_divide
+  - clear_acs_cache
