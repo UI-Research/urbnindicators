@@ -276,7 +276,7 @@ tract_crosswalk = crosswalk::get_crosswalk(
 
 # Extract the crosswalk tibble and rename columns for interpolate_acs()
 tract_xwalk = tract_crosswalk$crosswalks$step_1 %>%
-  filter(weighting_factor == "weight_population") %>%
+  filter(weighting_factor == "population") %>%
   select(
     GEOID = source_geoid,
     target_tract = target_geoid,
