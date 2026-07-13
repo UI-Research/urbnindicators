@@ -20,5 +20,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Will Curran-Groome \email{wcurrangroome@gmail.com}
 
+Authors:
+\itemize{
+  \item Will Curran-Groome \email{wcurrangroome@gmail.com}
+}
+
 }
 \keyword{internal}

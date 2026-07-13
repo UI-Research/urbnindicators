@@ -18,16 +18,18 @@
 #' out-of-range status. The brushable range defaults to `c(0, 1)` for percent
 #' variables and to the observed data range for everything else.
 #'
-#' When `geography` is one of `"tract"`, `"county"`, or `"state"`, a
-#' "Statistical benchmark" dropdown appears that recolors the map by whether
-#' each polygon's estimate is statistically significantly larger than, smaller
-#' than, or indistinguishable from a higher-geography benchmark. Benchmark
-#' values are aggregated from `.data` via [interpolate_acs()] (so the result
-#' may differ slightly from a separately-pulled ACS estimate at that geography),
-#' and significance is tested via [tidycensus::significance()] at the
-#' 90 percent confidence level (matching the *quantified survey error*
-#' vignette). Variables without a margin-of-error column fall back to the
-#' default coloring.
+#' A "Statistical benchmark" dropdown appears when `geography_extent` declares
+#' one or more parent geographies that are valid comparisons for `.data` and the
+#' data pass a basic coverage check. It recolors the map by whether each
+#' polygon's estimate is statistically significantly larger than, smaller than,
+#' or indistinguishable from the chosen higher-geography benchmark. Block-group
+#' and tract data can be benchmarked against their county or state, county data
+#' against its state, and state data against the nation. Benchmark values are
+#' aggregated from `.data` via [interpolate_acs()] (so the result may differ
+#' slightly from a separately-pulled ACS estimate at that geography), and
+#' significance is tested via [tidycensus::significance()] at the 90 percent
+#' confidence level (matching the *quantified survey error* vignette). Variables
+#' without a margin-of-error column fall back to the default coloring.
 #'
 #' Regardless of `target_geographies`, the map carries a drawing toolbar at its
 #' top-left with "Point", "Line", and "Polygon" tools. Each drawn feature gets a
@@ -83,15 +85,29 @@
 #' packages. These are listed in `Suggests` and checked at runtime.
 #' @param .data An `sf` object produced by [compile_acs_data()] with
 #'   `spatial = TRUE`. Must retain its `"codebook"` attribute.
+#' @param geography_extent Required. A character vector declaring which parent
+#'   geographies are appropriate statistical benchmarks for `.data` -- any of
+#'   `"county"`, `"state"`, `"nation"` (alias `"national"`), or `"none"` to
+#'   disable benchmarking. The caller is responsible for this judgment: only
+#'   declare `"state"`, say, when `.data` covers the full state(s) it spans.
+#'   Declared levels are further filtered to those structurally valid for the
+#'   observation geography (e.g. state-level data can only be benchmarked against
+#'   the nation) and to those passing a basic coverage check: the `"nation"`
+#'   benchmark requires all 51 states to be present; `"state"` requires more than
+#'   one county per present state (single-county states such as DC are exempt);
+#'   and `"county"` requires more than one tract/block group per present county.
+#'   Levels failing these checks are dropped with a warning.
 #' @param variables Optional character vector restricting which variables appear
 #'   in the picker. Accepts either raw column names (e.g.,
 #'   `"race_nonhispanic_white_alone_percent"`) or pretty labels as produced by
 #'   [make_pretty_names()]. When `NULL` (default), all eligible numeric
 #'   variables from the codebook are shown.
 #' @param geography Geography level of `.data`, matching the value passed to
-#'   [compile_acs_data()]. When `"tract"`, `"county"`, or `"state"`, the
-#'   "Statistical benchmark" dropdown is shown with appropriate higher-level
-#'   geographies. Any other value (or `NULL`) hides the dropdown.
+#'   [compile_acs_data()]. Used to identify the observation level for
+#'   benchmarking -- it disambiguates 5-character county GEOIDs from ZCTA/CBSA
+#'   codes of the same length. When `NULL`, the level is inferred from GEOID
+#'   length where unambiguous (block group, tract, state); county-level data
+#'   requires this argument for benchmarking.
 #' @param target_geographies Optional `sf` polygon object whose rows define
 #'   target geographies onto which the source data are interpolated via
 #'   [interpolate_acs()] using area-weighted overlap. Must contain a `GEOID`
@@ -115,24 +131,28 @@
 #'   states    = "NJ",
 #'   spatial   = TRUE)
 #'
-#' view_acs_data(df, geography = "tract")
+#' ## `df` is a full-state NJ tract pull, so county and state are valid benchmarks.
+#' view_acs_data(df, geography = "tract", geography_extent = c("county", "state"))
 #'
 #' ## Restrict the picker to a few variables:
-#' view_acs_data(df, geography = "tract",
+#' view_acs_data(df, geography = "tract", geography_extent = c("county", "state"),
 #'               variables = c("snap_received_percent",
 #'                             "race_nonhispanic_white_alone_percent"))
+#'
+#' ## Disable benchmarking (e.g. when the data are only a partial extent):
+#' view_acs_data(df, geography = "tract", geography_extent = "none")
 #'
 #' ## Interpolate onto custom target polygons (e.g., neighborhoods):
 #' neighborhoods = sf::st_read("path/to/neighborhoods.geojson")
 #' # neighborhoods must have a `GEOID` column identifying each polygon.
-#' view_acs_data(df, geography = "tract",
+#' view_acs_data(df, geography = "tract", geography_extent = c("county", "state"),
 #'               target_geographies = neighborhoods)
 #' }
 #' @seealso [compile_acs_data()], [interpolate_acs()],
 #'   [tidycensus::significance()]
 #' @export
-view_acs_data = function(.data, variables = NULL, geography = NULL,
-                         target_geographies = NULL, ...) {
+view_acs_data = function(.data, geography_extent, variables = NULL,
+                         geography = NULL, target_geographies = NULL, ...) {
   rlang::check_installed(
     c("shiny", "mapgl", "bslib", "ggplot2"),
     reason = "to launch the interactive ACS viewer.")
@@ -156,6 +176,12 @@ view_acs_data = function(.data, variables = NULL, geography = NULL,
                   "or pass the original output of {.fn compile_acs_data} directly.")))
   }
 
+  if (missing(geography_extent)) {
+    cli::cli_abort(c(
+      "{.arg geography_extent} is required.",
+      "i" = "Declare which parent geographies are valid benchmarks, e.g. {.code c(\"county\", \"state\")}, or {.val none} to disable benchmarking."))
+  }
+
   choices1 = build_variable_choices(.data, codebook, variables)
   if (length(choices1) == 0) {
     cli::cli_abort(c(
@@ -164,7 +190,7 @@ view_acs_data = function(.data, variables = NULL, geography = NULL,
   }
 
   geography = if (is.null(geography)) NA_character_ else as.character(geography)
-  benchmark_levels = benchmark_levels_for_geography(geography)
+  benchmark_levels = available_benchmark_levels(.data, geography, geography_extent)
 
   data1 = sf::st_transform(.data, 4326)
   ## st_transform drops the compile_acs_data() attributes; re-attach the ones the
@@ -300,19 +326,194 @@ default_range_for_variable = function(values, variable_type) {
   rng1
 }
 
-## Available benchmark levels for a given source geography. Returns a named
-## character vector usable directly as `choices` for selectInput, with "None"
-## first. Empty (zero-length) when no benchmarking is supported.
-benchmark_levels_for_geography = function(geography) {
-  if (is.null(geography) || length(geography) == 0 || is.na(geography)) {
+## The 51-code state universe (50 states + DC), excluding territories. Read from
+## the local tidycensus::fips_codes table (no network) and matched to the default
+## state expansion in compile_acs_data() (which drops PR/UM/VI/GU/AS/MP), so a
+## default "national" pull produces exactly these state FIPS prefixes.
+canonical_states = function() {
+  territories1 = c("60", "66", "69", "72", "74", "78")
+  setdiff(unique(tidycensus::fips_codes$state_code), territories1)
+}
+
+## Structurally-valid benchmark parent levels for a given observation geography,
+## independent of the data or the user's declaration. A benchmark must be
+## strictly coarser than the observation level: block groups and tracts are
+## benchmarked against county/state (never against tracts), county against state,
+## and state against the nation. Returns bare, ordered level ids (no "None");
+## character(0) for observation levels that don't support benchmarking.
+structural_benchmark_levels = function(observation_level) {
+  if (is.null(observation_level) || length(observation_level) == 0 ||
+      is.na(observation_level)) {
     return(character(0))
   }
-  opts1 = switch(tolower(geography),
-    "tract"  = c("None" = "none", "County"   = "county", "State" = "state"),
-    "county" = c("None" = "none", "State"    = "state"),
-    "state"  = c("None" = "none", "National" = "national"),
+  switch(tolower(observation_level),
+    "block group" = c("county", "state"),
+    "tract"       = c("county", "state"),
+    "county"      = "state",
+    "state"       = "national",
     character(0))
-  opts1
+}
+
+## Resolve the observation (unit-of-analysis) geography level. The caller's
+## `geography` argument is authoritative (it disambiguates the 5-char
+## county/ZCTA/CBSA collision that GEOID length can't); when it is absent we
+## infer from the modal GEOID length, accepting only the *unambiguous* lengths
+## 12 (block group), 11 (tract), and 2 (state). Returns the level string, or
+## NA_character_ when it can't be determined.
+resolve_observation_level = function(geoids, geography_arg) {
+  arg1 = if (is.null(geography_arg) || length(geography_arg) == 0 ||
+             is.na(geography_arg[1])) {
+    NA_character_
+  } else {
+    tolower(as.character(geography_arg)[1])
+  }
+
+  len_level = NA_character_
+  g1 = as.character(geoids)
+  g1 = g1[!is.na(g1)]
+  if (length(g1) > 0) {
+    modal_len = names(which.max(table(nchar(g1))))
+    len_level = switch(modal_len,
+      "12" = "block group",
+      "11" = "tract",
+      "2"  = "state",
+      NA_character_)
+  }
+
+  if (!is.na(arg1)) {
+    if (arg1 %in% c("block group", "tract", "state") && !is.na(len_level) &&
+        len_level != arg1) {
+      cli::cli_warn(c(
+        "{.arg geography} ({.val {arg1}}) doesn't match the GEOID length in {.arg .data} (which looks like {.val {len_level}}).",
+        "i" = "Using {.val {arg1}} for benchmarking."),
+        .frequency = "once", .frequency_id = "urbnindicators_geography_mismatch")
+    }
+    return(arg1)
+  }
+
+  len_level
+}
+
+## Validate and canonicalize the user-facing `geography_extent` declaration into
+## internal benchmark level ids. Accepts any of "county"/"state"/"nation"/
+## "national"/"none" (case-insensitive); "nation" is an alias for "national" and
+## "none" (or an empty vector) disables benchmarking. Aborts on any other value.
+normalize_geography_extent = function(geography_extent) {
+  if (is.null(geography_extent) || length(geography_extent) == 0) {
+    return(character(0))
+  }
+  vals1 = tolower(trimws(as.character(geography_extent)))
+  vals1 = vals1[!is.na(vals1) & vals1 != ""]
+  if (length(vals1) == 0 || all(vals1 == "none")) {
+    return(character(0))
+  }
+  vals1 = vals1[vals1 != "none"]
+  vals1[vals1 == "nation"] = "national"
+  bad1 = setdiff(vals1, c("county", "state", "national"))
+  if (length(bad1) > 0) {
+    cli::cli_abort(c(
+      "Invalid {.arg geography_extent} value{?s}: {.val {bad1}}.",
+      "i" = "Use any of {.val county}, {.val state}, {.val nation}, or {.val none} to disable benchmarking."))
+  }
+  unique(vals1)
+}
+
+## For a state benchmark, each present state must contribute more than one county
+## -- otherwise the aggregated "state" value is really just a single county
+## masquerading as its state. The requirement is capped at each state's *actual*
+## county count (from the local tidycensus::fips_codes, no network), so genuinely
+## single-county states such as DC (one county, 11001) still qualify.
+state_has_multiple_counties = function(geoids) {
+  state1  = stringr::str_sub(geoids, 1L, 2L)
+  county1 = stringr::str_sub(geoids, 1L, 5L)
+  fips1   = tidycensus::fips_codes
+
+  purrr::every(unique(state1), function(s) {
+    present_counties = length(unique(county1[state1 == s]))
+    total_counties = length(unique(fips1$county_code[fips1$state_code == s]))
+    if (total_counties == 0) total_counties = 2L  # unknown state -> require 2
+    present_counties >= min(2L, total_counties)
+  })
+}
+
+## Cheap per-pair sanity check for a candidate benchmark level, computed from the
+## observation GEOIDs. Guards against obviously-incomplete or degenerate
+## comparisons without asserting full coverage:
+##  - "national": every one of the 51 states must be present.
+##  - "state": each present state must contribute more than one county (a single
+##    county passed off as its state is rejected; single-county states like DC
+##    are exempt via state_has_multiple_counties()).
+##  - "county": each present county must contain more than one observation unit
+##    (a lone child would be a self-comparison).
+benchmark_check_ok = function(geoids, level) {
+  g1 = unique(as.character(geoids))
+  g1 = g1[!is.na(g1)]
+  if (length(g1) == 0) return(FALSE)
+
+  switch(tolower(level),
+    "national" = setequal(stringr::str_sub(g1, 1L, 2L), canonical_states()),
+    "state"    = state_has_multiple_counties(g1),
+    "county"   = all(table(stringr::str_sub(g1, 1L, 5L)) >= 2),
+    FALSE)
+}
+
+## Data-aware benchmark options for the sidebar dropdown. Combines the caller's
+## required `geography_extent` declaration with what is structurally valid for the
+## observation level and a cheap per-level sanity check on the GEOIDs. Returns a
+## named character vector usable directly as selectInput `choices`, with "None"
+## first; character(0) when nothing is offered (so the control is hidden).
+available_benchmark_levels = function(.data, geography_arg, geography_extent) {
+  declared1 = normalize_geography_extent(geography_extent)
+  if (length(declared1) == 0) return(character(0))
+  if (!"GEOID" %in% colnames(.data)) return(character(0))
+
+  geoids1 = .data[["GEOID"]]
+  obs1 = resolve_observation_level(geoids1, geography_arg)
+  if (is.na(obs1)) {
+    cli::cli_abort(c(
+      "Can't determine the observation geography of {.arg .data} for benchmarking.",
+      "i" = "Pass {.arg geography} matching the value used in {.fn compile_acs_data} (e.g. {.val tract}, {.val county})."))
+  }
+
+  structural1 = structural_benchmark_levels(obs1)
+  if (length(structural1) == 0) {
+    cli::cli_warn(c(
+      "Benchmarking isn't supported for {.val {obs1}}-level data; ignoring {.arg geography_extent}.",
+      "i" = "Benchmarks are available for block group-, tract-, county-, and state-level data."),
+      .frequency = "once", .frequency_id = "urbnindicators_no_benchmark_geo")
+    return(character(0))
+  }
+
+  invalid1 = setdiff(declared1, structural1)
+  if (length(invalid1) > 0) {
+    cli::cli_warn(c(
+      "Some {.arg geography_extent} values aren't valid benchmarks for {.val {obs1}}-level data and will be ignored: {.val {invalid1}}.",
+      "i" = "Valid benchmarks for {.val {obs1}}-level data: {.val {structural1}}."),
+      .frequency = "once", .frequency_id = "urbnindicators_invalid_extent")
+  }
+
+  candidates1 = intersect(structural1, declared1)  # keep structural (coarse-to-fine) order
+  if (length(candidates1) == 0) return(character(0))
+
+  ok1 = purrr::keep(candidates1, function(lvl) {
+    passed1 = benchmark_check_ok(geoids1, lvl)
+    if (!passed1) {
+      reason1 = switch(lvl,
+        "national" = "requires all 51 states to be present",
+        "state"    = "requires more than one county per state",
+        "county"   = "requires more than one tract or block group per county",
+        "isn't supported")
+      cli::cli_warn(
+        "The {.val {lvl}} benchmark {reason1}; not offered.",
+        .frequency = "once", .frequency_id = paste0("urbnindicators_bench_drop_", lvl))
+    }
+    passed1
+  })
+  if (length(ok1) == 0) return(character(0))
+
+  out1 = c("none", ok1)
+  names(out1) = c("None", stringr::str_to_title(ok1))
+  out1
 }
 
 ## Substring length of a parent GEOID at a given target level (relative to

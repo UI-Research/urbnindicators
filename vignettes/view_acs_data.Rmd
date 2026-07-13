@@ -18,6 +18,31 @@ knitr::opts_chunk$set(
 library(urbnindicators)
 ```
 
+`view_acs_data()` opens an interactive dashboard for exploring an ACS dataset:
+a choropleth map, a searchable table of measures, on-the-fly benchmarking
+against parent geographies, and tools for interpolating to custom areas.
+
+```{r demo-video, echo = FALSE, results = "asis"}
+# The demo video is shown only on the pkgdown website, not in the installed
+# package vignette. It lives in pkgdown/assets/ (which is in .Rbuildignore, so
+# it never enters the package build); pkgdown copies that directory to the site
+# root and serves the file standalone, so it is referenced -- not embedded --
+# keeping the article lightweight. pkgdown sets IN_PKGDOWN = "true" while
+# building the site.
+if (identical(Sys.getenv("IN_PKGDOWN"), "true")) {
+  cat(
+    "The short demo below walks through the interface before we build one ",
+    "ourselves.\n\n",
+    '<video controls playsinline preload="metadata" ',
+    'style="width: 100%; max-width: 960px; height: auto; display: block; ',
+    'margin: 1rem auto; border: 1px solid #e0e0e0; border-radius: 4px;">\n',
+    '  <source src="../view_acs_data-demo.mp4" type="video/mp4">\n',
+    '  Your browser does not support embedded video. ',
+    '<a href="../view_acs_data-demo.mp4">Download the demo</a>.\n',
+    '</video>',
+    sep = "")
+}
+```
 
 ```{r}
 df1 = compile_acs_data(
@@ -33,8 +58,17 @@ places1 = tigris::places(state = "NJ", cb = TRUE, year = 2024) %>%
 ```
 
 
+The `geography_extent` argument is required: it declares which higher geographies
+are valid *statistical benchmarks* for these data. Because `df1` was pulled for a
+single county (`counties = "06037"`, Los Angeles County), only a **county**
+benchmark is appropriate -- the tracts here don't cover all of California, so a
+state benchmark would compare each tract to a partial, misleading "state" value.
+Had we pulled the full state (`counties = NULL`), we could declare
+`geography_extent = c("county", "state")`. Pass `geography_extent = "none"` to
+turn benchmarking off entirely.
+
 ```{r}
-view_acs_data(df1, geography = "tract")
+view_acs_data(df1, geography = "tract", geography_extent = "county")
 ```
 
 ## Custom target geographies
@@ -58,6 +92,7 @@ optional `NAME` column, when present, is shown in the map popups:
 view_acs_data(
   df1,
   geography          = "tract",
+  geography_extent   = "county",
   target_geographies = places1)
 ```
 

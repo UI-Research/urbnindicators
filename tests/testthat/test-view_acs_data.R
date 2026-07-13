@@ -7,8 +7,18 @@ testthat::test_that("view_acs_data() returns a shinyApp from spatial output", {
   testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
 
   df1 = readRDS(test_data_path)
-  app1 = view_acs_data(df1)
+  app1 = view_acs_data(df1, geography_extent = "none")
   testthat::expect_s3_class(app1, "shiny.appobj")
+})
+
+testthat::test_that("view_acs_data() errors when geography_extent is missing", {
+  testthat::skip_if_not_installed("shiny")
+  testthat::skip_if_not_installed("mapgl")
+  testthat::skip_if_not_installed("bslib")
+  testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
+
+  df1 = readRDS(test_data_path)
+  testthat::expect_error(view_acs_data(df1), "geography_extent")
 })
 
 testthat::test_that("view_acs_data() errors on non-sf input", {
@@ -197,27 +207,149 @@ testthat::test_that("format_value() formats by type", {
   testthat::expect_match(format_value(1234, "comma"), ",")
 })
 
-testthat::test_that("benchmark_levels_for_geography() returns appropriate options", {
-  testthat::expect_setequal(
-    names(benchmark_levels_for_geography("tract")),
-    c("None", "County", "State"))
-  testthat::expect_setequal(
-    names(benchmark_levels_for_geography("county")),
-    c("None", "State"))
-  testthat::expect_setequal(
-    names(benchmark_levels_for_geography("state")),
-    c("None", "National"))
+testthat::test_that("structural_benchmark_levels() maps observation level to parents", {
+  testthat::expect_equal(structural_benchmark_levels("tract"),       c("county", "state"))
+  testthat::expect_equal(structural_benchmark_levels("block group"), c("county", "state"))
+  testthat::expect_equal(structural_benchmark_levels("county"),      "state")
+  testthat::expect_equal(structural_benchmark_levels("state"),       "national")
 
-  ## Unsupported / NULL / NA → empty (no dropdown)
-  testthat::expect_length(benchmark_levels_for_geography(NULL),    0)
-  testthat::expect_length(benchmark_levels_for_geography(NA),      0)
-  testthat::expect_length(benchmark_levels_for_geography("zcta"),  0)
-  testthat::expect_length(benchmark_levels_for_geography("block group"), 0)
+  ## Unsupported / NULL / NA → empty (no benchmarking)
+  testthat::expect_length(structural_benchmark_levels(NULL),   0)
+  testthat::expect_length(structural_benchmark_levels(NA),     0)
+  testthat::expect_length(structural_benchmark_levels("zcta"), 0)
+  testthat::expect_length(structural_benchmark_levels("place"), 0)
+})
 
-  ## "None" always sits first so it's the default selection.
-  tract_opts = benchmark_levels_for_geography("tract")
-  testthat::expect_equal(names(tract_opts)[1], "None")
-  testthat::expect_equal(unname(tract_opts)[1], "none")
+testthat::test_that("resolve_observation_level() prefers the arg, else GEOID length", {
+  ## Unambiguous GEOID lengths, no geography arg.
+  testthat::expect_equal(resolve_observation_level("34001011901", NULL),  "tract")
+  testthat::expect_equal(resolve_observation_level("340010119011", NULL), "block group")
+  testthat::expect_equal(resolve_observation_level("34", NULL),           "state")
+
+  ## 5-char (county) is ambiguous with ZCTA/CBSA → NA without an explicit arg.
+  testthat::expect_true(is.na(resolve_observation_level("34001", NULL)))
+
+  ## The arg is authoritative and disambiguates the county case.
+  testthat::expect_equal(resolve_observation_level("34001", "county"), "county")
+  ## A non-benchmarkable arg is returned as-is (so callers can no-op it).
+  testthat::expect_equal(resolve_observation_level("34001", "zcta"),   "zcta")
+
+  ## Arg/length mismatch warns but honors the arg.
+  testthat::expect_warning(
+    resolve_observation_level("34001011901", "state"),
+    "doesn't match")
+  testthat::expect_equal(
+    suppressWarnings(resolve_observation_level("34001011901", "state")),
+    "state")
+})
+
+testthat::test_that("normalize_geography_extent() canonicalizes and validates input", {
+  testthat::expect_equal(normalize_geography_extent(c("county", "state")), c("county", "state"))
+  testthat::expect_equal(normalize_geography_extent("nation"),   "national")
+  testthat::expect_equal(normalize_geography_extent("NATIONAL"), "national")
+  testthat::expect_length(normalize_geography_extent("none"),     0)
+  testthat::expect_length(normalize_geography_extent(NULL),       0)
+  testthat::expect_length(normalize_geography_extent(character(0)), 0)
+  ## "none" mixed with a level still disables (all-none check is only for all-none).
+  testthat::expect_equal(normalize_geography_extent(c("county", "none")), "county")
+  testthat::expect_error(normalize_geography_extent("planet"), "Invalid")
+})
+
+testthat::test_that("benchmark_check_ok() applies per-pair sanity checks", {
+  ## national: needs all 51 states.
+  all_states = canonical_states()
+  testthat::expect_true(benchmark_check_ok(all_states, "national"))
+  testthat::expect_false(benchmark_check_ok(c("34", "06"), "national"))
+
+  ## state: needs >1 county per present state.
+  multi_county = c("34001011901", "34003012301", "06037011101", "06075011101")
+  testthat::expect_true(benchmark_check_ok(multi_county, "state"))
+  ## Tracts from a single county are NOT a valid "state" benchmark (a state has
+  ## many tracts but they're all one county's -- the "state" would be that county).
+  single_county = c("34001011901", "34001011902", "34001011903")
+  testthat::expect_false(benchmark_check_ok(single_county, "state"))
+  ## ...except genuinely single-county states such as DC (state 11, county 11001).
+  dc_tracts = c("11001001100", "11001001200", "11001001300")
+  testthat::expect_true(benchmark_check_ok(dc_tracts, "state"))
+
+  ## county: needs >1 unit per present county.
+  multi_per_county = c("34001011901", "34001011902")
+  testthat::expect_true(benchmark_check_ok(multi_per_county, "county"))
+  single_per_county = c("34001011901", "34003012301")  # one tract per county
+  testthat::expect_false(benchmark_check_ok(single_per_county, "county"))
+
+  testthat::expect_false(benchmark_check_ok(character(0), "county"))
+})
+
+testthat::test_that("available_benchmark_levels() gates on declaration, structure, and checks", {
+  ## available_benchmark_levels() only reads the GEOID column, so a plain tibble
+  ## stands in for the sf input.
+  make_df = function(geoids) tibble::tibble(GEOID = geoids)
+
+  ## Single-county tract pull: county is valid, but state is NOT (all tracts come
+  ## from one county, so a "state" benchmark would be that county in disguise).
+  tracts1 = make_df(c("34001011901", "34001011902", "34001011903"))
+  lv1 = available_benchmark_levels(tracts1, "tract", "county")
+  testthat::expect_equal(names(lv1), c("None", "County"))
+  testthat::expect_equal(unname(lv1), c("none", "county"))
+  testthat::expect_equal(names(lv1)[1], "None")  # "None" always first
+
+  ## Declaring state for single-county data drops it with a warning.
+  testthat::expect_warning(
+    available_benchmark_levels(tracts1, "tract", c("county", "state")),
+    "more than one county")
+  testthat::expect_equal(
+    names(suppressWarnings(
+      available_benchmark_levels(tracts1, "tract", c("county", "state")))),
+    c("None", "County"))
+
+  ## Multi-county tract pull: both county and state are offered.
+  tracts_multi = make_df(c("34001011901", "34001011902",
+                           "34003012301", "34003012302"))
+  lv_ms = available_benchmark_levels(tracts_multi, "tract", c("county", "state"))
+  testthat::expect_equal(names(lv_ms), c("None", "County", "State"))
+
+  ## geography_extent = "none" → no dropdown, regardless of data.
+  testthat::expect_length(available_benchmark_levels(tracts1, "tract", "none"), 0)
+
+  ## Block-group data behaves like tracts (county + state), given multi-county data.
+  bgs1 = make_df(c("340010119011", "340010119012",
+                   "340030123011", "340030123012"))
+  lv_bg = available_benchmark_levels(bgs1, "block group", c("county", "state"))
+  testthat::expect_equal(names(lv_bg), c("None", "County", "State"))
+
+  ## Single tract per county → county benchmark dropped by the sanity check.
+  sparse1 = make_df(c("34001011901", "34003012301"))
+  testthat::expect_warning(
+    available_benchmark_levels(sparse1, "tract", "county"),
+    "more than one tract")
+  testthat::expect_length(
+    suppressWarnings(available_benchmark_levels(sparse1, "tract", "county")), 0)
+
+  ## State-level data: national requires all 51 states.
+  states_full = make_df(canonical_states())
+  lv4 = available_benchmark_levels(states_full, "state", "nation")
+  testthat::expect_equal(names(lv4), c("None", "National"))
+
+  states_partial = make_df(c("34", "06"))
+  testthat::expect_warning(
+    available_benchmark_levels(states_partial, "state", "nation"),
+    "all 51 states")
+  testthat::expect_length(
+    suppressWarnings(available_benchmark_levels(states_partial, "state", "nation")), 0)
+
+  ## Declaring a structurally-invalid level for the observation geography warns.
+  testthat::expect_warning(
+    available_benchmark_levels(states_full, "state", "county"),
+    "aren't valid benchmarks")
+  testthat::expect_length(
+    suppressWarnings(available_benchmark_levels(states_full, "state", "county")), 0)
+
+  ## County-level data with no geography arg is ambiguous (5-char GEOID) → error.
+  counties1 = make_df(c("34001", "34003"))
+  testthat::expect_error(
+    available_benchmark_levels(counties1, NULL, "state"),
+    "observation geography")
 })
 
 testthat::test_that("parent_geoid_length_for_level() returns the right substring length", {

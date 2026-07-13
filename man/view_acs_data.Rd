@@ -6,6 +6,7 @@
 \usage{
 view_acs_data(
   .data,
+  geography_extent,
   variables = NULL,
   geography = NULL,
   target_geographies = NULL,
@@ -16,6 +17,19 @@ view_acs_data(
 \item{.data}{An \code{sf} object produced by \code{\link[=compile_acs_data]{compile_acs_data()}} with
 \code{spatial = TRUE}. Must retain its \code{"codebook"} attribute.}
 
+\item{geography_extent}{Required. A character vector declaring which parent
+geographies are appropriate statistical benchmarks for \code{.data} -- any of
+\code{"county"}, \code{"state"}, \code{"nation"} (alias \code{"national"}), or \code{"none"} to
+disable benchmarking. The caller is responsible for this judgment: only
+declare \code{"state"}, say, when \code{.data} covers the full state(s) it spans.
+Declared levels are further filtered to those structurally valid for the
+observation geography (e.g. state-level data can only be benchmarked against
+the nation) and to those passing a basic coverage check: the \code{"nation"}
+benchmark requires all 51 states to be present; \code{"state"} requires more than
+one county per present state (single-county states such as DC are exempt);
+and \code{"county"} requires more than one tract/block group per present county.
+Levels failing these checks are dropped with a warning.}
+
 \item{variables}{Optional character vector restricting which variables appear
 in the picker. Accepts either raw column names (e.g.,
 \code{"race_nonhispanic_white_alone_percent"}) or pretty labels as produced by
@@ -23,9 +37,11 @@ in the picker. Accepts either raw column names (e.g.,
 variables from the codebook are shown.}
 
 \item{geography}{Geography level of \code{.data}, matching the value passed to
-\code{\link[=compile_acs_data]{compile_acs_data()}}. When \code{"tract"}, \code{"county"}, or \code{"state"}, the
-"Statistical benchmark" dropdown is shown with appropriate higher-level
-geographies. Any other value (or \code{NULL}) hides the dropdown.}
+\code{\link[=compile_acs_data]{compile_acs_data()}}. Used to identify the observation level for
+benchmarking -- it disambiguates 5-character county GEOIDs from ZCTA/CBSA
+codes of the same length. When \code{NULL}, the level is inferred from GEOID
+length where unambiguous (block group, tract, state); county-level data
+requires this argument for benchmarking.}
 
 \item{target_geographies}{Optional \code{sf} polygon object whose rows define
 target geographies onto which the source data are interpolated via
@@ -66,16 +82,18 @@ outside the selected range render in neutral grey, and their popups note the
 out-of-range status. The brushable range defaults to \code{c(0, 1)} for percent
 variables and to the observed data range for everything else.
 
-When \code{geography} is one of \code{"tract"}, \code{"county"}, or \code{"state"}, a
-"Statistical benchmark" dropdown appears that recolors the map by whether
-each polygon's estimate is statistically significantly larger than, smaller
-than, or indistinguishable from a higher-geography benchmark. Benchmark
-values are aggregated from \code{.data} via \code{\link[=interpolate_acs]{interpolate_acs()}} (so the result
-may differ slightly from a separately-pulled ACS estimate at that geography),
-and significance is tested via \code{\link[tidycensus:significance]{tidycensus::significance()}} at the
-90 percent confidence level (matching the \emph{quantified survey error}
-vignette). Variables without a margin-of-error column fall back to the
-default coloring.
+A "Statistical benchmark" dropdown appears when \code{geography_extent} declares
+one or more parent geographies that are valid comparisons for \code{.data} and the
+data pass a basic coverage check. It recolors the map by whether each
+polygon's estimate is statistically significantly larger than, smaller than,
+or indistinguishable from the chosen higher-geography benchmark. Block-group
+and tract data can be benchmarked against their county or state, county data
+against its state, and state data against the nation. Benchmark values are
+aggregated from \code{.data} via \code{\link[=interpolate_acs]{interpolate_acs()}} (so the result may differ
+slightly from a separately-pulled ACS estimate at that geography), and
+significance is tested via \code{\link[tidycensus:significance]{tidycensus::significance()}} at the 90 percent
+confidence level (matching the \emph{quantified survey error} vignette). Variables
+without a margin-of-error column fall back to the default coloring.
 
 Regardless of \code{target_geographies}, the map carries a drawing toolbar at its
 top-left with "Point", "Line", and "Polygon" tools. Each drawn feature gets a
@@ -139,17 +157,21 @@ df = compile_acs_data(
   states    = "NJ",
   spatial   = TRUE)
 
-view_acs_data(df, geography = "tract")
+## `df` is a full-state NJ tract pull, so county and state are valid benchmarks.
+view_acs_data(df, geography = "tract", geography_extent = c("county", "state"))
 
 ## Restrict the picker to a few variables:
-view_acs_data(df, geography = "tract",
+view_acs_data(df, geography = "tract", geography_extent = c("county", "state"),
               variables = c("snap_received_percent",
                             "race_nonhispanic_white_alone_percent"))
+
+## Disable benchmarking (e.g. when the data are only a partial extent):
+view_acs_data(df, geography = "tract", geography_extent = "none")
 
 ## Interpolate onto custom target polygons (e.g., neighborhoods):
 neighborhoods = sf::st_read("path/to/neighborhoods.geojson")
 # neighborhoods must have a `GEOID` column identifying each polygon.
-view_acs_data(df, geography = "tract",
+view_acs_data(df, geography = "tract", geography_extent = c("county", "state"),
               target_geographies = neighborhoods)
 }
 }
