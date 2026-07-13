@@ -5,6 +5,17 @@
 library(urbnindicators)
 ```
 
+[`view_acs_data()`](https://ui-research.github.io/urbnindicators/reference/view_acs_data.md)
+opens an interactive dashboard for exploring an ACS dataset: a
+choropleth map, a searchable table of measures, on-the-fly benchmarking
+against parent geographies, and tools for interpolating to custom areas.
+
+The short demo below walks through the interface before we build one
+ourselves.
+
+Your browser does not support embedded video. [Download the
+demo](https://ui-research.github.io/urbnindicators/view_acs_data-demo.mp4).
+
 ``` r
 
 df1 = compile_acs_data(
@@ -21,12 +32,22 @@ df1 = compile_acs_data(
 
 places1 = tigris::places(state = "NJ", cb = TRUE, year = 2024) %>%
   sf::st_filter(df1)
-#>   |                                                                              |                                                                      |   0%  |                                                                              |==============                                                        |  21%  |                                                                              |=============================                                         |  41%  |                                                                              |===========================================                           |  62%  |                                                                              |======================================================================| 100%
+#>   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%
 ```
+
+The `geography_extent` argument is required: it declares which higher
+geographies are valid *statistical benchmarks* for these data. Because
+`df1` was pulled for a single county (`counties = "06037"`, Los Angeles
+County), only a **county** benchmark is appropriate – the tracts here
+don’t cover all of California, so a state benchmark would compare each
+tract to a partial, misleading “state” value. Had we pulled the full
+state (`counties = NULL`), we could declare
+`geography_extent = c("county", "state")`. Pass
+`geography_extent = "none"` to turn benchmarking off entirely.
 
 ``` r
 
-view_acs_data(df1, geography = "tract")
+view_acs_data(df1, geography = "tract", geography_extent = "county")
 ```
 
 ## Custom target geographies
@@ -52,6 +73,7 @@ optional `NAME` column, when present, is shown in the map popups:
 view_acs_data(
   df1,
   geography          = "tract",
+  geography_extent   = "county",
   target_geographies = places1)
 ```
 

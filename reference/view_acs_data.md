@@ -11,6 +11,7 @@ from the codebook attribute attached to the input.
 ``` r
 view_acs_data(
   .data,
+  geography_extent,
   variables = NULL,
   geography = NULL,
   target_geographies = NULL,
@@ -26,6 +27,22 @@ view_acs_data(
   [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md)
   with `spatial = TRUE`. Must retain its `"codebook"` attribute.
 
+- geography_extent:
+
+  Required. A character vector declaring which parent geographies are
+  appropriate statistical benchmarks for `.data` – any of `"county"`,
+  `"state"`, `"nation"` (alias `"national"`), or `"none"` to disable
+  benchmarking. The caller is responsible for this judgment: only
+  declare `"state"`, say, when `.data` covers the full state(s) it
+  spans. Declared levels are further filtered to those structurally
+  valid for the observation geography (e.g. state-level data can only be
+  benchmarked against the nation) and to those passing a basic coverage
+  check: the `"nation"` benchmark requires all 51 states to be present;
+  `"state"` requires more than one county per present state
+  (single-county states such as DC are exempt); and `"county"` requires
+  more than one tract/block group per present county. Levels failing
+  these checks are dropped with a warning.
+
 - variables:
 
   Optional character vector restricting which variables appear in the
@@ -40,9 +57,11 @@ view_acs_data(
 
   Geography level of `.data`, matching the value passed to
   [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
-  When `"tract"`, `"county"`, or `"state"`, the "Statistical benchmark"
-  dropdown is shown with appropriate higher-level geographies. Any other
-  value (or `NULL`) hides the dropdown.
+  Used to identify the observation level for benchmarking – it
+  disambiguates 5-character county GEOIDs from ZCTA/CBSA codes of the
+  same length. When `NULL`, the level is inferred from GEOID length
+  where unambiguous (block group, tract, state); county-level data
+  requires this argument for benchmarking.
 
 - target_geographies:
 
@@ -86,11 +105,15 @@ grey, and their popups note the out-of-range status. The brushable range
 defaults to `c(0, 1)` for percent variables and to the observed data
 range for everything else.
 
-When `geography` is one of `"tract"`, `"county"`, or `"state"`, a
-"Statistical benchmark" dropdown appears that recolors the map by
+A "Statistical benchmark" dropdown appears when `geography_extent`
+declares one or more parent geographies that are valid comparisons for
+`.data` and the data pass a basic coverage check. It recolors the map by
 whether each polygon's estimate is statistically significantly larger
-than, smaller than, or indistinguishable from a higher-geography
-benchmark. Benchmark values are aggregated from `.data` via
+than, smaller than, or indistinguishable from the chosen
+higher-geography benchmark. Block-group and tract data can be
+benchmarked against their county or state, county data against its
+state, and state data against the nation. Benchmark values are
+aggregated from `.data` via
 [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
 (so the result may differ slightly from a separately-pulled ACS estimate
 at that geography), and significance is tested via
@@ -174,17 +197,21 @@ df = compile_acs_data(
   states    = "NJ",
   spatial   = TRUE)
 
-view_acs_data(df, geography = "tract")
+## `df` is a full-state NJ tract pull, so county and state are valid benchmarks.
+view_acs_data(df, geography = "tract", geography_extent = c("county", "state"))
 
 ## Restrict the picker to a few variables:
-view_acs_data(df, geography = "tract",
+view_acs_data(df, geography = "tract", geography_extent = c("county", "state"),
               variables = c("snap_received_percent",
                             "race_nonhispanic_white_alone_percent"))
+
+## Disable benchmarking (e.g. when the data are only a partial extent):
+view_acs_data(df, geography = "tract", geography_extent = "none")
 
 ## Interpolate onto custom target polygons (e.g., neighborhoods):
 neighborhoods = sf::st_read("path/to/neighborhoods.geojson")
 # neighborhoods must have a `GEOID` column identifying each polygon.
-view_acs_data(df, geography = "tract",
+view_acs_data(df, geography = "tract", geography_extent = c("county", "state"),
               target_geographies = neighborhoods)
 } # }
 ```

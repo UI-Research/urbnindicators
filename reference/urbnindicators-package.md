@@ -23,3 +23,7 @@ Useful links:
 ## Author
 
 **Maintainer**: Will Curran-Groome <wcurrangroome@gmail.com>
+
+Authors:
+
+- Will Curran-Groome <wcurrangroome@gmail.com>

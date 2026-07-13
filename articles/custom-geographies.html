@@ -339,7 +339,7 @@ GitHub-only <code>crosswalk</code> package is installed.)</p>
 <span></span>
 <span><span class="co"># Extract the crosswalk tibble and rename columns for interpolate_acs()</span></span>
 <span><span class="va">tract_xwalk</span> <span class="op">=</span> <span class="va">tract_crosswalk</span><span class="op">$</span><span class="va">crosswalks</span><span class="op">$</span><span class="va">step_1</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">weighting_factor</span> <span class="op">==</span> <span class="st">"weight_population"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">weighting_factor</span> <span class="op">==</span> <span class="st">"population"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
 <span>    GEOID <span class="op">=</span> <span class="va">source_geoid</span>,</span>
 <span>    target_tract <span class="op">=</span> <span class="va">target_geoid</span>,</span>
