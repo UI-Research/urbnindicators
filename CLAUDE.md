@@ -240,7 +240,29 @@ codebook so it stays correct across vintages.
     `variables.json` metadata. Workaround for the API now requiring a
     key on the variables endpoint, which
     [`tidycensus::load_variables()`](https://walker-data.com/tidycensus/reference/load_variables.html)
-    doesn’t send. Requires `CENSUS_API_KEY`.
+    doesn’t send. Requires `CENSUS_API_KEY`. Validates the key up front
+    via `validate_census_api_key()` and, after the request, detects the
+    API’s HTML “invalid/missing key” redirect via
+    `census_key_error_from_response()`. **`R/census_api_key.R`** -
+    Census API key checks shared by every network entry point.
+    `validate_census_api_key()` runs before any request and catches a
+    missing key or one too short/malformed to be valid (a real key is at
+    least 10 characters with both letters and numbers); it is called at
+    the top of `load_acs_variables()` and before the data query in
+    [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
+    A well-formed but fake/inactive key passes this check and is
+    rejected by the API at request time — the API returns an HTML error
+    page where JSON is expected (surfacing as an opaque “lexical error:
+    invalid char in json text”); `census_key_error_from_response()`
+    (variables endpoint) and the `acs_query()` wrapper in `R/cache.R`
+    (data endpoint) detect this and call
+    `abort_census_api_key_rejected()`. That HTML response is ambiguous —
+    a fake key and an API outage look identical — so
+    `abort_census_api_key_rejected()` calls `census_api_is_reachable()`,
+    a keyless probe of the same status endpoint the Census status page
+    (<https://api.census.gov/status/>) checks, and gives a definitive
+    message: a bad-key error when the API is reachable, a
+    temporary-outage error (pointing at the status page) when it is not.
 7.  **`R/generate_codebook.R`** -
     [`generate_codebook()`](https://ui-research.github.io/urbnindicators/reference/generate_codebook.md)
     builds the codebook tibble from registered + auto + user
