@@ -23,18 +23,20 @@ load_acs_variables = function(year, dataset = "acs5") {
     return(.variables_cache[[cache_key]])
   }
 
-  api_key = Sys.getenv("CENSUS_API_KEY")
-  if (!nzchar(api_key)) {
-    cli::cli_abort(c(
-      "A Census Bureau API key is required to fetch ACS variables metadata.",
-      "i" = "Set it with {.code tidycensus::census_api_key(\"YOUR_KEY\", install = TRUE)}",
-      "i" = "or {.code Sys.setenv(CENSUS_API_KEY = \"YOUR_KEY\")} before calling this function.",
-      "i" = "Request a free key at {.url https://api.census.gov/data/key_signup.html}."))
-  }
+  ## catches no key and obviously-malformed keys before the network request
+  api_key = validate_census_api_key()
 
   url = paste0("https://api.census.gov/data/", year, "/acs/acs5/variables.json")
 
   response = httr::GET(url, query = list(key = api_key))
+
+  ## a well-formed but fake/inactive key is redirected to an HTML error page
+  ## (HTTP 200), so it must be detected before the status checks below, which
+  ## would otherwise pass and leave jsonlite to fail with an opaque parse error
+  if (census_key_error_from_response(response)) {
+    abort_census_api_key_rejected()
+  }
+
   if (httr::status_code(response) == 404L) {
     cli::cli_abort(c(
       "Census API endpoint not found.",

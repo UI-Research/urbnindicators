@@ -468,6 +468,14 @@ compile_acs_data = function(
     }
   }
 
+  ## All argument validation is done; from here on we query the Census API.
+  ## Fail now, before any data query, if no plausibly-valid key is available.
+  ## (The block-group and named-table paths above already validated the key via
+  ## load_acs_variables(); this covers the all-tables path, whose first network
+  ## call is fetch_acs() below.) A well-formed but fake key is not caught here;
+  ## it is caught at request time by acs_query() and load_acs_variables().
+  validate_census_api_key()
+
   ## collect raw ACS variables from the registry
   suppressWarnings({suppressMessages({
     variables = collect_raw_variables(

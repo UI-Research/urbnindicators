@@ -6,8 +6,27 @@ acs_cache_dir = function() {
 
 ## Internal: thin wrapper around tidycensus::get_acs(). Exists as a seam so
 ## tests can mock the network via testthat::local_mocked_bindings().
+##
+## When the Census API key is well-formed but fake or inactive, the API returns
+## an HTML error page where JSON is expected, and tidycensus surfaces this as an
+## opaque JSON parse error ("lexical error: invalid char in json text ...").
+## We translate that specific failure into an actionable message about the key.
 acs_query = function(args) {
-  do.call(tidycensus::get_acs, args)
+  ## attribute any re-raised error to this frame, not the tryCatch handler
+  query_call = rlang::current_env()
+  tryCatch(
+    do.call(tidycensus::get_acs, args),
+    error = function(e) {
+      message1 = conditionMessage(e)
+      is_key_rejection = stringr::str_detect(
+        message1,
+        stringr::regex("lexical error|invalid char in json|invalid.?key|missing.?key",
+                       ignore_case = TRUE))
+      if (is_key_rejection) {
+        abort_census_api_key_rejected(call = query_call)
+      }
+      cli::cli_abort("Census API request failed: {message1}", parent = e, call = query_call)
+    })
 }
 
 ## Internal: fetch one table's raw estimates for a single query, reading from /
