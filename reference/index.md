@@ -34,3 +34,5 @@
   : Division without NaNs
 - [`clear_acs_cache()`](https://ui-research.github.io/urbnindicators/reference/clear_acs_cache.md)
   : Clear the urbnindicators cache
+- [`register_urbnindicators_skill()`](https://ui-research.github.io/urbnindicators/reference/register_urbnindicators_skill.md)
+  : Install the urbnindicators agent skill
