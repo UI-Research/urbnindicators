@@ -533,13 +533,39 @@ check_multi_table_variables = function(definitions, resolved_tables, auto_table_
 ####----EXECUTION ENGINE----####
 
 ## Resolve column names matching regex, excluding percent/MOE columns
-resolve_regex_columns = function(.data, regex, exclude_regex = NULL) {
+## Resolve a definition's regex to the column names it matches.
+##
+## Aborts when nothing matches. A silent empty result is never useful and is
+## actively dangerous: an empty numerator makes `rowSums()` return 0, so the
+## definition yields a fabricated 0 percent; an empty denominator yields NA; an
+## empty `each = TRUE` pattern produces no output columns at all; and an empty
+## subtraction term is skipped, silently returning the un-subtracted value.
+resolve_regex_columns = function(.data, regex, exclude_regex = NULL, field = "pattern") {
   cols = colnames(.data)
   matched = cols[stringr::str_detect(cols, regex)]
+  matched_before_filters = length(matched)
+
   if (!is.null(exclude_regex) && nchar(exclude_regex) > 0) {
     matched = matched[!stringr::str_detect(matched, exclude_regex)]
   }
   matched = matched[!stringr::str_detect(matched, "_M$")]
+
+  if (length(matched) == 0) {
+    reason = if (matched_before_filters == 0) {
+      "It matched no columns in the data."
+    } else {
+      paste0("It matched ", matched_before_filters, " column",
+             if (matched_before_filters == 1) "" else "s",
+             ", but all were removed by {.arg exclude} or are margin-of-error ",
+             "({.code _M}) columns.")
+    }
+    cli::cli_abort(c(
+      "The {field} pattern {.val {regex}} resolved to no columns.",
+      "x" = reason,
+      "i" = "Use {.fun list_variables} to see available variable names, or
+             {.code grep(pattern, names(df), value = TRUE)} to test a pattern."))
+  }
+
   return(matched)
 }
 
@@ -554,7 +580,8 @@ execute_definition = function(.data, definition) {
   }
 
   if (type == "across_percent") {
-    input_columns = resolve_regex_columns(.data, definition[["input_regex"]], definition[["exclude_regex"]])
+    input_columns = resolve_regex_columns(.data, definition[["input_regex"]], definition[["exclude_regex"]],
+                                          field = "numerator (each = TRUE)")
     if (length(input_columns) == 1) {
       warning(paste0("`each = TRUE` matched only 1 column ('", input_columns,
                      "'). This may indicate the pattern is too narrow ",
@@ -582,7 +609,8 @@ execute_definition = function(.data, definition) {
   }
 
   if (type == "across_sum") {
-    input_columns = resolve_regex_columns(.data, definition[["input_regex"]], definition[["exclude_regex"]])
+    input_columns = resolve_regex_columns(.data, definition[["input_regex"]], definition[["exclude_regex"]],
+                                          field = "columns (each = TRUE)")
     .data = purrr::reduce(input_columns, function(.data, column) {
       addend_column_name = definition[["addend_function"]](column)
       output_column = definition[["output_naming_function"]](column)
@@ -599,14 +627,16 @@ execute_definition = function(.data, definition) {
     if (!is.null(definition[["numerator_variables"]])) {
       numerator_columns = definition[["numerator_variables"]]
     } else if (!is.null(definition[["numerator_regex"]])) {
-      numerator_columns = resolve_regex_columns(.data, definition[["numerator_regex"]], definition[["numerator_exclude_regex"]])
+      numerator_columns = resolve_regex_columns(.data, definition[["numerator_regex"]], definition[["numerator_exclude_regex"]],
+                                                field = "numerator")
     }
 
     ## resolve denominator columns
     if (!is.null(definition[["denominator_variables"]])) {
       denominator_columns = definition[["denominator_variables"]]
     } else if (!is.null(definition[["denominator_regex"]])) {
-      denominator_columns = resolve_regex_columns(.data, definition[["denominator_regex"]], definition[["denominator_exclude_regex"]])
+      denominator_columns = resolve_regex_columns(.data, definition[["denominator_regex"]], definition[["denominator_exclude_regex"]],
+                                                  field = "denominator")
     }
 
     ## compute numerator
@@ -617,7 +647,8 @@ execute_definition = function(.data, definition) {
       numerator_subtract_value = rowSums(dplyr::select(.data, dplyr::all_of(definition[["numerator_subtract_variables"]])))
       numerator_value = numerator_value - numerator_subtract_value
     } else if (!is.null(definition[["numerator_subtract_regex"]])) {
-      numerator_subtract_columns = resolve_regex_columns(.data, definition[["numerator_subtract_regex"]])
+      numerator_subtract_columns = resolve_regex_columns(.data, definition[["numerator_subtract_regex"]],
+                                                         field = "subtract_from_numerator")
       numerator_subtract_value = rowSums(dplyr::select(.data, dplyr::all_of(numerator_subtract_columns)))
       numerator_value = numerator_value - numerator_subtract_value
     }
@@ -630,7 +661,8 @@ execute_definition = function(.data, definition) {
       subtract_value = rowSums(dplyr::select(.data, dplyr::all_of(definition[["subtract_variables"]])))
       denominator_value = denominator_value - subtract_value
     } else if (!is.null(definition[["subtract_regex"]])) {
-      subtract_columns = resolve_regex_columns(.data, definition[["subtract_regex"]])
+      subtract_columns = resolve_regex_columns(.data, definition[["subtract_regex"]],
+                                               field = "subtract_from_denominator")
       subtract_value = rowSums(dplyr::select(.data, dplyr::all_of(subtract_columns)))
       denominator_value = denominator_value - subtract_value
     }

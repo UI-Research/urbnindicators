@@ -91,6 +91,10 @@ package's API and internals.
   parent subtotal (configurable via the `denominator` parameter).
 * `years` defaults to the most recent ACS five-year vintage expected to be
   available, rather than a hard-coded year.
+* **Agent skill**: the package ships a skill that teaches coding agents to use
+  it correctly -- variable discovery, query scoping, output conventions,
+  margins of error, and `interpolate_acs()`. Install it with
+  `register_urbnindicators_skill()`.
 
 ## Bug fixes and accuracy corrections
 
