@@ -85,6 +85,43 @@ tidycensus::census_api_key("YOUR_KEY", install = TRUE)
 Note that this package is under active development with frequent
 updates--check to ensure you have the most recent version installed!
 
+## Use with an AI agent
+
+`urbnindicators` ships an [agent
+skill](https://docs.claude.com/en/docs/agents-and-tools/agent-skills/overview)
+that teaches coding agents how to use the package: how to discover variable
+names rather than guess them, how to scope a query, how percentages and margins
+of error are encoded, and how to aggregate to custom geographies. Register it
+once, after installing the package:
+
+```r
+register_urbnindicators_skill()
+```
+
+That installs it for Claude Code. Pass `agent` to target others, or
+`agent = "all"` for every supported agent:
+
+```r
+register_urbnindicators_skill(agent = c("claude", "codex", "gemini"))
+```
+
+| `agent` | Tool | How it loads |
+|----|----|----|
+| `"claude"` (default) | Claude Code, Claude Desktop | Native skill directory, loaded automatically when a request involves ACS data |
+| `"codex"` | OpenAI Codex | Pointer added to `AGENTS.md` |
+| `"gemini"` | Google Gemini CLI | Pointer added to `GEMINI.md` |
+| `"agents"` | Cursor and other `AGENTS.md` adopters | Pointer added to `AGENTS.md` |
+
+Only Claude discovers skill directories natively. For the others the skill files
+are installed alongside the agent's configuration and a short pointer block is
+added to its instructions file, so the full skill is read only when a task
+actually calls for it rather than loaded into every conversation.
+
+Use `scope = "project"` to install into the current repository instead of your
+home directory, so collaborators inherit the skill. Re-run after upgrading the
+package to pick up changes; re-running replaces the managed block and leaves the
+rest of your instructions file untouched.
+
 # Use
 
 ```{r, include = FALSE, echo = FALSE, message = FALSE, warning = FALSE, eval = TRUE}
