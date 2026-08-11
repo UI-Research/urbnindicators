@@ -268,6 +268,12 @@
 </ul></div>
 </div>
 <div class="section level2">
+<h2 id="claude-code-skill">Claude Code skill<a class="anchor" aria-label="anchor" href="#claude-code-skill"></a></h2>
+<p>The urbnindicators Claude Code skill lives in <code>inst/skills/urbnindicators/</code>. It is intentionally <strong>not</strong> committed under <code>.claude/skills/</code> — a symlink there was previously committed to git, and Windows’ <code>tar.exe</code> cannot extract symlinks without administrator rights, which broke <code>remotes</code>/<code>renv</code> installs from GitHub for all Windows users. To make the skill discoverable when working in this repo, create the symlink locally (it is gitignored):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">ln</span> <span class="at">-s</span> ../../inst/skills/urbnindicators .claude/skills/urbnindicators</span></code></pre></div>
+<p>Do not commit symlinks (or <code>.claude/skills/</code>) to this repository.</p>
+</div>
+<div class="section level2">
 <h2 id="legacy-path">Legacy path<a class="anchor" aria-label="anchor" href="#legacy-path"></a></h2>
 <p>The <code>variables</code> parameter on <code><a href="reference/compile_acs_data.html">compile_acs_data()</a></code> is deprecated (with <code><a href="https://lifecycle.r-lib.org/reference/deprecate_soft.html" class="external-link">lifecycle::deprecate_warn()</a></code>). Passing it now emits a deprecation warning and the value is ignored; use <code>tables</code> instead.</p>
 </div>
