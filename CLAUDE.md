@@ -174,6 +174,16 @@ Each DSL function returns a list with a `type` field. `compile_acs_data()` accep
 - MOEs should be reasonable for tract-level data
 - Compare to published Census Bureau benchmarks when available
 
+## Claude Code skill
+
+The urbnindicators Claude Code skill lives in `inst/skills/urbnindicators/`. It is intentionally **not** committed under `.claude/skills/` — a symlink there was previously committed to git, and Windows' `tar.exe` cannot extract symlinks without administrator rights, which broke `remotes`/`renv` installs from GitHub for all Windows users. To make the skill discoverable when working in this repo, create the symlink locally (it is gitignored):
+
+```sh
+ln -s ../../inst/skills/urbnindicators .claude/skills/urbnindicators
+```
+
+Do not commit symlinks (or `.claude/skills/`) to this repository.
+
 ## Legacy path
 
 The `variables` parameter on `compile_acs_data()` is deprecated (with `lifecycle::deprecate_warn()`). Passing it now emits a deprecation warning and the value is ignored; use `tables` instead.
