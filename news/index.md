@@ -57,8 +57,27 @@ package’s API and internals.
   key. Set one with
   `tidycensus::census_api_key("YOUR_KEY", install = TRUE)`.
 - [`safe_divide()`](https://ui-research.github.io/urbnindicators/reference/safe_divide.md)
-  now returns `NA` (not `0`) when a nonzero numerator is divided by
-  zero; `0/0` still returns `0`.
+  now returns `NA` whenever the denominator is zero, including `0/0`
+  (previously `0`). Every derived percentage is therefore `NA`, not `0`,
+  for a geography whose denominator is zero (for example, a tract with
+  no population). Complements
+  ([`define_complement()`](https://ui-research.github.io/urbnindicators/reference/define_complement.md))
+  of those percentages are now `NA` instead of `1`, so a tract with no
+  residents is no longer reported as 100% uninsured or 100% people of
+  color.
+  [`safe_divide()`](https://ui-research.github.io/urbnindicators/reference/safe_divide.md)
+  also now accepts a vector numerator with a single-value denominator
+  (and vice versa), which previously raised an error.
+- [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
+  now returns margins of error for complement variables (those made with
+  [`define_complement()`](https://ui-research.github.io/urbnindicators/reference/define_complement.md),
+  such as `race_personofcolor_percent`); previously these `_M` columns
+  were missing from its output. A complement takes the MOE of its source
+  variable, as in
+  [`compile_acs_data()`](https://ui-research.github.io/urbnindicators/reference/compile_acs_data.md).
+- [`interpolate_acs()`](https://ui-research.github.io/urbnindicators/reference/interpolate_acs.md)
+  now returns `NA`, not `NaN`, for population-weighted averages (such as
+  median household income) in a target geography with no population.
 - Raw ACS table codes are now **always auto-processed**, even when a
   registered table covers the same code: `tables = "B22003"` returns the
   auto-processed table with label-derived names, while `tables = "snap"`

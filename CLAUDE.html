@@ -90,7 +90,7 @@
 <li>
 <strong>Conditionals</strong>: <code><a href="https://dplyr.tidyverse.org/reference/if_else.html" class="external-link">dplyr::if_else()</a></code> (not base <code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code>)</li>
 <li>
-<strong>Division</strong>: use <code>safe_divide(x, y)</code> for percentage calculations (returns 0 instead of NaN)</li>
+<strong>Division</strong>: use <code>safe_divide(x, y)</code> for percentage calculations (returns NA instead of NaN/Inf whenever the denominator is 0, including 0/0)</li>
 <li>
 <strong>Iteration/Loops</strong>: use functions from <code><a href="https://purrr.tidyverse.org/" class="external-link">library(purrr)</a></code>–avoid for and while loops</li>
 </ul></div>
@@ -189,7 +189,7 @@
 <li>
 <code>make_pretty_names(.data, .case)</code> - Publication-ready variable names.</li>
 <li>
-<code>safe_divide(x, y)</code> - Safe division (0 instead of NaN; NA when denominator is 0 and numerator is non-zero).</li>
+<code>safe_divide(x, y)</code> - Safe division (NA whenever the denominator is 0, including 0/0; so percentages and their complements are NA for zero-denominator geographies).</li>
 </ul><p><code>select_variables_by_name()</code> and <code>filter_variables()</code> exist in <code>R/list_acs_variables.R</code> but are internal helpers used by the registry’s <code>"select_variables"</code> source type; they are not exported.</p>
 </div>
 </div>

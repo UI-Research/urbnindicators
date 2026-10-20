@@ -65,7 +65,8 @@ CI runs on GitHub Actions: `test-coverage.yaml` (push/PR to main) and
   [`dplyr::if_else()`](https://dplyr.tidyverse.org/reference/if_else.html)
   (not base [`ifelse()`](https://rdrr.io/r/base/ifelse.html))
 - **Division**: use `safe_divide(x, y)` for percentage calculations
-  (returns 0 instead of NaN)
+  (returns NA instead of NaN/Inf whenever the denominator is 0,
+  including 0/0)
 - **Iteration/Loops**: use functions from
   [`library(purrr)`](https://purrr.tidyverse.org/)–avoid for and while
   loops
@@ -302,8 +303,9 @@ codebook so it stays correct across vintages.
 - `get_acs_codebook(year, table)` - Browse ACS variables with clean
   names and table codes.
 - `make_pretty_names(.data, .case)` - Publication-ready variable names.
-- `safe_divide(x, y)` - Safe division (0 instead of NaN; NA when
-  denominator is 0 and numerator is non-zero).
+- `safe_divide(x, y)` - Safe division (NA whenever the denominator is 0,
+  including 0/0; so percentages and their complements are NA for
+  zero-denominator geographies).
 
 `select_variables_by_name()` and `filter_variables()` exist in
 `R/list_acs_variables.R` but are internal helpers used by the registry’s

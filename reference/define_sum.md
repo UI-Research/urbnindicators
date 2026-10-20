@@ -95,8 +95,8 @@ define_sum("sex_by_age_female_.*years($|_over$)",
 #>         stringr::str_replace(col, pattern, replacement)
 #>     }, .init = column)
 #> }
-#> <bytecode: 0x55f9c3279918>
-#> <environment: 0x55f9c322d588>
+#> <bytecode: 0x563fb74d8728>
+#> <environment: 0x563fb74859e8>
 #> 
 #> $output_naming_function
 #> function (column) 
@@ -106,7 +106,7 @@ define_sum("sex_by_age_female_.*years($|_over$)",
 #>         stringr::str_replace_all(col, pattern, replacement)
 #>     }, .init = column)
 #> }
-#> <bytecode: 0x55f9c327a600>
-#> <environment: 0x55f9c322d588>
+#> <bytecode: 0x563fb74d55e0>
+#> <environment: 0x563fb74859e8>
 #> 
 ```
