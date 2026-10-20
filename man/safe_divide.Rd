@@ -16,22 +16,23 @@ A numeric vector. See \code{Details} for the behavior at
 \code{y == 0}.
 }
 \description{
-A division operation that distinguishes structurally-zero ratios
-from undefined ones.
+A division operation that returns \code{NA} instead of
+\code{NaN} or \code{Inf} when the denominator is zero.
 }
 \details{
-Returns the quotient \code{x / y} except in two cases:
-\itemize{
-\item When both \code{x} and \code{y} are \code{0}, returns \code{0}
-(treating \code{0 / 0} as a structurally-zero ratio rather than NaN).
-\item When \code{y} is \code{0} and \code{x} is non-zero (positive or
-negative), returns \code{NA_real_} (the ratio is undefined).
-}
+Returns the quotient \code{x / y}, except that any division by
+zero returns \code{NA_real_}. This includes \code{0 / 0}: a ratio whose
+denominator is zero is undefined, so, for example, the share of a
+tract's population with health insurance is \code{NA} (not \code{0})
+when the tract has no population. Complements of such ratios (see
+\code{\link{define_complement}}) are then \code{NA} as well, rather than
+\code{1}.
+
 When \code{x} or \code{y} is \code{NA}, the result is \code{NA}.
 }
 \examples{
 safe_divide(1, 2)   # 0.5
-safe_divide(0, 0)   # 0
+safe_divide(0, 0)   # NA
 safe_divide(3, 0)   # NA
 safe_divide(3, NA)  # NA
 }

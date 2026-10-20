@@ -1,7 +1,7 @@
 ## Testing data is created in test-compile_acs_data.R
 
-test_data_path = test_path("fixtures", "test_data_2026-02-08.rds")
-test_codebook_path = test_path("fixtures", "codebook_2026-02-08.rds")
+test_data_path = test_path("fixtures", "test_data_2026-10-20.rds")
+test_codebook_path = test_path("fixtures", "codebook_2026-10-20.rds")
 
 ####----Tests----####
 ## No missingness in codebook

@@ -4,9 +4,9 @@
 # bg_df = compile_acs_data(
 #   tables = c("race", "tenure", "sex_by_age", "units_in_structure"),
 #   years = 2022, geography = "block group", states = "DC", counties = "11001")
-# saveRDS(bg_df, test_path("fixtures", "bg_test_data_2026-06-26.rds"))
+# saveRDS(bg_df, test_path("fixtures", "bg_test_data_2026-10-20.rds"))
 
-bg_fixture_path = test_path("fixtures", "bg_test_data_2026-06-26.rds")
+bg_fixture_path = test_path("fixtures", "bg_test_data_2026-10-20.rds")
 
 ####----Availability partitioning (pure logic, no network)----####
 

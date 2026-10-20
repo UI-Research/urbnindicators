@@ -6,8 +6,8 @@
 
 # codebook = attr(df, "codebook")
 
-test_data_path = test_path("fixtures", "test_data_2026-02-08.rds")
-test_codebook_path = test_path("fixtures", "codebook_2026-02-08.rds")
+test_data_path = test_path("fixtures", "test_data_2026-10-20.rds")
+test_codebook_path = test_path("fixtures", "codebook_2026-10-20.rds")
 
 # saveRDS(object = df, file = test_data_path)
 # saveRDS(codebook, file = test_codebook_path)
