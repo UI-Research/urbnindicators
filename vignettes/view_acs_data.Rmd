@@ -53,6 +53,9 @@ df1 = compile_acs_data(
   geography = "tract", 
   spatial = TRUE)
 
+df1 %>%
+  dplyr::glimpse()
+
 places1 = tigris::places(state = "NJ", cb = TRUE, year = 2024) %>%
   sf::st_filter(df1)
 ```

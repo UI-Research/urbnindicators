@@ -1,7 +1,7 @@
 ####----Tests for interpolate_acs()----####
 
-test_data_path = testthat::test_path("fixtures", "test_data_2026-02-08.rds")
-test_codebook_path = testthat::test_path("fixtures", "codebook_2026-02-08.rds")
+test_data_path = testthat::test_path("fixtures", "test_data_2026-10-20.rds")
+test_codebook_path = testthat::test_path("fixtures", "codebook_2026-10-20.rds")
 
 ## Helper: subset data to a small set of tables so tests run in seconds
 ## rather than minutes. Subsets both columns and codebook.
@@ -807,4 +807,51 @@ testthat::test_that("interpolate_acs() recomputes non-registry (user/auto) deriv
   out2 = suppressWarnings(
     interpolate_acs(df2, target_geoid_column = "nbhd", weight = NULL))
   testthat::expect_false("foo_count_percent" %in% colnames(out2))
+})
+
+testthat::test_that("interpolate_acs() returns MOEs for complement variables", {
+  testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
+  ## A complement (1 - x) has no denominator in the codebook, so it needs its
+  ## own MOE step; it should share the MOE of its source variable, as in
+  ## compile_acs_data().
+  df = readRDS(test_data_path) %>% dplyr::slice(1:20) %>% slim_for_test()
+  df$nbhd = rep(c("A", "B"), length.out = nrow(df))
+  crosswalk = tibble::tibble(
+    GEOID = rep(df$GEOID, each = 2),
+    target = rep(c("X", "Y"), times = nrow(df)),
+    share = rep(c(0.3, 0.7), times = nrow(df)))
+
+  results = list(
+    nested = suppressWarnings(
+      interpolate_acs(df, target_geoid_column = "nbhd", weight = NULL)),
+    weighted = suppressWarnings(
+      interpolate_acs(df, target_geoid_column = "target", weight = "share",
+                      crosswalk = crosswalk)))
+
+  purrr::iwalk(results, function(result, mode) {
+    testthat::expect_true("race_personofcolor_percent_M" %in% colnames(result), info = mode)
+    testthat::expect_true(all(result$race_personofcolor_percent_M > 0), info = mode)
+    testthat::expect_equal(
+      result$race_personofcolor_percent_M,
+      result$race_nonhispanic_white_alone_percent_M,
+      info = mode)
+  })
+})
+
+testthat::test_that("interpolate_acs() returns an MOE for every percent variable", {
+  testthat::skip_if_not(file.exists(test_data_path), "Test fixture not available")
+  df = readRDS(test_data_path)
+  df$nbhd = rep(c("A", "B", "C"), length.out = nrow(df))
+  codebook = attr(df, "codebook")
+
+  result = suppressWarnings(interpolate_acs(df, target_geoid_column = "nbhd", weight = NULL))
+  percent_variables = codebook %>%
+    dplyr::filter(se_calculation_type %in% c(
+      "simple_percent", "complex_numerator", "complex_denominator",
+      "complex_both", "one_minus")) %>%
+    dplyr::pull(calculated_variable)
+
+  testthat::expect_equal(
+    setdiff(paste0(percent_variables, "_M"), colnames(result)),
+    character(0))
 })

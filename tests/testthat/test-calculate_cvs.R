@@ -99,8 +99,8 @@ testthat::test_that("se_sum handles mixed zero-estimate patterns across rows", {
 ## Integration tests (fixture-based)
 ## ---------------------------------------------------------------------------
 
-test_data_path = test_path("fixtures", "test_data_2026-02-08.rds")
-test_codebook_path = test_path("fixtures", "codebook_2026-02-08.rds")
+test_data_path = test_path("fixtures", "test_data_2026-10-20.rds")
+test_codebook_path = test_path("fixtures", "codebook_2026-10-20.rds")
 
 testthat::test_that(
   "No MOE has missing values for all observations",

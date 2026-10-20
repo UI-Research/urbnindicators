@@ -40,7 +40,7 @@ CI runs on GitHub Actions: `test-coverage.yaml` (push/PR to main) and `pkgdown.y
 - **Variable suffixes**: `_percent` for percentages, `_universe` or `_universe_` for universe variables, `_M` for margins of error
 - **Documentation**: roxygen2 (v7.3.2) with markdown mode enabled
 - **Conditionals**: `dplyr::if_else()` (not base `ifelse()`)
-- **Division**: use `safe_divide(x, y)` for percentage calculations (returns 0 instead of NaN)
+- **Division**: use `safe_divide(x, y)` for percentage calculations (returns NA instead of NaN/Inf whenever the denominator is 0, including 0/0)
 - **Iteration/Loops**: use functions from `library(purrr)`--avoid for and while loops
 
 ## Architecture
@@ -131,7 +131,7 @@ Note: don't hard-code a list of block-group tables — derive it from the codebo
 - `list_variables(year)` - Tibble mapping all variables (raw + computed) to their table name.
 - `get_acs_codebook(year, table)` - Browse ACS variables with clean names and table codes.
 - `make_pretty_names(.data, .case)` - Publication-ready variable names.
-- `safe_divide(x, y)` - Safe division (0 instead of NaN; NA when denominator is 0 and numerator is non-zero).
+- `safe_divide(x, y)` - Safe division (NA whenever the denominator is 0, including 0/0; so percentages and their complements are NA for zero-denominator geographies).
 
 `select_variables_by_name()` and `filter_variables()` exist in `R/list_acs_variables.R` but are internal helpers used by the registry's `"select_variables"` source type; they are not exported.
 

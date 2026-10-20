@@ -1,13 +1,14 @@
 #' @title Division without NaNs
-#' @description A division operation that distinguishes structurally-zero ratios
-#'    from undefined ones.
-#' @details Returns the quotient \code{x / y} except in two cases:
-#'    \itemize{
-#'      \item When both \code{x} and \code{y} are \code{0}, returns \code{0}
-#'        (treating \code{0 / 0} as a structurally-zero ratio rather than NaN).
-#'      \item When \code{y} is \code{0} and \code{x} is non-zero (positive or
-#'        negative), returns \code{NA_real_} (the ratio is undefined).
-#'    }
+#' @description A division operation that returns \code{NA} instead of
+#'    \code{NaN} or \code{Inf} when the denominator is zero.
+#' @details Returns the quotient \code{x / y}, except that any division by
+#'    zero returns \code{NA_real_}. This includes \code{0 / 0}: a ratio whose
+#'    denominator is zero is undefined, so, for example, the share of a
+#'    tract's population with health insurance is \code{NA} (not \code{0})
+#'    when the tract has no population. Complements of such ratios (see
+#'    \code{\link{define_complement}}) are then \code{NA} as well, rather than
+#'    \code{1}.
+#'
 #'    When \code{x} or \code{y} is \code{NA}, the result is \code{NA}.
 #' @param x A numeric vector or scalar.
 #' @param y A numeric vector or scalar.
@@ -15,15 +16,15 @@
 #'    \code{y == 0}.
 #' @examples
 #' safe_divide(1, 2)   # 0.5
-#' safe_divide(0, 0)   # 0
+#' safe_divide(0, 0)   # NA
 #' safe_divide(3, 0)   # NA
 #' safe_divide(3, NA)  # NA
 #' @export
 safe_divide = function(x, y) {
-  dplyr::if_else(
-    y == 0,
-    dplyr::if_else(x == 0, 0, NA_real_),
-    x / y)
+  quotient = x / y
+  ## recycle the zero check to the length of the quotient so a scalar
+  ## denominator works with a vector numerator (and vice versa)
+  dplyr::if_else(rep_len(y == 0, length(quotient)), NA_real_, quotient)
 }
 
 ## Best-guess of the most recent ACS 5-year vintage that should be available.

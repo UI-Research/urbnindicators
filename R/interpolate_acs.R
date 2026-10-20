@@ -121,7 +121,7 @@
       dplyr::summarise(
         dplyr::across(
           dplyr::all_of(weighted_avg_variables),
-          ~ sum(.x * .data[[weight_variable]]) / sum(.data[[weight_variable]])),
+          ~ safe_divide(sum(.x * .data[[weight_variable]]), sum(.data[[weight_variable]]))),
         .groups = "drop")
 
     ## Calculate SEs for weighted averages — split once, compute all SEs per group.
@@ -358,6 +358,26 @@
       seq_len(nrow(percent_components)),
       function(df, i) calculate_percent_se(df, percent_components[i, ]),
       .init = result)
+
+    ## Complements (1 - x) have no denominator of their own, so the step above
+    ## skips them. A complement has the same sampling error as its source
+    ## variable, so it takes the source's MOE (as in calculate_moes()).
+    if ("se_calculation_type" %in% colnames(codebook)) {
+      complement_rows = codebook %>%
+        dplyr::filter(
+          calculated_variable %in% percent_variables,
+          se_calculation_type == "one_minus")
+      result = purrr::reduce(seq_len(nrow(complement_rows)), function(df, i) {
+        complement = complement_rows$calculated_variable[[i]]
+        source_moe = paste0(as.character(complement_rows$numerator_vars[[i]]), "_M")
+        if (!complement %in% colnames(df) || length(source_moe) != 1 ||
+            !source_moe %in% colnames(df)) {
+          return(df)
+        }
+        df[[paste0(complement, "_M")]] = df[[source_moe]]
+        df
+      }, .init = result)
+    }
 
     percent_se_failures = percent_failures_env$log
   } else {
